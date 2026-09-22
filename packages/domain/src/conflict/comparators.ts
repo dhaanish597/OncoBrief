@@ -18,6 +18,24 @@ export interface ComparableFact {
   factType: FactType;
   slotKey: string;
   value: FactValue;
+  /** The date the fact refers to. Compared for dated-event fact types. */
+  observedOn?: string | Date | null;
+}
+
+/**
+ * Fact types that describe one document rather than the patient. Two documents
+ * legitimately carry different dates, facilities and type labels, so these are
+ * never cross-compared. Every other fact type shares a slot across documents and
+ * is a comparison candidate.
+ */
+export const DOCUMENT_SCOPED_FACT_TYPES: readonly FactType[] = [
+  'document.date',
+  'document.issuing_facility',
+  'document.type_as_written',
+];
+
+export function isDocumentScopedFactType(factType: FactType): boolean {
+  return DOCUMENT_SCOPED_FACT_TYPES.includes(factType);
 }
 
 export interface Comparator {
@@ -28,9 +46,28 @@ export interface Comparator {
 
 const DAY_MS = 24 * 60 * 60 * 1000;
 
-function dateVerdict(a: string, b: string, toleranceDays: number): ComparisonVerdict {
-  const ta = Date.parse(`${a}T00:00:00Z`);
-  const tb = Date.parse(`${b}T00:00:00Z`);
+/**
+ * Accept a date as either an ISO date string or a `Date` and normalise to
+ * `YYYY-MM-DD`. Database drivers return `date` columns as `Date` objects, and a
+ * comparator that silently treats one as unparseable would manufacture a
+ * conflict that does not exist.
+ */
+export function toIsoDate(value: string | Date | null | undefined): string | null {
+  if (!value) return null;
+  if (value instanceof Date) {
+    if (Number.isNaN(value.getTime())) return null;
+    return value.toISOString().slice(0, 10);
+  }
+  const m = /^(\d{4}-\d{2}-\d{2})/.exec(value.trim());
+  return m ? m[1]! : null;
+}
+
+function dateVerdict(a: string | Date, b: string | Date, toleranceDays: number): ComparisonVerdict {
+  const sa = toIsoDate(a);
+  const sb = toIsoDate(b);
+  if (sa === null || sb === null) return 'incomparable';
+  const ta = Date.parse(`${sa}T00:00:00Z`);
+  const tb = Date.parse(`${sb}T00:00:00Z`);
   if (Number.isNaN(ta) || Number.isNaN(tb)) return 'incomparable';
   const diff = Math.abs(ta - tb) / DAY_MS;
   return diff <= toleranceDays ? 'agree' : 'disagree';
@@ -71,27 +108,41 @@ function dateComparator(factType: FactType, toleranceDays: number): Comparator {
 }
 
 export const COMPARATORS: Record<FactType, Comparator> = {
-  'document.date': dateComparator('document.date', 0),
+  // document.* are document-scoped and are never compared; the entries exist so
+  // the record is total, and they return `incomparable` defensively.
+  'document.date': {
+    factType: 'document.date',
+    version: 'v1',
+    compare: () => 'incomparable',
+  },
   'document.issuing_facility': {
     factType: 'document.issuing_facility',
     version: 'v1',
-    compare(a, b) {
-      if (a.value.kind !== 'facility' || b.value.kind !== 'facility') return 'incomparable';
-      return normalizedEqual(a.value.name, b.value.name);
-    },
+    compare: () => 'incomparable',
   },
-  'document.type_as_written': textualComparator('document.type_as_written'),
+  'document.type_as_written': {
+    factType: 'document.type_as_written',
+    version: 'v1',
+    compare: () => 'incomparable',
+  },
   'procedure.recorded': {
     factType: 'procedure.recorded',
-    version: 'v1',
+    version: 'v2',
     compare(a, b) {
       if (kindMismatch(a.value, b.value) || a.value.kind !== 'procedure' || b.value.kind !== 'procedure') {
         return 'incomparable';
       }
-      if (a.value.code && b.value.code) {
-        return a.value.code === b.value.code ? 'agree' : 'disagree';
-      }
-      return normalizedEqual(a.value.name, b.value.name);
+      const named =
+        a.value.code && b.value.code
+          ? a.value.code === b.value.code
+            ? 'agree'
+            : 'disagree'
+          : normalizedEqual(a.value.name, b.value.name);
+      if (named === 'disagree') return 'disagree';
+      // Same procedure: the two documents may still disagree about when it
+      // happened, which is the contradiction the reconciliation room exists for.
+      if (a.observedOn && b.observedOn) return dateVerdict(a.observedOn, b.observedOn, 0);
+      return 'agree';
     },
   },
   'medication.recorded': {
@@ -123,23 +174,33 @@ export const COMPARATORS: Record<FactType, Comparator> = {
   },
   'imaging.recorded': {
     factType: 'imaging.recorded',
-    version: 'v1',
+    version: 'v2',
     compare(a, b) {
       if (kindMismatch(a.value, b.value) || a.value.kind !== 'procedure' || b.value.kind !== 'procedure') {
         return 'incomparable';
       }
-      if (a.value.code && b.value.code) return a.value.code === b.value.code ? 'agree' : 'disagree';
-      return normalizedEqual(a.value.name, b.value.name);
+      const named =
+        a.value.code && b.value.code
+          ? a.value.code === b.value.code
+            ? 'agree'
+            : 'disagree'
+          : normalizedEqual(a.value.name, b.value.name);
+      if (named === 'disagree') return 'disagree';
+      if (a.observedOn && b.observedOn) return dateVerdict(a.observedOn, b.observedOn, 0);
+      return 'agree';
     },
   },
   'radiation.recorded': {
     factType: 'radiation.recorded',
-    version: 'v1',
+    version: 'v2',
     compare(a, b) {
       if (kindMismatch(a.value, b.value) || a.value.kind !== 'procedure' || b.value.kind !== 'procedure') {
         return 'incomparable';
       }
-      return normalizedEqual(a.value.name, b.value.name);
+      const named = normalizedEqual(a.value.name, b.value.name);
+      if (named === 'disagree') return 'disagree';
+      if (a.observedOn && b.observedOn) return dateVerdict(a.observedOn, b.observedOn, 0);
+      return 'agree';
     },
   },
   'chemotherapy_cycle.recorded': {

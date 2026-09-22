@@ -136,7 +136,11 @@ export function slotQualifier(factType: FactType, value: FactValue): string {
     case 'referral.recorded':
       return 'referral';
     case 'identifier.mrn':
-      return value.kind === 'identifier' ? `id:${value.system}` : 'id';
+      // An MRN is assigned per issuing facility, so two facilities legitimately
+      // use different MRNs for the same patient. Scoping the slot by facility
+      // keeps same-facility agreement visible without manufacturing a
+      // cross-facility "conflict" that no human should have to resolve.
+      return value.kind === 'identifier' ? `id:mrn:${value.scope ?? 'unscoped'}` : 'id:mrn';
     case 'identifier.abha':
       return 'id:abha';
   }

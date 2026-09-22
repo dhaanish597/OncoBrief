@@ -20,6 +20,8 @@ Full detail for every decision below lives in
 | [0010](0010-administrative-checklists-are-authored.md) | Administrative checklists are human-authored, never inferred | Accepted |
 | [0011](0011-simulated-patient-delivery.md) | Patient delivery is simulated in the prototype | Accepted |
 | [0012](0012-extension-launch-layer-only.md) | Browser extension limited to a launch-layer contract | Accepted |
+| [0013](0013-object-storage-port-defaults-to-filesystem.md) | Object storage port defaults to the local filesystem | Accepted |
+| [0014](0014-raw-sql-data-access-via-node-postgres.md) | Raw SQL data access via node-postgres | Accepted |
 
 ## Conventions
 

@@ -1,4 +1,4 @@
-import { compareFacts, type ComparableFact, type ComparisonVerdict } from './comparators.js';
+import { compareFacts, isDocumentScopedFactType, type ComparableFact, type ComparisonVerdict } from './comparators.js';
 import type { FactType } from '../vocab/fact-types.js';
 
 /**
@@ -32,6 +32,9 @@ export const DETECTOR_VERSION = 'v1';
 export function detectConflicts(facts: readonly ComparableFact[]): DetectedConflict[] {
   const groups = new Map<string, ComparableFact[]>();
   for (const f of facts) {
+    // Document-scoped attributes describe one document; two documents may
+    // legitimately disagree and that is not a contradiction.
+    if (isDocumentScopedFactType(f.factType)) continue;
     const key = `${f.factType}\u0000${f.slotKey}`;
     const arr = groups.get(key);
     if (arr) arr.push(f);

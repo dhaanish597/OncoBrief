@@ -43,6 +43,17 @@ export const EVIDENCE_STATE_LABEL: Record<EvidenceStateValue, string> = {
 /** States from which no further transition is possible. */
 export const TERMINAL_STATES: readonly EvidenceStateValue[] = ['corrected', 'superseded'];
 
+/**
+ * Raw probability -> the band the UI displays. The band is what we show;
+ * a percentage invites false precision about a deterministic extractor.
+ */
+export function confidenceBandFor(raw: number | null | undefined): ConfidenceBand {
+  if (raw === null || raw === undefined) return 'medium';
+  if (raw >= 0.9) return 'high';
+  if (raw >= 0.7) return 'medium';
+  return 'low';
+}
+
 /** A state that renders as unfinished rather than settled. */
 export function isSettled(state: EvidenceStateValue): boolean {
   return state === 'verified' || state === 'corrected';

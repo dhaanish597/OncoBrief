@@ -26,7 +26,7 @@ export interface ChecklistItemDef {
 export interface DocumentForGap {
   id: string;
   documentType: DocumentType | null;
-  documentDate: string | null;
+  documentDate: string | Date | null;
   typeConfirmed: boolean;
 }
 
@@ -100,9 +100,18 @@ export function evaluateGaps(
 
 function pickMostRecent(docs: readonly DocumentForGap[]): DocumentForGap {
   return [...docs].sort((a, b) => {
-    const ad = a.documentDate ?? '0000-00-00';
-    const bd = b.documentDate ?? '0000-00-00';
+    const ad = isoDateKey(a.documentDate);
+    const bd = isoDateKey(b.documentDate);
     if (ad !== bd) return bd.localeCompare(ad);
     return a.id.localeCompare(b.id);
   })[0]!;
+}
+
+/** Drivers may hand back a `Date`; normalise so ordering never throws. */
+function isoDateKey(value: string | Date | null): string {
+  if (!value) return '0000-00-00';
+  if (value instanceof Date) {
+    return Number.isNaN(value.getTime()) ? '0000-00-00' : value.toISOString().slice(0, 10);
+  }
+  return value;
 }

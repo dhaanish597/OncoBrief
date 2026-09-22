@@ -11,7 +11,7 @@ export type FactValue =
   | { kind: 'date'; date: string }
   | { kind: 'text'; text: string }
   | { kind: 'facility'; name: string }
-  | { kind: 'identifier'; system: string; value: string }
+  | { kind: 'identifier'; system: string; value: string; scope?: string }
   | { kind: 'medication'; name: string; doseText?: string }
   | { kind: 'procedure'; name: string; code?: string }
   | { kind: 'appointment'; date: string; detailText?: string }

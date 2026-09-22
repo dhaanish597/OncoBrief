@@ -7,21 +7,50 @@ import {
   type FactValue,
 } from '../src/index.js';
 
-function fact(id: string, factType: ComparableFact['factType'], value: FactValue): ComparableFact {
-  return { id, factType, slotKey: makeSlotKey(factType, value), value };
+function fact(
+  id: string,
+  factType: ComparableFact['factType'],
+  value: FactValue,
+  observedOn?: string,
+): ComparableFact {
+  return {
+    id,
+    factType,
+    slotKey: makeSlotKey(factType, value),
+    value,
+    ...(observedOn ? { observedOn } : {}),
+  };
 }
 
 describe('comparators', () => {
   it('detects a genuine date disagreement between two documents', () => {
-    const a = fact('a', 'document.date', { kind: 'date', date: '2025-06-12' });
-    const b = fact('b', 'document.date', { kind: 'date', date: '2025-07-03' });
+    const a = fact('a', 'appointment.recorded', { kind: 'appointment', date: '2025-06-12' });
+    const b = fact('b', 'appointment.recorded', { kind: 'appointment', date: '2025-07-03' });
     expect(compareFacts(a, b)).toBe('disagree');
   });
 
-  it('agrees on the same date', () => {
-    const a = fact('a', 'document.date', { kind: 'date', date: '2025-06-12' });
-    const b = fact('b', 'document.date', { kind: 'date', date: '2025-06-12' });
+  it('agrees on the same appointment date', () => {
+    const a = fact('a', 'appointment.recorded', { kind: 'appointment', date: '2025-06-12' });
+    const b = fact('b', 'appointment.recorded', { kind: 'appointment', date: '2025-06-12' });
     expect(compareFacts(a, b)).toBe('agree');
+  });
+
+  it('detects the same procedure recorded with two different dates', () => {
+    const a = fact('a', 'procedure.recorded', { kind: 'procedure', name: 'Modified radical mastectomy' }, '2025-06-12');
+    const b = fact('b', 'procedure.recorded', { kind: 'procedure', name: 'Modified radical mastectomy' }, '2025-07-03');
+    expect(compareFacts(a, b)).toBe('disagree');
+  });
+
+  it('agrees when the same procedure is dated identically', () => {
+    const a = fact('a', 'procedure.recorded', { kind: 'procedure', name: 'Mastectomy' }, '2025-06-12');
+    const b = fact('b', 'procedure.recorded', { kind: 'procedure', name: 'Mastectomy' }, '2025-06-12');
+    expect(compareFacts(a, b)).toBe('agree');
+  });
+
+  it('never compares document-scoped attributes across documents', () => {
+    const a = fact('a', 'document.date', { kind: 'date', date: '2025-06-12' });
+    const b = fact('b', 'document.date', { kind: 'date', date: '2025-07-03' });
+    expect(compareFacts(a, b)).toBe('incomparable');
   });
 
   it('allows a one-day tolerance for appointments', () => {
@@ -74,8 +103,8 @@ describe('slot keys', () => {
 describe('detector', () => {
   it('detects a disagreement from two real documents', () => {
     const facts = [
-      fact('f1', 'document.date', { kind: 'date', date: '2025-06-12' }),
-      fact('f2', 'document.date', { kind: 'date', date: '2025-07-03' }),
+      fact('f1', 'appointment.recorded', { kind: 'appointment', date: '2025-06-12' }),
+      fact('f2', 'appointment.recorded', { kind: 'appointment', date: '2025-07-03' }),
     ];
     const conflicts = detectConflicts(facts);
     expect(conflicts).toHaveLength(1);
@@ -85,8 +114,8 @@ describe('detector', () => {
 
   it('produces no conflict when all facts agree', () => {
     const facts = [
-      fact('f1', 'document.date', { kind: 'date', date: '2025-06-12' }),
-      fact('f2', 'document.date', { kind: 'date', date: '2025-06-12' }),
+      fact('f1', 'appointment.recorded', { kind: 'appointment', date: '2025-06-12' }),
+      fact('f2', 'appointment.recorded', { kind: 'appointment', date: '2025-06-12' }),
     ];
     expect(detectConflicts(facts)).toHaveLength(0);
   });
@@ -103,8 +132,8 @@ describe('detector', () => {
 
   it('is idempotent — the fingerprint is a deterministic function of member ids', () => {
     const facts = [
-      fact('f1', 'document.date', { kind: 'date', date: '2025-06-12' }),
-      fact('f2', 'document.date', { kind: 'date', date: '2025-07-03' }),
+      fact('f1', 'appointment.recorded', { kind: 'appointment', date: '2025-06-12' }),
+      fact('f2', 'appointment.recorded', { kind: 'appointment', date: '2025-07-03' }),
     ];
     const first = detectConflicts(facts)[0]!;
     const second = detectConflicts([...facts].reverse())[0]!;
@@ -113,8 +142,18 @@ describe('detector', () => {
 
   it('does not compare across fact types', () => {
     const facts = [
-      fact('f1', 'document.date', { kind: 'date', date: '2025-06-12' }),
+      fact('f1', 'appointment.recorded', { kind: 'appointment', date: '2025-06-12' }),
       fact('f2', 'followup.recorded', { kind: 'date', date: '2025-07-03' }),
+    ];
+    expect(detectConflicts(facts)).toHaveLength(0);
+  });
+
+  it('never produces a conflict from document-scoped attributes alone', () => {
+    const facts = [
+      fact('f1', 'document.date', { kind: 'date', date: '2025-06-12' }),
+      fact('f2', 'document.date', { kind: 'date', date: '2025-07-03' }),
+      fact('f3', 'document.issuing_facility', { kind: 'facility', name: 'Hospital A' }),
+      fact('f4', 'document.issuing_facility', { kind: 'facility', name: 'Hospital B' }),
     ];
     expect(detectConflicts(facts)).toHaveLength(0);
   });
