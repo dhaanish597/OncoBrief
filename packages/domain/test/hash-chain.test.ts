@@ -7,7 +7,7 @@ import {
   canonicalJson,
   sha256Hex,
   type ChainRow,
-} from '../src/index.js';
+} from '../src/index';
 
 const base = {
   orgId: 'org-1',

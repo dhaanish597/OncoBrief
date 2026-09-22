@@ -1,4 +1,4 @@
-import type { Querier } from '../client.js';
+import type { Querier } from '../client';
 
 /**
  * Read models. Everything here is either a projection of the ledger or a
@@ -37,7 +37,7 @@ export async function listPatients(q: Querier): Promise<PatientListItem[]> {
        (SELECT min(te.display_date)::text FROM timeline_event te
           WHERE te.patient_id = p.id AND te.display_date >= current_date) AS appointment_date
      FROM patient p
-     ORDER BY (readiness_band IS NULL), readiness_band DESC, p.display_name`,
+     ORDER BY readiness_band DESC NULLS LAST, p.display_name`,
   );
 
   return res.rows.map((r) => ({
@@ -71,26 +71,44 @@ export async function getPatient(q: Querier, patientId: string) {
 
 export interface TimelineRow {
   id: string;
+  evidenceFactId: string;
   factType: string;
   valueText: string;
   displayDate: string | null;
+  observedOn: string | null;
   state: string;
   documentId: string;
   documentName: string;
   pageNumber: number | null;
   confidenceBand: string;
   extractorKind: string;
+  extractorName: string;
+  extractorVersion: string;
+  verbatimQuote: string;
+  reviewerName: string | null;
+  reviewedAt: string | null;
+  correctsFactId: string | null;
+  replacedByFactId: string | null;
+  version: number;
 }
 
 export async function getTimeline(q: Querier, patientId: string): Promise<TimelineRow[]> {
   const res = await q.query<{
-    id: string; fact_type: string; value_text: string; display_date: string | null;
-    state: string; document_id: string; original_filename: string; page_number: number | null;
-    confidence_band: string; extractor_kind: string;
+    id: string; evidence_fact_id: string; fact_type: string; value_text: string;
+    display_date: string | null; observed_on: string | null; state: string;
+    document_id: string; original_filename: string; page_number: number | null;
+    confidence_band: string; extractor_kind: string; extractor_name: string; extractor_version: string;
+    verbatim_quote: string; reviewer_name: string | null; reviewed_at: Date | null;
+    corrects_fact_id: string | null; replaced_by_fact_id: string | null; version: string;
   }>(
-    `SELECT te.id, te.fact_type, te.value_text, te.display_date::text AS display_date, te.state,
+    `SELECT te.id, te.evidence_fact_id, te.fact_type, te.value_text,
+            te.display_date::text AS display_date, ef.observed_on::text AS observed_on, te.state,
             te.document_id, d.original_filename,
-            ef.confidence_band, ef.extractor_kind,
+            ef.confidence_band, ef.extractor_kind, ef.extractor_name, ef.extractor_version,
+            ef.verbatim_quote, ef.corrects_fact_id,
+            u.display_name AS reviewer_name, es.last_changed_at AS reviewed_at,
+            (SELECT count(*) FROM ledger_entry le WHERE le.evidence_fact_id = ef.id)::text AS version,
+            (SELECT r.id FROM evidence_fact r WHERE r.corrects_fact_id = ef.id ORDER BY r.created_at LIMIT 1) AS replaced_by_fact_id,
             (SELECT dp.page_number
                FROM evidence_span_link esl
                JOIN text_span ts ON ts.id = esl.text_span_id
@@ -100,21 +118,33 @@ export async function getTimeline(q: Querier, patientId: string): Promise<Timeli
        FROM timeline_event te
        JOIN document d ON d.id = te.document_id
        JOIN evidence_fact ef ON ef.id = te.evidence_fact_id
+       LEFT JOIN evidence_state es ON es.evidence_fact_id = te.evidence_fact_id
+       LEFT JOIN app_user u ON u.id = es.last_actor_id
       WHERE te.patient_id = $1
       ORDER BY te.display_date NULLS LAST, te.updated_at`,
     [patientId],
   );
   return res.rows.map((r) => ({
     id: r.id,
+    evidenceFactId: r.evidence_fact_id,
     factType: r.fact_type,
     valueText: r.value_text,
     displayDate: r.display_date,
+    observedOn: r.observed_on,
     state: r.state,
     documentId: r.document_id,
     documentName: r.original_filename,
     pageNumber: r.page_number,
     confidenceBand: r.confidence_band,
     extractorKind: r.extractor_kind,
+    extractorName: r.extractor_name,
+    extractorVersion: r.extractor_version,
+    verbatimQuote: r.verbatim_quote,
+    reviewerName: r.reviewer_name,
+    reviewedAt: r.reviewed_at ? r.reviewed_at.toISOString() : null,
+    correctsFactId: r.corrects_fact_id,
+    replacedByFactId: r.replaced_by_fact_id,
+    version: Number(r.version),
   }));
 }
 
@@ -286,6 +316,123 @@ export async function getProvenance(
   };
 }
 
+export interface ConflictMemberDetail {
+  factId: string;
+  valueText: string;
+  state: string;
+  observedOn: string | null;
+  verbatimQuote: string;
+  documentId: string;
+  documentName: string;
+  pageNumber: number;
+  spanIds: string[];
+  pageSpans: PageSpanRow[];
+  extractorKind: string;
+  extractorName: string;
+  confidenceBand: string;
+  reviewerName: string | null;
+  createdAt: string;
+}
+
+export interface ConflictDetail {
+  id: string;
+  factType: string;
+  slotKey: string;
+  status: string;
+  detectionReason: string;
+  detectedAt: string;
+  resolvedKind: string | null;
+  resolvedReason: string | null;
+  resolvedByName: string | null;
+  resolvedAt: string | null;
+  members: ConflictMemberDetail[];
+}
+
+export async function getConflict(
+  q: Querier,
+  patientId: string,
+  conflictId: string,
+): Promise<ConflictDetail | null> {
+  const cs = await q.query<{
+    id: string; fact_type: string; slot_key: string; status: string; detection_reason: string;
+    detected_at: Date; resolution_kind: string | null; resolution_reason: string | null;
+    resolved_by_name: string | null; resolved_at: Date | null;
+  }>(
+    `SELECT cs.id, cs.fact_type, cs.slot_key, cs.status, cs.detection_reason, cs.detected_at,
+            cs.resolution_kind, cs.resolution_reason, cs.resolved_at,
+            ru.display_name AS resolved_by_name
+       FROM conflict_set cs LEFT JOIN app_user ru ON ru.id = cs.resolved_by
+      WHERE cs.id = $1 AND cs.patient_id = $2`,
+    [conflictId, patientId],
+  );
+  const c = cs.rows[0];
+  if (!c) return null;
+
+  const members = await q.query<{
+    id: string; value_normalized: string; state: string; observed_on: string | null;
+    verbatim_quote: string; document_id: string; original_filename: string; page_number: number | null;
+    extractor_kind: string; extractor_name: string; confidence_band: string;
+    reviewer_name: string | null; created_at: Date; span_ids: string[] | null;
+  }>(
+    `SELECT ef.id, ef.value_normalized, coalesce(es.state,'extracted') AS state,
+            ef.observed_on::text AS observed_on, ef.verbatim_quote, ef.document_id,
+            d.original_filename, ef.extractor_kind, ef.extractor_name, ef.confidence_band,
+            u.display_name AS reviewer_name, ef.created_at,
+            (SELECT array_agg(esl.text_span_id ORDER BY esl.ordinal)
+               FROM evidence_span_link esl WHERE esl.evidence_fact_id = ef.id) AS span_ids,
+            (SELECT dp.page_number
+               FROM evidence_span_link esl
+               JOIN text_span ts ON ts.id = esl.text_span_id
+               JOIN document_page dp ON dp.id = ts.page_id
+              WHERE esl.evidence_fact_id = ef.id ORDER BY esl.ordinal LIMIT 1) AS page_number
+       FROM conflict_member cm
+       JOIN evidence_fact ef ON ef.id = cm.evidence_fact_id
+       JOIN document d ON d.id = ef.document_id
+       LEFT JOIN evidence_state es ON es.evidence_fact_id = ef.id
+       LEFT JOIN app_user u ON u.id = es.last_actor_id
+      WHERE cm.conflict_set_id = $1
+      ORDER BY ef.created_at`,
+    [conflictId],
+  );
+
+  const memberDetails: ConflictMemberDetail[] = [];
+  for (const m of members.rows) {
+    const pageNumber = m.page_number ?? 1;
+    const page = await getPageSpans(q, m.document_id, pageNumber);
+    memberDetails.push({
+      factId: m.id,
+      valueText: m.value_normalized,
+      state: m.state,
+      observedOn: m.observed_on,
+      verbatimQuote: m.verbatim_quote,
+      documentId: m.document_id,
+      documentName: m.original_filename,
+      pageNumber,
+      spanIds: m.span_ids ?? [],
+      pageSpans: page?.spans ?? [],
+      extractorKind: m.extractor_kind,
+      extractorName: m.extractor_name,
+      confidenceBand: m.confidence_band,
+      reviewerName: m.reviewer_name,
+      createdAt: m.created_at.toISOString(),
+    });
+  }
+
+  return {
+    id: c.id,
+    factType: c.fact_type,
+    slotKey: c.slot_key,
+    status: c.status,
+    detectionReason: c.detection_reason,
+    detectedAt: c.detected_at.toISOString(),
+    resolvedKind: c.resolution_kind,
+    resolvedReason: c.resolution_reason,
+    resolvedByName: c.resolved_by_name,
+    resolvedAt: c.resolved_at ? c.resolved_at.toISOString() : null,
+    members: memberDetails,
+  };
+}
+
 export interface ConflictListRow {
   id: string;
   factType: string;
@@ -295,6 +442,98 @@ export interface ConflictListRow {
   detectedAt: string;
   memberCount: number;
   memberValueTexts: string[];
+  resolvedKind: string | null;
+  resolvedReason: string | null;
+  resolvedByName: string | null;
+}
+
+export async function getDocument(q: Querier, patientId: string, documentId: string) {
+  const res = await q.query<{
+    id: string; original_filename: string; mime_type: string; document_type: string | null;
+    type_confirmed_by: string | null; document_date: string | null; issuing_facility: string | null;
+    record_origin: string; ingest_status: string; ingest_error: string | null; page_count: number | null;
+    doc_version: number; duplicate_of_document_id: string | null; is_demo_fixture: boolean;
+    content_sha256: Buffer;
+  }>(
+    `SELECT id, original_filename, mime_type, document_type, type_confirmed_by,
+            document_date::text AS document_date, issuing_facility, record_origin, ingest_status,
+            ingest_error, page_count, doc_version, duplicate_of_document_id, is_demo_fixture, content_sha256
+       FROM document WHERE id = $1 AND patient_id = $2`,
+    [documentId, patientId],
+  );
+  const r = res.rows[0];
+  if (!r) return null;
+  return {
+    id: r.id,
+    filename: r.original_filename,
+    mimeType: r.mime_type,
+    documentType: r.document_type,
+    typeConfirmed: r.type_confirmed_by !== null,
+    documentDate: r.document_date,
+    issuingFacility: r.issuing_facility,
+    recordOrigin: r.record_origin,
+    ingestStatus: r.ingest_status,
+    ingestError: r.ingest_error,
+    pageCount: r.page_count,
+    docVersion: r.doc_version,
+    duplicateOf: r.duplicate_of_document_id,
+    isDemoFixture: r.is_demo_fixture,
+    contentSha256: r.content_sha256.toString('hex'),
+  };
+}
+
+export interface PageSpanRow {
+  id: string;
+  text: string;
+  charStart: number;
+  charEnd: number;
+  bbox: { x: number; y: number; w: number; h: number };
+  ocrEngine: string;
+  ocrEngineVersion: string;
+  ocrConfidence: number | null;
+  granularity: string;
+  spanIndex: number;
+}
+
+export async function getPageSpans(
+  q: Querier,
+  documentId: string,
+  pageNumber: number,
+): Promise<{ plainText: string; pageId: string; spans: PageSpanRow[] } | null> {
+  const page = await q.query<{ id: string; plain_text: string }>(
+    'SELECT id, plain_text FROM document_page WHERE document_id = $1 AND page_number = $2',
+    [documentId, pageNumber],
+  );
+  const p = page.rows[0];
+  if (!p) return null;
+
+  const spans = await q.query<{
+    id: string; text: string; char_start: number; char_end: number; bbox_x: number;
+    bbox_y: number; bbox_w: number; bbox_h: number; ocr_engine: string;
+    ocr_engine_version: string; ocr_confidence: number | null; granularity: string; span_index: number;
+  }>(
+    `SELECT id, text, char_start, char_end, bbox_x, bbox_y, bbox_w, bbox_h,
+            ocr_engine, ocr_engine_version, ocr_confidence, granularity, span_index
+       FROM text_span WHERE page_id = $1 ORDER BY span_index`,
+    [p.id],
+  );
+
+  return {
+    plainText: p.plain_text,
+    pageId: p.id,
+    spans: spans.rows.map((s) => ({
+      id: s.id,
+      text: s.text,
+      charStart: s.char_start,
+      charEnd: s.char_end,
+      bbox: { x: s.bbox_x, y: s.bbox_y, w: s.bbox_w, h: s.bbox_h },
+      ocrEngine: s.ocr_engine,
+      ocrEngineVersion: s.ocr_engine_version,
+      ocrConfidence: s.ocr_confidence,
+      granularity: s.granularity,
+      spanIndex: s.span_index,
+    })),
+  };
 }
 
 export async function listConflicts(
@@ -305,15 +544,19 @@ export async function listConflicts(
   const res = await q.query<{
     id: string; fact_type: string; slot_key: string; status: string; detection_reason: string;
     detected_at: Date; member_count: string; member_values: string[] | null;
+    resolution_kind: string | null; resolution_reason: string | null; resolved_by_name: string | null;
   }>(
     `SELECT cs.id, cs.fact_type, cs.slot_key, cs.status, cs.detection_reason, cs.detected_at,
+            cs.resolution_kind, cs.resolution_reason,
+            ru.display_name AS resolved_by_name,
             count(cm.evidence_fact_id)::text AS member_count,
             array_agg(ef.value_normalized ORDER BY ef.created_at) AS member_values
        FROM conflict_set cs
        JOIN conflict_member cm ON cm.conflict_set_id = cs.id
        JOIN evidence_fact ef ON ef.id = cm.evidence_fact_id
+       LEFT JOIN app_user ru ON ru.id = cs.resolved_by
       WHERE cs.patient_id = $1 AND ($2::text IS NULL OR cs.status::text = $2)
-      GROUP BY cs.id
+      GROUP BY cs.id, ru.display_name
       ORDER BY cs.status, cs.detected_at DESC`,
     [patientId, status ?? null],
   );
@@ -326,6 +569,168 @@ export async function listConflicts(
     detectedAt: r.detected_at.toISOString(),
     memberCount: Number(r.member_count),
     memberValueTexts: r.member_values ?? [],
+    resolvedKind: r.resolution_kind,
+    resolvedReason: r.resolution_reason,
+    resolvedByName: r.resolved_by_name,
+  }));
+}
+
+export async function listPackets(q: Querier, patientId: string) {
+  const res = await q.query<{
+    id: string; encounter_label: string; status: string; created_at: Date;
+    approved_at: Date | null; ledger_seq_at_approval: string | null;
+  }>(
+    `SELECT id, encounter_label, status, created_at, approved_at, ledger_seq_at_approval::text AS ledger_seq_at_approval
+       FROM consultation_packet WHERE patient_id = $1 ORDER BY created_at DESC`,
+    [patientId],
+  );
+  return res.rows.map((r) => ({
+    id: r.id,
+    encounterLabel: r.encounter_label,
+    status: r.status,
+    createdAt: r.created_at.toISOString(),
+    approvedAt: r.approved_at ? r.approved_at.toISOString() : null,
+    ledgerSeqAtApproval:
+      r.ledger_seq_at_approval === null ? null : Number(r.ledger_seq_at_approval),
+  }));
+}
+
+export async function listMessageTemplates(q: Querier) {
+  const res = await q.query<{
+    id: string; code: string; locale: string; version: number; body_template: string;
+    allowed_variables: string[];
+  }>(
+    `SELECT id, code, locale, version, body_template, allowed_variables
+       FROM message_template ORDER BY code, locale, version DESC`,
+  );
+  return res.rows.map((r) => ({
+    id: r.id,
+    code: r.code,
+    locale: r.locale,
+    version: r.version,
+    bodyTemplate: r.body_template,
+    allowedVariables: r.allowed_variables,
+  }));
+}
+
+export async function listMessages(q: Querier, patientId: string) {
+  const res = await q.query<{
+    id: string; locale: string; body_rendered: string; status: string; created_at: Date;
+    approved_at: Date | null; approver_name: string | null; composer_name: string | null;
+    template_code: string; simulated: boolean | null; external_ref: string | null;
+  }>(
+    `SELECT pm.id, pm.locale, pm.body_rendered, pm.status, pm.created_at, pm.approved_at,
+            ap.display_name AS approver_name, cp.display_name AS composer_name,
+            mt.code AS template_code, ob.simulated, ob.external_ref
+       FROM patient_message pm
+       JOIN message_template mt ON mt.id = pm.template_id
+       LEFT JOIN app_user ap ON ap.id = pm.approved_by
+       LEFT JOIN app_user cp ON cp.id = pm.composed_by
+       LEFT JOIN LATERAL (
+         SELECT simulated, external_ref FROM message_outbox o
+          WHERE o.patient_message_id = pm.id ORDER BY attempted_at DESC LIMIT 1
+       ) ob ON true
+      WHERE pm.patient_id = $1
+      ORDER BY pm.created_at DESC`,
+    [patientId],
+  );
+  return res.rows.map((r) => ({
+    id: r.id,
+    locale: r.locale,
+    bodyRendered: r.body_rendered,
+    status: r.status,
+    createdAt: r.created_at.toISOString(),
+    approvedAt: r.approved_at ? r.approved_at.toISOString() : null,
+    approverName: r.approver_name,
+    composerName: r.composer_name,
+    templateCode: r.template_code,
+    simulated: r.simulated,
+    externalRef: r.external_ref,
+  }));
+}
+
+export async function listMessageVariables(q: Querier, messageId: string) {
+  const res = await q.query<{
+    variable_name: string; source_kind: string; evidence_fact_id: string | null;
+    literal_value: string | null; fact_state: string | null; fact_type: string | null;
+    fact_value: string | null; document_id: string | null; original_filename: string | null;
+  }>(
+    `SELECT mvs.variable_name, mvs.source_kind, mvs.evidence_fact_id, mvs.literal_value,
+            es.state AS fact_state, ef.fact_type, ef.value_normalized AS fact_value,
+            ef.document_id, d.original_filename
+       FROM message_variable_source mvs
+       LEFT JOIN evidence_fact ef ON ef.id = mvs.evidence_fact_id
+       LEFT JOIN evidence_state es ON es.evidence_fact_id = mvs.evidence_fact_id
+       LEFT JOIN document d ON d.id = ef.document_id
+      WHERE mvs.patient_message_id = $1
+      ORDER BY mvs.variable_name`,
+    [messageId],
+  );
+  return res.rows.map((r) => ({
+    variableName: r.variable_name,
+    sourceKind: r.source_kind,
+    evidenceFactId: r.evidence_fact_id,
+    literalValue: r.literal_value,
+    factState: r.fact_state,
+    factType: r.fact_type,
+    factValue: r.fact_value,
+    documentId: r.document_id,
+    documentName: r.original_filename,
+  }));
+}
+
+/** Verified appointment facts available to back a message variable. */
+export async function listVerifiedAppointments(q: Querier, patientId: string) {
+  const res = await q.query<{ id: string; value_normalized: string; observed_on: string | null }>(
+    `SELECT ef.id, ef.value_normalized, ef.observed_on::text AS observed_on
+       FROM evidence_fact ef JOIN evidence_state es ON es.evidence_fact_id = ef.id
+      WHERE ef.patient_id = $1 AND ef.fact_type = 'appointment.recorded'
+        AND es.state IN ('verified','corrected')
+      ORDER BY ef.observed_on NULLS LAST`,
+    [patientId],
+  );
+  return res.rows.map((r) => ({
+    id: r.id,
+    valueText: r.value_normalized,
+    observedOn: r.observed_on,
+  }));
+}
+
+export async function listPatientAudit(q: Querier, patientId: string) {
+  const res = await q.query<{
+    id: string; seq: string; action: string; entity_kind: string; entity_id: string | null;
+    outcome: string; actor_role: string | null; actor_name: string | null; occurred_at: Date;
+    metadata_json: unknown;
+  }>(
+    `SELECT a.id, a.seq::text AS seq, a.action, a.entity_kind, a.entity_id, a.outcome,
+            a.actor_role, u.display_name AS actor_name, a.occurred_at, a.metadata_json
+       FROM audit_event a
+       LEFT JOIN app_user u ON u.id = a.actor_user_id
+      WHERE a.entity_id = $1
+         OR a.entity_id IN (
+              SELECT id FROM evidence_fact WHERE patient_id = $1
+              UNION SELECT id FROM document WHERE patient_id = $1
+              UNION SELECT id FROM conflict_set WHERE patient_id = $1
+              UNION SELECT id FROM admin_task WHERE patient_id = $1
+              UNION SELECT id FROM consultation_packet WHERE patient_id = $1
+              UNION SELECT id FROM patient_message WHERE patient_id = $1
+              UNION SELECT id FROM record_gap WHERE patient_id = $1
+            )
+      ORDER BY a.seq DESC
+      LIMIT 400`,
+    [patientId],
+  );
+  return res.rows.map((r) => ({
+    id: r.id,
+    seq: Number(r.seq),
+    action: r.action,
+    entityKind: r.entity_kind,
+    entityId: r.entity_id,
+    outcome: r.outcome,
+    actorRole: r.actor_role,
+    actorName: r.actor_name,
+    occurredAt: r.occurred_at.toISOString(),
+    metadata: r.metadata_json,
   }));
 }
 

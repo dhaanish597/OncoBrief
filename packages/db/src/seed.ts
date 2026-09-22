@@ -1,19 +1,19 @@
 import type { PoolClient } from 'pg';
-import { getMigratorPool } from './client.js';
-import { getDelivery, getOcr, getExtractor, getStorage } from './container.js';
-import { hashPassword } from './services/auth.js';
-import { confirmDocumentType, createDocument, ingestDocument } from './services/documents.js';
-import { verifyEvidence } from './services/ledger.js';
-import { composeMessage, approveMessage, createMessageTemplate, deliverMessage } from './services/messages.js';
-import { createPacket } from './services/packets.js';
-import { createTask } from './services/tasks.js';
-import { assignChecklist, computeAndPersistReadiness, evaluateAndPersistGaps } from './services/twin.js';
+import { getMigratorPool } from './client';
+import { getDelivery, getOcr, getExtractor, getStorage } from './container';
+import { hashPassword } from './services/auth';
+import { confirmDocumentType, createDocument, ingestDocument } from './services/documents';
+import { verifyEvidence } from './services/ledger';
+import { composeMessage, approveMessage, createMessageTemplate, deliverMessage } from './services/messages';
+import { createPacket } from './services/packets';
+import { createTask } from './services/tasks';
+import { assignChecklist, computeAndPersistReadiness, evaluateAndPersistGaps } from './services/twin';
 import {
   DEMO_001_DOCS,
   DEMO_002_DOCS,
   DEMO_003_DOCS,
   type FixtureDoc,
-} from './fixtures.js';
+} from './fixtures';
 
 /**
  * Demo seed (architecture §25.2).

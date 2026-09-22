@@ -1,4 +1,4 @@
-import { normalizeForComparison } from './normalize.js';
+import { normalizeForComparison } from './normalize';
 
 /**
  * Verbatim-span validation — the central safety gate (architecture §5.2).

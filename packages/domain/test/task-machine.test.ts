@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { transitionTask, taskStatusesFrom, type TaskStatus } from '../src/index.js';
+import { transitionTask, taskStatusesFrom, type TaskStatus } from '../src/index';
 
 const ALL: TaskStatus[] = ['open', 'assigned', 'in_progress', 'blocked', 'done', 'cancelled'];
 

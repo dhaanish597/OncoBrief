@@ -1,5 +1,5 @@
 import { computeAuditEntryHash, GENESIS_PREV_HASH } from '@oncobrief/domain';
-import type { Querier } from '../client.js';
+import type { Querier } from '../client';
 
 /**
  * The audit stream (architecture §12).

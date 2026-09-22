@@ -8,8 +8,8 @@ import {
   type PacketInput,
   type PacketTaskSnapshot,
 } from '@oncobrief/domain';
-import type { Querier } from '../client.js';
-import { appendAuditEvent } from './audit.js';
+import type { Querier } from '../client';
+import { appendAuditEvent } from './audit';
 
 /**
  * Consultation packet (architecture §11).
@@ -302,8 +302,9 @@ export async function getPacket(
   const res = await q.query<{
     id: string; status: string; encounter_label: string; snapshot_json: unknown;
     snapshot_sha256: Buffer | null; ledger_seq_at_approval: string | null; org_id: string;
+    patient_id: string;
   }>(
-    `SELECT id, status, encounter_label, snapshot_json, snapshot_sha256, ledger_seq_at_approval, org_id
+    `SELECT id, status, encounter_label, snapshot_json, snapshot_sha256, ledger_seq_at_approval, org_id, patient_id
        FROM consultation_packet WHERE id = $1 AND org_id = $2`,
     [packetId, orgId],
   );
@@ -319,13 +320,21 @@ export async function getPacket(
 
   const snapshot = row.snapshot_json as { assembled?: AssembledPacket } | null;
 
+  // An approved packet is read from its frozen snapshot. A draft has no
+  // snapshot yet, so it is rendered live from the ledger as it stands now —
+  // read-only, and clearly labelled in the UI as not yet frozen.
+  let assembled: AssembledPacket | null = snapshot?.assembled ?? null;
+  if (!assembled) {
+    assembled = assemblePacket(await gatherPacketInput(q, orgId, row.patient_id));
+  }
+
   return {
     id: row.id,
     status: row.status,
     encounterLabel: row.encounter_label,
     ledgerSeqAtApproval: approvedSeq,
     snapshotSha256: row.snapshot_sha256 ? row.snapshot_sha256.toString('hex') : null,
-    assembled: snapshot?.assembled ?? null,
+    assembled,
     ledgerAdvanced: approvedSeq !== null && currentSeq > approvedSeq,
   };
 }

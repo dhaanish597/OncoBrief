@@ -1,6 +1,6 @@
 import { isTaskKind, transitionTask, type TaskKind, type TaskStatus } from '@oncobrief/domain';
-import type { Querier } from '../client.js';
-import { appendAuditEvent } from './audit.js';
+import type { Querier } from '../client';
+import { appendAuditEvent } from './audit';
 
 /**
  * Source-backed administrative tasks (architecture §10).

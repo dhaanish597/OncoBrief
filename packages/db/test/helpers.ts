@@ -1,8 +1,8 @@
 import { Client, type PoolClient } from 'pg';
-import { env } from '../src/env.js';
-import { getMigratorPool } from '../src/client.js';
-import { migrate } from '../src/migrate.js';
-import { seed } from '../src/seed.js';
+import { env } from '../src/env';
+import { getMigratorPool } from '../src/client';
+import { migrate } from '../src/migrate';
+import { seed } from '../src/seed';
 import type { Role } from '@oncobrief/domain';
 
 export interface Fixtures {

@@ -1,9 +1,9 @@
 import { createHash } from 'node:crypto';
 import { DOCUMENT_TYPES, isDocumentType, type DocumentType } from '@oncobrief/domain';
 import type { ExtractionPort, OcrPort, OcrSpanDraft, StoragePort } from '@oncobrief/ports';
-import type { Querier } from '../client.js';
-import { appendAuditEvent } from './audit.js';
-import { detectAndRecordConflicts, insertFact } from './ledger.js';
+import type { Querier } from '../client';
+import { appendAuditEvent } from './audit';
+import { detectAndRecordConflicts, insertFact } from './ledger';
 
 /**
  * Document ingestion (architecture §6, §16).

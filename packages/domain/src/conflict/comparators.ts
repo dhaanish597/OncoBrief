@@ -1,6 +1,6 @@
-import { normalizeForComparison } from '../provenance/normalize.js';
-import type { FactType } from '../vocab/fact-types.js';
-import type { FactValue } from '../vocab/fact-value.js';
+import { normalizeForComparison } from '../provenance/normalize';
+import type { FactType } from '../vocab/fact-types';
+import type { FactValue } from '../vocab/fact-value';
 
 /**
  * Deterministic conflict comparators (architecture §8.2).

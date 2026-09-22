@@ -11,40 +11,40 @@
  */
 
 // vocabularies
-export * from './vocab/fact-value.js';
-export * from './vocab/fact-types.js';
-export * from './vocab/document-types.js';
-export * from './vocab/task-kinds.js';
+export * from './vocab/fact-value';
+export * from './vocab/fact-types';
+export * from './vocab/document-types';
+export * from './vocab/task-kinds';
 
 // evidence
-export * from './evidence/state.js';
-export * from './evidence/transitions.js';
+export * from './evidence/state';
+export * from './evidence/transitions';
 
 // provenance
-export * from './provenance/normalize.js';
-export * from './provenance/span-validation.js';
+export * from './provenance/normalize';
+export * from './provenance/span-validation';
 
 // ledger
-export * from './ledger/canonical-json.js';
-export * from './ledger/hash-chain.js';
+export * from './ledger/canonical-json';
+export * from './ledger/hash-chain';
 
 // conflict
-export * from './conflict/comparators.js';
-export * from './conflict/detector.js';
+export * from './conflict/comparators';
+export * from './conflict/detector';
 
 // twin
-export * from './twin/gaps.js';
-export * from './twin/readiness.js';
+export * from './twin/gaps';
+export * from './twin/readiness';
 
 // packet
-export * from './packet/assemble.js';
+export * from './packet/assemble';
 
 // messages
-export * from './messages/render.js';
+export * from './messages/render';
 
 // tasks
-export * from './tasks/task-machine.js';
+export * from './tasks/task-machine';
 
 // policy
-export * from './policy/rbac.js';
-export * from './policy/clinical-boundary.js';
+export * from './policy/rbac';
+export * from './policy/clinical-boundary';

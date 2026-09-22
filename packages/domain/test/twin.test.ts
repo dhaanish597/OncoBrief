@@ -4,7 +4,7 @@ import {
   evaluateGaps,
   type ChecklistItemDef,
   type DocumentForGap,
-} from '../src/index.js';
+} from '../src/index';
 
 const ITEMS: ChecklistItemDef[] = [
   {

@@ -6,8 +6,8 @@ import {
   type GapStatus,
   type ReadinessBand,
 } from '@oncobrief/domain';
-import type { Querier } from '../client.js';
-import { appendAuditEvent } from './audit.js';
+import type { Querier } from '../client';
+import { appendAuditEvent } from './audit';
 
 /**
  * The administrative digital twin (architecture §9).

@@ -15,7 +15,7 @@ import {
   PACKET_SECTION_LABEL,
   READINESS_BAND_LABEL,
   type VariableSource,
-} from '../src/index.js';
+} from '../src/index';
 
 describe('renderTemplate', () => {
   it('renders allowed variables', () => {

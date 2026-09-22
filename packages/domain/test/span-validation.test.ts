@@ -3,7 +3,7 @@ import {
   normalizeForComparison,
   validateSpans,
   type SpanForValidation,
-} from '../src/index.js';
+} from '../src/index';
 
 const DOC = 'doc-1';
 const PAGE = 'page-1';

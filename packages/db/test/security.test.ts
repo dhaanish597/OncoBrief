@@ -1,6 +1,6 @@
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
-import { closePools } from '../src/client.js';
-import { appClientForOrg, appClientNoTenant, setupFixtures, withSuperuser, type Fixtures } from './helpers.js';
+import { closePools } from '../src/client';
+import { appClientForOrg, appClientNoTenant, setupFixtures, withSuperuser, type Fixtures } from './helpers';
 
 /**
  * Architecture §23.2 — the security properties are tested, not asserted.

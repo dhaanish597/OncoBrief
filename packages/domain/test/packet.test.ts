@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import { assemblePacket, hashPacketSnapshot, MANDATORY_SECTIONS } from '../src/index.js';
-import type { PacketInput } from '../src/index.js';
+import { assemblePacket, hashPacketSnapshot, MANDATORY_SECTIONS } from '../src/index';
+import type { PacketInput } from '../src/index';
 
 const EMPTY: PacketInput = { facts: [], gaps: [], conflicts: [], tasks: [] };
 

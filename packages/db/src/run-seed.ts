@@ -1,5 +1,5 @@
-import { closePools } from './client.js';
-import { seed } from './seed.js';
+import { closePools } from './client';
+import { seed } from './seed';
 
 seed((m) => console.log(m))
   .then((s) => {

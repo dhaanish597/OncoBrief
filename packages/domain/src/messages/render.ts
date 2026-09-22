@@ -1,4 +1,4 @@
-import type { EvidenceStateValue } from '../evidence/state.js';
+import type { EvidenceStateValue } from '../evidence/state';
 
 /**
  * Administrative message rendering and the verified-source approval gate

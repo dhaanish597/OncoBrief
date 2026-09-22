@@ -17,7 +17,7 @@ export class FixedClock implements ClockPort {
   }
 }
 
-export * from './local-fs-storage.js';
-export * from './fixture-ocr.js';
-export * from './rule-based-extractor.js';
-export * from './simulated-delivery.js';
+export * from './local-fs-storage';
+export * from './fixture-ocr';
+export * from './rule-based-extractor';
+export * from './simulated-delivery';

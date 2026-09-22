@@ -1,8 +1,8 @@
 import { createHash, randomBytes } from 'node:crypto';
 import { hash as argonHash, verify as argonVerify } from '@node-rs/argon2';
 import type { Role } from '@oncobrief/domain';
-import { authLookupSession, authLookupUser, type Querier } from '../client.js';
-import { appendAuditEvent, type AuditRequestMeta } from './audit.js';
+import { authLookupSession, authLookupUser, type Querier } from '../client';
+import { appendAuditEvent, type AuditRequestMeta } from './audit';
 
 /**
  * Session authentication (architecture §13.1).
@@ -82,13 +82,19 @@ export async function login(
   const ok = await verifyPassword(first.password_hash, password);
   if (!ok) return null;
 
+  // The org is known only after the lookup, so the tenant context is applied
+  // here. The caller must have opened a transaction (`withTransaction`).
+  await q.query('SELECT set_config($1,$2,true)', ['app.org_id', first.org_id]);
+  await q.query('SELECT set_config($1,$2,true)', ['app.user_id', first.user_id]);
+  await q.query('SELECT set_config($1,$2,true)', ['app.role', first.role]);
+
   const now = new Date();
   const expiresAt = new Date(now.getTime() + SESSION_ABSOLUTE_MS);
   const { token, tokenHash } = newSessionToken();
 
-  await q.query(
+  const sessionRes = await q.query<{ id: string }>(
     `INSERT INTO session (org_id, user_id, token_hash, role, expires_at, last_seen_at)
-     VALUES ($1,$2,$3,$4,$5,$6)`,
+     VALUES ($1,$2,$3,$4,$5,$6) RETURNING id`,
     [first.org_id, first.user_id, tokenHash, first.role, expiresAt, now],
   );
 
@@ -97,7 +103,7 @@ export async function login(
     actor: { userId: first.user_id, role: first.role },
     action: 'auth.login',
     entityKind: 'session',
-    entityId: null,
+    entityId: sessionRes.rows[0]!.id,
     outcome: 'success',
     request,
   });
@@ -105,7 +111,7 @@ export async function login(
   return {
     token,
     context: {
-      sessionId: '',
+      sessionId: sessionRes.rows[0]!.id,
       orgId: first.org_id,
       userId: first.user_id,
       role: first.role,

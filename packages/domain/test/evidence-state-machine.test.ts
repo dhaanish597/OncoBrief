@@ -6,7 +6,7 @@ import {
   type EvidenceStateValue,
   type LedgerAction,
   type Role,
-} from '../src/index.js';
+} from '../src/index';
 
 const CLINICIAN: Role = 'clinician';
 const SYSTEM = { actorKind: 'system' as const };

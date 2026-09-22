@@ -1,4 +1,4 @@
-import type { DocumentType } from '../vocab/document-types.js';
+import type { DocumentType } from '../vocab/document-types';
 
 /**
  * Gap evaluation — omission as a first-class, queryable entity

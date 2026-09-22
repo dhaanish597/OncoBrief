@@ -1,5 +1,5 @@
-import { compareFacts, isDocumentScopedFactType, type ComparableFact, type ComparisonVerdict } from './comparators.js';
-import type { FactType } from '../vocab/fact-types.js';
+import { compareFacts, isDocumentScopedFactType, type ComparableFact, type ComparisonVerdict } from './comparators';
+import type { FactType } from '../vocab/fact-types';
 
 /**
  * Deterministic conflict detection (architecture §8.2).

@@ -6,7 +6,7 @@ import {
   permissionMatrix,
   type Permission,
   type Role,
-} from '../src/index.js';
+} from '../src/index';
 
 /**
  * The matrix is pinned cell by cell against architecture §13.3. If the

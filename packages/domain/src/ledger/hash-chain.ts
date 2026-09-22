@@ -1,6 +1,6 @@
 import { createHash } from 'node:crypto';
-import { canonicalJson, toRfc3339 } from './canonical-json.js';
-import type { EvidenceStateValue, LedgerAction } from '../evidence/state.js';
+import { canonicalJson, toRfc3339 } from './canonical-json';
+import type { EvidenceStateValue, LedgerAction } from '../evidence/state';
 
 /**
  * Hash-chained ledger and audit streams (architecture §4.4, §12).

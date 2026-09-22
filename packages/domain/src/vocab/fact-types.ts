@@ -1,4 +1,4 @@
-import type { FactValue } from './fact-value.js';
+import type { FactValue } from './fact-value';
 
 /**
  * The closed `fact_type` vocabulary (architecture §4.2).

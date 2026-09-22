@@ -1,7 +1,7 @@
 import { checkMessageApprovalGate, renderTemplate, type EvidenceStateValue, type VariableSource } from '@oncobrief/domain';
 import type { DeliveryPort } from '@oncobrief/ports';
-import type { Querier } from '../client.js';
-import { appendAuditEvent } from './audit.js';
+import type { Querier } from '../client';
+import { appendAuditEvent } from './audit';
 
 /**
  * Patient continuity (architecture §19).

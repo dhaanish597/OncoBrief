@@ -1,5 +1,5 @@
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
-import { closePools, withTenant } from '../src/client.js';
+import { closePools, withTenant } from '../src/client';
 import {
   correctEvidence,
   detectAndRecordConflicts,
@@ -7,9 +7,9 @@ import {
   resolveConflict,
   verifyEvidence,
   verifyLedgerChain,
-} from '../src/services/ledger.js';
-import { approvePacket, createPacket, getPacket } from '../src/services/packets.js';
-import { setupFixtures, withSuperuser, type Fixtures } from './helpers.js';
+} from '../src/services/ledger';
+import { approvePacket, createPacket, getPacket } from '../src/services/packets';
+import { setupFixtures, withSuperuser, type Fixtures } from './helpers';
 
 /**
  * Architecture §23.2 — the ledger invariants.

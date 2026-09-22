@@ -14,8 +14,8 @@ import {
   type ResolutionKind,
   type Role,
 } from '@oncobrief/domain';
-import type { Querier } from '../client.js';
-import { appendAuditEvent, type AuditActor } from './audit.js';
+import type { Querier } from '../client';
+import { appendAuditEvent, type AuditActor } from './audit';
 import { computeLedgerEntryHash, GENESIS_PREV_HASH } from '@oncobrief/domain';
 
 /**

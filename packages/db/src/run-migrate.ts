@@ -1,5 +1,5 @@
-import { closePools } from './client.js';
-import { migrate } from './migrate.js';
+import { closePools } from './client';
+import { migrate } from './migrate';
 
 migrate((m) => console.log(m))
   .then((applied) => {

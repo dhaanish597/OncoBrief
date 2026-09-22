@@ -1,5 +1,5 @@
-import { can, type Role } from '../policy/rbac.js';
-import type { EvidenceStateValue, LedgerAction, ResolutionKind } from './state.js';
+import { can, type Role } from '../policy/rbac';
+import type { EvidenceStateValue, LedgerAction, ResolutionKind } from './state';
 
 /**
  * The transition guard (architecture §7.2).

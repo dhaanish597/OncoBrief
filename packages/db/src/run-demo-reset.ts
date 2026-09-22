@@ -1,6 +1,6 @@
-import { closePools } from './client.js';
-import { migrate } from './migrate.js';
-import { seed } from './seed.js';
+import { closePools } from './client';
+import { migrate } from './migrate';
+import { seed } from './seed';
 
 /**
  * Idempotent judging-day reset: apply migrations, truncate tenant data, re-seed

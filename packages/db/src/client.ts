@@ -1,6 +1,6 @@
 import { Pool, type PoolClient, type QueryResult, type QueryResultRow } from 'pg';
 import type { Role } from '@oncobrief/domain';
-import { env } from './env.js';
+import { env } from './env';
 
 /**
  * Tenant-scoped database access.
@@ -60,6 +60,29 @@ export async function withTenant<T>(
       await client.query('ROLLBACK');
     } catch {
       /* connection already broken */
+    }
+    throw err;
+  } finally {
+    client.release();
+  }
+}
+
+/**
+ * A bare transaction on the app pool, for flows that must set the tenant
+ * context partway through (login resolves the org before it can).
+ */
+export async function withTransaction<T>(fn: (q: Querier) => Promise<T>): Promise<T> {
+  const client = await getAppPool().connect();
+  try {
+    await client.query('BEGIN');
+    const result = await fn(client);
+    await client.query('COMMIT');
+    return result;
+  } catch (err) {
+    try {
+      await client.query('ROLLBACK');
+    } catch {
+      /* ignore */
     }
     throw err;
   } finally {

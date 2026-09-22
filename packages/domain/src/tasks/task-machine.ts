@@ -1,4 +1,4 @@
-import type { TaskStatus } from '../vocab/task-kinds.js';
+import type { TaskStatus } from '../vocab/task-kinds';
 
 /**
  * Task status is a small explicit state machine (architecture §10.3).

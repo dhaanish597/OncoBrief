@@ -5,7 +5,7 @@ import {
   makeSlotKey,
   type ComparableFact,
   type FactValue,
-} from '../src/index.js';
+} from '../src/index';
 
 function fact(
   id: string,

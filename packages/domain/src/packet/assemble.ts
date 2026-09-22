@@ -1,8 +1,8 @@
-import { canonicalJson } from '../ledger/canonical-json.js';
-import { sha256Hex } from '../ledger/hash-chain.js';
-import type { EvidenceStateValue } from '../evidence/state.js';
-import type { FactType } from '../vocab/fact-types.js';
-import type { GapStatus } from '../twin/gaps.js';
+import { canonicalJson } from '../ledger/canonical-json';
+import { sha256Hex } from '../ledger/hash-chain';
+import type { EvidenceStateValue } from '../evidence/state';
+import type { FactType } from '../vocab/fact-types';
+import type { GapStatus } from '../twin/gaps';
 
 /**
  * Consultation packet assembly (architecture §11).
