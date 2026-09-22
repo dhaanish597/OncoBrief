@@ -180,6 +180,7 @@ export async function createTaskAction(fd: FormData): Promise<void> {
     });
   });
   revalidatePath(`/patients/${patientId}/tasks`);
+  revalidatePath(`/patients/${patientId}/record-map`);
 }
 
 export async function assignTaskAction(fd: FormData): Promise<void> {

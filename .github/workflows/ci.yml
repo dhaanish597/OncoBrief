@@ -1,0 +1,50 @@
+name: ci
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: oncobrief
+        ports: ['5432:5432']
+        options: >-
+          --health-cmd "pg_isready -U postgres -d oncobrief"
+          --health-interval 5s --health-timeout 5s --health-retries 20
+    env:
+      DATABASE_URL: postgres://oncobrief_app:oncobrief_app@localhost:5432/oncobrief
+      DATABASE_MIGRATOR_URL: postgres://postgres:postgres@localhost:5432/oncobrief
+      SESSION_COOKIE_SECRET: ci-only-secret-not-used-in-production-0000000000
+      STORAGE_DRIVER: fs
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 9
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - run: pnpm install --frozen-lockfile
+
+      - name: Migrate and seed (this is what the tests run against)
+        run: pnpm demo:reset
+
+      - name: Typecheck, lint, clinical-boundary scan, unit + integration tests
+        run: pnpm verify
+
+      - name: Install Playwright browser
+        run: pnpm --filter @oncobrief/web exec playwright install chromium --with-deps
+
+      - name: Build, then run the E2E demo flow
+        # Playwright's webServer starts `pnpm start` against the build above.
+        run: pnpm --filter @oncobrief/web build && pnpm --filter @oncobrief/web test:e2e
