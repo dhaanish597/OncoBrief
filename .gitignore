@@ -1,0 +1,29 @@
+# dependencies
+node_modules/
+.pnpm-store/
+
+# builds
+dist/
+.next/
+out/
+*.tsbuildinfo
+
+# test artifacts
+coverage/
+playwright-report/
+test-results/
+blob-report/
+
+# env & secrets
+.env
+.env.*
+!.env.example
+
+# object storage (local filesystem adapter)
+.var/
+storage/
+
+# os / editor
+.DS_Store
+Thumbs.db
+*.log

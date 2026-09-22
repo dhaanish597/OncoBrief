@@ -1,0 +1,37 @@
+{
+  "name": "oncobrief",
+  "private": true,
+  "version": "0.0.0",
+  "description": "OncoBrief — source-verified oncology record-readiness and care-continuity platform",
+  "packageManager": "pnpm@9.15.4",
+  "engines": {
+    "node": ">=22"
+  },
+  "scripts": {
+    "typecheck": "pnpm -r --no-bail typecheck",
+    "lint": "eslint . && pnpm boundary:check",
+    "boundary:check": "tsx tools/check-clinical-boundary.ts",
+    "test": "pnpm -r --no-bail test",
+    "test:unit": "pnpm --filter @oncobrief/domain test",
+    "test:integration": "pnpm --filter @oncobrief/db test",
+    "test:e2e": "pnpm --filter @oncobrief/web test:e2e",
+    "verify": "pnpm typecheck && pnpm lint && pnpm test",
+    "db:up": "docker compose up -d postgres",
+    "db:down": "docker compose down",
+    "db:migrate": "pnpm --filter @oncobrief/db migrate",
+    "db:seed": "pnpm --filter @oncobrief/db seed",
+    "demo:reset": "pnpm --filter @oncobrief/db demo:reset",
+    "dev": "pnpm --filter @oncobrief/web dev",
+    "dev:worker": "pnpm --filter @oncobrief/worker dev"
+  },
+  "devDependencies": {
+    "@eslint/js": "^9",
+    "@types/node": "^22.10.2",
+    "eslint": "^9",
+    "globals": "^15",
+    "prettier": "^3.4.2",
+    "tsx": "^4.19.2",
+    "typescript": "^5.7.2",
+    "typescript-eslint": "^8"
+  }
+}
