@@ -15,16 +15,42 @@ import { env } from './env';
 let appPool: Pool | null = null;
 let migratorPool: Pool | null = null;
 
+/**
+ * Build pool options from a connection string.
+ *
+ * pg 8 treats `sslmode=require` as `verify-full`, which fails against an RDS
+ * instance whose CA is not in Node's trust store ("self-signed certificate in
+ * certificate chain"). For a remote host we therefore enable TLS with
+ * `rejectUnauthorized: false` — the connection is still encrypted, but the
+ * server certificate is not verified. Bundling the RDS global CA bundle is the
+ * production hardening step (docs/security.md). Local development has no
+ * `sslmode` and is unaffected.
+ */
+function poolOptions(connectionString: string): { connectionString: string; ssl?: { rejectUnauthorized: boolean } } {
+  try {
+    const parsed = new URL(connectionString);
+    const sslmode = parsed.searchParams.get('sslmode');
+    if (sslmode && sslmode !== 'disable') {
+      parsed.searchParams.delete('sslmode');
+      parsed.searchParams.delete('uselibpqcompat');
+      return { connectionString: parsed.toString(), ssl: { rejectUnauthorized: false } };
+    }
+  } catch {
+    /* not a URL; fall through to the raw string */
+  }
+  return { connectionString };
+}
+
 export function getAppPool(): Pool {
   if (!appPool) {
-    appPool = new Pool({ connectionString: env.databaseUrl, max: 10 });
+    appPool = new Pool({ ...poolOptions(env.databaseUrl), max: 10 });
   }
   return appPool;
 }
 
 export function getMigratorPool(): Pool {
   if (!migratorPool) {
-    migratorPool = new Pool({ connectionString: env.migratorUrl, max: 3 });
+    migratorPool = new Pool({ ...poolOptions(env.migratorUrl), max: 3 });
   }
   return migratorPool;
 }

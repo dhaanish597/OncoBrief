@@ -48,3 +48,17 @@ jobs:
       - name: Build, then run the E2E demo flow
         # Playwright's webServer starts `pnpm start` against the build above.
         run: pnpm --filter @oncobrief/web build && pnpm --filter @oncobrief/web test:e2e
+
+  terraform:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: "1.9.8"
+      - name: Format check
+        run: terraform -chdir=infra fmt -recursive -check
+      - name: Validate dev environment
+        run: |
+          terraform -chdir=infra/environments/dev init -backend=false -input=false
+          terraform -chdir=infra/environments/dev validate

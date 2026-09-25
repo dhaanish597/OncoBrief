@@ -21,8 +21,13 @@
     "db:migrate": "pnpm --filter @oncobrief/db migrate",
     "db:seed": "pnpm --filter @oncobrief/db seed",
     "demo:reset": "pnpm --filter @oncobrief/db demo:reset",
+    "demo:seed-aws": "pnpm --filter @oncobrief/db seed:aws",
     "dev": "pnpm --filter @oncobrief/web dev",
-    "dev:worker": "pnpm --filter @oncobrief/worker dev"
+    "dev:worker": "pnpm --filter @oncobrief/worker dev",
+    "worker:build": "pnpm --filter @oncobrief/worker build",
+    "worker:test": "pnpm --filter @oncobrief/worker test",
+    "infra:fmt": "terraform -chdir=infra fmt -recursive",
+    "infra:validate": "terraform -chdir=infra/environments/dev validate"
   },
   "devDependencies": {
     "@eslint/js": "^9",

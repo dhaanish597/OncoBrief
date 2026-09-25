@@ -1,5 +1,5 @@
 import { createHash } from 'node:crypto';
-import { DOCUMENT_TYPES, isDocumentType, type DocumentType } from '@oncobrief/domain';
+import { DOCUMENT_TYPES, isDocumentType, type DocumentType, type ExtractorKind } from '@oncobrief/domain';
 import type { ExtractionPort, OcrPort, OcrSpanDraft, StoragePort } from '@oncobrief/ports';
 import type { Querier } from '../client';
 import { appendAuditEvent } from './audit';
@@ -45,6 +45,67 @@ export interface CreateDocumentInput {
 
 export function storageKeyFor(orgId: string, patientId: string, documentId: string, ext: string): string {
   return `org/${orgId}/patient/${patientId}/doc/${documentId}/original${ext}`;
+}
+
+export function extensionForContentType(mime: string): string {
+  return EXT_BY_MIME[mime] ?? '.bin';
+}
+
+export function isAllowedUploadContentType(mime: string): boolean {
+  return Object.prototype.hasOwnProperty.call(EXT_BY_MIME, mime);
+}
+
+export interface ReserveDocumentInput {
+  documentId: string;
+  orgId: string;
+  patientId: string;
+  uploadedBy: string;
+  filename: string;
+  mimeType: string;
+  storageKey: string;
+  sourceKind: 'upload' | 'scan' | 'fax_pdf' | 'photo' | 'extension_capture' | 'fhir_document';
+  documentDate?: string | null;
+  issuingFacility?: string | null;
+  recordOrigin?:
+    | 'internal_hospital'
+    | 'external_hospital'
+    | 'diagnostic_lab'
+    | 'imaging_centre'
+    | 'patient_upload';
+  correlationId?: string | null;
+}
+
+/**
+ * Reserve a document row before the bytes exist (Phase 2).
+ *
+ * Used by the direct-to-S3 upload path: `POST .../documents/upload-url` mints a
+ * presigned PUT and inserts a row with a NULL `content_sha256`. The worker
+ * computes the real hash from the object it downloads, so the stored hash is
+ * always server-computed and a client cannot choose its own bytes' hash. A NULL
+ * hash is distinct under the unique constraint, so many reservations coexist.
+ */
+export async function reserveDocumentForUpload(q: Querier, input: ReserveDocumentInput): Promise<void> {
+  await q.query(
+    `INSERT INTO document
+       (id, org_id, patient_id, source_kind, original_filename, mime_type, byte_size,
+        content_sha256, storage_key, document_date, issuing_facility, record_origin,
+        correlation_id, uploaded_by, ingest_status)
+     VALUES ($1,$2,$3,$4,$5,$6,0,NULL,$7,$8,$9,$10,$11,$12,'received')`,
+    [
+      input.documentId,
+      input.orgId,
+      input.patientId,
+      input.sourceKind,
+      input.filename,
+      input.mimeType,
+      input.storageKey,
+      input.documentDate ?? null,
+      input.issuingFacility ?? null,
+      input.recordOrigin ?? 'internal_hospital',
+      input.correlationId ?? null,
+      input.uploadedBy,
+    ],
+  );
 }
 
 /** Extension allow-list and magic-byte sniffing; never trust the client header. */
@@ -184,6 +245,17 @@ export interface IngestionDeps {
   extractor: ExtractionPort;
 }
 
+/** A page already normalised by an OCR engine (fixture, Textract, …). */
+export interface NormalizedPage {
+  pageNumber: number;
+  widthPx?: number | null;
+  heightPx?: number | null;
+  plainText: string;
+  spans: OcrSpanDraft[];
+  engine: string;
+  engineVersion: string;
+}
+
 export interface IngestionResult {
   documentId: string;
   status: 'ready' | 'quarantined' | 'failed';
@@ -198,15 +270,21 @@ export interface IngestionResult {
 }
 
 /**
- * Run the pipeline. `fixturePages` supplies deterministic OCR output for demo
- * fixtures. A real upload with no text layer and no OCR adapter available is
- * quarantined with `manual_transcription_required` rather than guessed at.
+ * Persist normalised pages and run classification → extraction → promotion →
+ * conflict detection.
+ *
+ * This is the **single post-OCR path**, shared by the in-process fixture
+ * pipeline and the AWS worker (Textract). A new OCR engine cannot fork the
+ * promotion rules: both call this function, so span validation, the fact-type
+ * allow-list and `slot_key` computation are applied identically. See ADR 0015.
  */
-export async function ingestDocument(
+export async function ingestNormalizedPages(
   q: Querier,
-  deps: IngestionDeps,
+  extractor: ExtractionPort,
   documentId: string,
-  fixturePages?: FixturePage[],
+  pages: NormalizedPage[],
+  extractorKind: ExtractorKind = 'rule',
+  correlationId?: string | null,
 ): Promise<IngestionResult> {
   const docRes = await q.query<{
     id: string;
@@ -222,23 +300,8 @@ export async function ingestDocument(
   );
   const doc = docRes.rows[0];
   if (!doc) throw new Error('document_not_found');
-
   const orgId = doc.org_id;
   const patientId = doc.patient_id;
-
-  await q.query(`UPDATE document SET ingest_status = 'rendering' WHERE id = $1`, [documentId]);
-
-  const pages = fixturePages ?? [];
-  if (pages.length === 0) {
-    await q.query(
-      `UPDATE document SET ingest_status = 'quarantined', ingest_error = 'manual_transcription_required' WHERE id = $1`,
-      [documentId],
-    );
-    return {
-      documentId, status: 'quarantined', pages: 0, spans: 0, candidates: 0,
-      promoted: 0, rejected: 0, conflictsCreated: 0, conflictsFlagged: 0, documentType: null,
-    };
-  }
 
   await q.query(`UPDATE document SET ingest_status = 'ocr_running', page_count = $2 WHERE id = $1`, [
     documentId,
@@ -249,23 +312,17 @@ export async function ingestDocument(
   let fullText = '';
 
   for (const page of pages) {
-    const ocr = await deps.ocr.extract({
-      documentId,
-      pageNumber: page.pageNumber,
-      imageBytes: null,
-      fixture: { plainText: page.plainText, spans: page.spans },
-    });
     const pageRes = await q.query<{ id: string }>(
       `INSERT INTO document_page (org_id, document_id, page_number, width_px, height_px, plain_text)
        VALUES ($1,$2,$3,$4,$5,$6)
        ON CONFLICT (document_id, page_number) DO UPDATE SET plain_text = EXCLUDED.plain_text
        RETURNING id`,
-      [orgId, documentId, page.pageNumber, page.widthPx, page.heightPx, ocr.plainText],
+      [orgId, documentId, page.pageNumber, page.widthPx ?? null, page.heightPx ?? null, page.plainText],
     );
     const pageId = pageRes.rows[0]!.id;
-    fullText += `${ocr.plainText}\n`;
+    fullText += `${page.plainText}\n`;
 
-    for (const span of ocr.spans) {
+    for (const span of page.spans) {
       await q.query(
         `INSERT INTO text_span
            (org_id, document_id, page_id, granularity, span_index, text, char_start, char_end,
@@ -275,7 +332,7 @@ export async function ingestDocument(
         [
           orgId, documentId, pageId, span.granularity, span.index, span.text,
           span.charStart, span.charEnd, span.bbox.x, span.bbox.y, span.bbox.w, span.bbox.h,
-          span.confidence ?? null, ocr.engine, ocr.engineVersion,
+          span.confidence ?? null, page.engine, page.engineVersion,
         ],
       );
       spanCount += 1;
@@ -296,7 +353,7 @@ export async function ingestDocument(
     [documentId],
   );
 
-  const candidates = await deps.extractor.extract({
+  const candidates = await extractor.extract({
     documentId,
     patientId,
     documentType: classification.type,
@@ -317,12 +374,13 @@ export async function ingestDocument(
       verbatimQuote: candidate.verbatimQuote,
       spanIds: candidate.spanIds,
       documentId,
-      extractorKind: 'rule',
+      extractorKind,
       extractorName: candidate.extractorName,
       extractorVersion: candidate.extractorVersion,
       confidenceRaw: candidate.confidenceRaw,
       observedOn: candidate.observedOn ?? null,
       createdBy: null,
+      ...(correlationId ? { correlationId } : {}),
     });
 
     await q.query(
@@ -330,7 +388,7 @@ export async function ingestDocument(
          (org_id, document_id, patient_id, fact_type, value_json, verbatim_quote, proposed_span_ids,
           extractor_kind, extractor_name, extractor_version, confidence_raw, validation_status,
           rejected_reason, promoted_fact_id)
-       VALUES ($1,$2,$3,$4,$5,$6,$7,'rule',$8,$9,$10,$11,$12,$13)`,
+       VALUES ($1,$2,$3,$4,$5,$6,$7,$14,$8,$9,$10,$11,$12,$13)`,
       [
         orgId, documentId, patientId, candidate.factType, JSON.stringify(candidate.value),
         candidate.verbatimQuote, candidate.spanIds, candidate.extractorName,
@@ -338,6 +396,7 @@ export async function ingestDocument(
         inserted.ok ? 'promoted' : 'rejected',
         inserted.ok ? null : inserted.reason,
         inserted.ok ? inserted.factId : null,
+        extractorKind,
       ],
     );
 
@@ -352,13 +411,14 @@ export async function ingestDocument(
     entityKind: 'document',
     entityId: documentId,
     outcome: 'success',
+    correlationId: correlationId ?? null,
     metadata: { candidates: candidates.length, promoted, rejected, pages: pages.length },
   });
 
   const conflicts = await detectAndRecordConflicts(q, orgId, patientId);
   await detectNearDuplicates(q, orgId, patientId);
 
-  await q.query(`UPDATE document SET ingest_status = 'ready' WHERE id = $1`, [documentId]);
+  await q.query(`UPDATE document SET ingest_status = 'ready', ingest_error = NULL WHERE id = $1`, [documentId]);
   await appendAuditEvent(q, {
     orgId,
     actor: { userId: null, role: null, onBehalfOf: 'worker' },
@@ -366,6 +426,7 @@ export async function ingestDocument(
     entityKind: 'document',
     entityId: documentId,
     outcome: 'success',
+    correlationId: correlationId ?? null,
     metadata: { spans: spanCount },
   });
 
@@ -381,6 +442,53 @@ export async function ingestDocument(
     conflictsFlagged: conflicts.flagged,
     documentType: classification.type,
   };
+}
+
+/**
+ * Run the pipeline. `fixturePages` supplies deterministic OCR output for demo
+ * fixtures. A real upload with no text layer and no OCR adapter available is
+ * quarantined with `manual_transcription_required` rather than guessed at.
+ */
+export async function ingestDocument(
+  q: Querier,
+  deps: IngestionDeps,
+  documentId: string,
+  fixturePages?: FixturePage[],
+): Promise<IngestionResult> {
+  await q.query(`UPDATE document SET ingest_status = 'rendering' WHERE id = $1`, [documentId]);
+
+  const pages = fixturePages ?? [];
+  if (pages.length === 0) {
+    await q.query(
+      `UPDATE document SET ingest_status = 'quarantined', ingest_error = 'manual_transcription_required' WHERE id = $1`,
+      [documentId],
+    );
+    return {
+      documentId, status: 'quarantined', pages: 0, spans: 0, candidates: 0,
+      promoted: 0, rejected: 0, conflictsCreated: 0, conflictsFlagged: 0, documentType: null,
+    };
+  }
+
+  const normalized: NormalizedPage[] = [];
+  for (const page of pages) {
+    const ocr = await deps.ocr.extract({
+      documentId,
+      pageNumber: page.pageNumber,
+      imageBytes: null,
+      fixture: { plainText: page.plainText, spans: page.spans },
+    });
+    normalized.push({
+      pageNumber: page.pageNumber,
+      widthPx: page.widthPx,
+      heightPx: page.heightPx,
+      plainText: ocr.plainText,
+      spans: ocr.spans,
+      engine: ocr.engine,
+      engineVersion: ocr.engineVersion,
+    });
+  }
+
+  return ingestNormalizedPages(q, deps.extractor, documentId, normalized);
 }
 
 export interface ConfirmTypeInput {
@@ -449,7 +557,12 @@ export async function detectNearDuplicates(
       if (a.document_type !== b.document_type) continue;
       if ((a.document_date ?? '') !== (b.document_date ?? '')) continue;
       if (jaccard(tokenize(a.text ?? ''), tokenize(b.text ?? '')) < 0.9) continue;
-      await q.query('UPDATE document SET duplicate_of_document_id = $1 WHERE id = $2', [a.id, b.id]);
+      await q.query(
+        `UPDATE document
+            SET duplicate_of_document_id = $1, duplicate_status = 'duplicate_candidate'
+          WHERE id = $2`,
+        [a.id, b.id],
+      );
       flagged += 1;
     }
   }

@@ -34,6 +34,25 @@ services:
     volumes:
       - oncobrief-miniodata:/data
 
+  # Optional AWS emulation for the async pipeline (ADR 0015). Start with
+  # `docker compose --profile aws up -d`, then:
+  #   AWS_ENDPOINT_URL=http://localhost:4566 QUEUE_DRIVER=sqs STORAGE_DRIVER=s3
+  #   STORAGE_S3_ENDPOINT=http://localhost:4566 pnpm dev:worker
+  # LocalStack is a large image; keep it off the default profile on small disks.
+  localstack:
+    image: localstack/localstack:3
+    container_name: oncobrief-localstack
+    profiles: ["aws"]
+    restart: unless-stopped
+    environment:
+      SERVICES: s3,sqs,sns,textract
+      DEBUG: "0"
+    ports:
+      - "4566:4566"
+    volumes:
+      - oncobrief-localstack:/var/lib/localstack
+
 volumes:
   oncobrief-pgdata:
   oncobrief-miniodata:
+  oncobrief-localstack:

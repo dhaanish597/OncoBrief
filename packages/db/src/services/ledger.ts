@@ -196,6 +196,8 @@ export interface InsertFactInput {
   observedOn?: string | null;
   createdBy: string | null;
   correctsFactId?: string | null;
+  /** Traces this fact to the ingestion run that produced it (Phase 22). */
+  correlationId?: string | null;
   occurredAt?: Date;
 }
 
@@ -241,14 +243,15 @@ export async function insertFact(q: Querier, input: InsertFactInput): Promise<In
     `INSERT INTO evidence_fact
        (org_id, patient_id, fact_type, slot_key, value_json, value_normalized, observed_on,
         verbatim_quote, document_id, extractor_kind, extractor_name, extractor_version,
-        confidence_band, confidence_raw, corrects_fact_id, created_by, created_at)
-     VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17)
+        confidence_band, confidence_raw, corrects_fact_id, created_by, correlation_id, created_at)
+     VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$18,$17)
      RETURNING id`,
     [
       input.orgId, input.patientId, input.factType, slotKey, JSON.stringify(input.value),
       normalizeValue(input.value), input.observedOn ?? null, input.verbatimQuote, input.documentId,
       input.extractorKind, input.extractorName, input.extractorVersion, band, input.confidenceRaw,
       input.correctsFactId ?? null, input.createdBy, input.occurredAt ?? new Date(),
+      input.correlationId ?? null,
     ],
   );
   const factId = factRes.rows[0]!.id;

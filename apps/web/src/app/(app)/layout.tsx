@@ -1,6 +1,7 @@
 import Link from 'next/link';
 import { requireSession } from '@/lib/session';
 import { logoutAction } from '@/app/login/actions';
+import { AssistantLauncher } from '@/components/assistant/AssistantLauncher';
 
 export default async function AppLayout({ children }: { children: React.ReactNode }) {
   const session = await requireSession();
@@ -44,6 +45,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
         </div>
       </header>
       {children}
+      <AssistantLauncher />
     </div>
   );
 }

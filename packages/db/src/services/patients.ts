@@ -281,7 +281,7 @@ export async function getProvenance(
       documentId: f.document_id,
       documentName: f.original_filename,
       documentVersion: f.doc_version,
-      documentContentSha256: f.content_sha256.toString('hex'),
+      documentContentSha256: f.content_sha256 ? f.content_sha256.toString('hex') : '',
       documentType: f.document_type,
       typeConfirmed: f.type_confirmed_by !== null,
       recordOrigin: f.record_origin,
@@ -478,7 +478,7 @@ export async function getDocument(q: Querier, patientId: string, documentId: str
     docVersion: r.doc_version,
     duplicateOf: r.duplicate_of_document_id,
     isDemoFixture: r.is_demo_fixture,
-    contentSha256: r.content_sha256.toString('hex'),
+    contentSha256: r.content_sha256 ? r.content_sha256.toString('hex') : '',
   };
 }
 
@@ -892,4 +892,153 @@ export async function listRecordMap(q: Querier, patientId: string) {
         }
       : null,
   };
+}
+
+export interface ConversationListItem {
+  id: string;
+  title: string;
+  patientId: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export async function listConversations(q: Querier, userId: string, patientId?: string | null): Promise<ConversationListItem[]> {
+  let whereClause = 'WHERE c.user_id = $1';
+  const params: (string | null)[] = [userId];
+  if (patientId) {
+    whereClause += ' AND c.patient_id = $2';
+    params.push(patientId);
+  }
+  const res = await q.query<{
+    id: string; title: string; patient_id: string | null; created_at: Date; updated_at: Date;
+  }>(
+    `SELECT id, title, patient_id, created_at, updated_at FROM conversation c
+       ${whereClause}
+       ORDER BY updated_at DESC LIMIT 50`,
+    params,
+  );
+  return res.rows.map((r) => ({
+    id: r.id,
+    title: r.title,
+    patientId: r.patient_id,
+    createdAt: r.created_at.toISOString(),
+    updatedAt: r.updated_at.toISOString(),
+  }));
+}
+
+export interface ConversationWithMessages {
+  id: string;
+  title: string;
+  patientId: string | null;
+  createdAt: string;
+  updatedAt: string;
+  messages: ChatMessage[];
+}
+
+export interface ChatMessage {
+  id: string;
+  role: 'user' | 'assistant' | 'system';
+  content: string;
+  intent: string | null;
+  grounded: boolean;
+  sources: unknown[];
+  navigation: unknown | null;
+  createdAt: string;
+}
+
+export async function getConversation(q: Querier, conversationId: string, userId: string): Promise<ConversationWithMessages | null> {
+  const convRes = await q.query<{
+    id: string; title: string; patient_id: string | null; created_at: Date; updated_at: Date;
+  }>(
+    `SELECT id, title, patient_id, created_at, updated_at FROM conversation
+       WHERE id = $1 AND user_id = $2`,
+    [conversationId, userId],
+  );
+  const conv = convRes.rows[0];
+  if (!conv) return null;
+
+  const msgRes = await q.query<{
+    id: string; role: string; content: string; intent: string | null; grounded: boolean;
+    sources_json: unknown; navigation_json: unknown | null; created_at: Date;
+  }>(
+    `SELECT id, role, content, intent, grounded, sources_json, navigation_json, created_at
+       FROM chat_message WHERE conversation_id = $1 ORDER BY created_at`,
+    [conversationId],
+  );
+
+  return {
+    id: conv.id,
+    title: conv.title,
+    patientId: conv.patient_id,
+    createdAt: conv.created_at.toISOString(),
+    updatedAt: conv.updated_at.toISOString(),
+    messages: msgRes.rows.map((m) => ({
+      id: m.id,
+      role: m.role as 'user' | 'assistant' | 'system',
+      content: m.content,
+      intent: m.intent,
+      grounded: m.grounded,
+      sources: m.sources_json as unknown[],
+      navigation: m.navigation_json,
+      createdAt: m.created_at.toISOString(),
+    })),
+  };
+}
+
+export async function createConversation(q: Querier, input: {
+  orgId: string;
+  userId: string;
+  patientId: string | null;
+  title?: string;
+}): Promise<{ id: string }> {
+  const res = await q.query<{ id: string }>(
+    `INSERT INTO conversation (org_id, user_id, patient_id, title)
+     VALUES ($1, $2, $3, $4) RETURNING id`,
+    [input.orgId, input.userId, input.patientId, input.title ?? 'New conversation'],
+  );
+  return { id: res.rows[0]!.id };
+}
+
+export async function updateConversationTitle(q: Querier, conversationId: string, userId: string, title: string): Promise<void> {
+  await q.query(
+    `UPDATE conversation SET title = $1, updated_at = now() WHERE id = $2 AND user_id = $3`,
+    [title, conversationId, userId],
+  );
+}
+
+export async function deleteConversation(q: Querier, conversationId: string, userId: string): Promise<void> {
+  await q.query(
+    `DELETE FROM conversation WHERE id = $1 AND user_id = $2`,
+    [conversationId, userId],
+  );
+}
+
+export interface AddMessageInput {
+  conversationId: string;
+  role: 'user' | 'assistant' | 'system';
+  content: string;
+  intent?: string | null;
+  grounded?: boolean;
+  sources?: unknown[];
+  navigation?: unknown | null;
+}
+
+export async function addMessage(q: Querier, input: AddMessageInput): Promise<{ id: string }> {
+  // `now()` is transaction time, so a user and an assistant message written in
+  // one transaction would share a timestamp and lose their order. Use the
+  // statement clock so history replays in the order it was produced.
+  const res = await q.query<{ id: string }>(
+    `INSERT INTO chat_message (org_id, conversation_id, role, content, intent, grounded, sources_json, navigation_json, created_at)
+     SELECT c.org_id, $1, $2, $3, $4, $5, $6, $7, clock_timestamp()
+     FROM conversation c WHERE c.id = $1
+     RETURNING id`,
+    [input.conversationId, input.role, input.content, input.intent ?? null, input.grounded ?? false,
+     JSON.stringify(input.sources ?? []), JSON.stringify(input.navigation ?? null)],
+  );
+  // Update conversation updated_at
+  await q.query(
+    `UPDATE conversation SET updated_at = now() WHERE id = $1`,
+    [input.conversationId],
+  );
+  return { id: res.rows[0]!.id };
 }

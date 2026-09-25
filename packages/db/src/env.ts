@@ -49,6 +49,47 @@ export const env = {
   get storageFsRoot(): string {
     return resolve(repoRoot, process.env.STORAGE_FS_ROOT ?? '.var/storage');
   },
+  get s3(): {
+    endpoint?: string;
+    region: string;
+    bucket: string;
+    accessKeyId: string;
+    secretAccessKey: string;
+    sessionToken?: string;
+    forcePathStyle: boolean;
+  } {
+    const endpoint = process.env.STORAGE_S3_ENDPOINT || process.env.AWS_ENDPOINT_URL;
+    return {
+      ...(endpoint ? { endpoint } : {}),
+      region: process.env.STORAGE_S3_REGION ?? process.env.AWS_REGION ?? 'ap-south-1',
+      bucket: process.env.STORAGE_S3_BUCKET ?? 'oncobrief-documents',
+      accessKeyId: process.env.STORAGE_S3_ACCESS_KEY_ID ?? process.env.AWS_ACCESS_KEY_ID ?? '',
+      secretAccessKey: process.env.STORAGE_S3_SECRET_ACCESS_KEY ?? process.env.AWS_SECRET_ACCESS_KEY ?? '',
+      ...(process.env.AWS_SESSION_TOKEN ? { sessionToken: process.env.AWS_SESSION_TOKEN } : {}),
+      forcePathStyle: (process.env.STORAGE_S3_FORCE_PATH_STYLE ?? 'true') === 'true',
+    };
+  },
+  get authMode(): 'session' | 'cognito' {
+    return (process.env.AUTH_MODE ?? 'session') as 'session' | 'cognito';
+  },
+  get cognito(): {
+    region: string;
+    userPoolId: string;
+    clientId: string;
+    issuer?: string;
+  } {
+    const region = process.env.COGNITO_REGION ?? process.env.AWS_REGION ?? 'ap-south-1';
+    const userPoolId = process.env.COGNITO_USER_POOL_ID ?? '';
+    const issuer =
+      process.env.COGNITO_ISSUER ??
+      (userPoolId ? `https://cognito-idp.${region}.amazonaws.com/${userPoolId}` : undefined);
+    return {
+      region,
+      userPoolId,
+      clientId: process.env.COGNITO_CLIENT_ID ?? '',
+      ...(issuer ? { issuer } : {}),
+    };
+  },
   get demoMode(): boolean {
     return (process.env.ONCOBRIEF_DEMO_MODE ?? 'true') === 'true';
   },

@@ -1,0 +1,19 @@
+# Copy to terraform.tfvars and adjust. Do NOT commit real values or secrets.
+# Credentials come from the AWS provider environment/SSO, never from this file.
+
+region       = "ap-south-1"
+name_prefix  = "oncobrief-dev"
+bucket_name  = "oncobrief-documents-dev"
+
+# Cost control: set false to drop the NAT gateway (then use VPC endpoints for
+# S3/SQS/Textract/Bedrock, or run the worker outside the VPC against a proxy).
+enable_nat_gateway = true
+
+db_instance_class = "db.t4g.micro"
+
+# Bedrock model ids vary by region. Leave empty for the rule-based extractor.
+extraction_driver = "rule"
+bedrock_model_id  = ""
+
+# Populate after the web backend is deployed (ALB/CloudFront/Next.js origin).
+backend_uri = ""

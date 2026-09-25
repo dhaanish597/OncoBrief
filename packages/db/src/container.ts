@@ -3,10 +3,18 @@ import {
   FixtureOcrAdapter,
   LocalFsStorageAdapter,
   RuleBasedExtractor,
+  S3StorageAdapter,
   SimulatedDeliveryAdapter,
   SystemClock,
 } from '@oncobrief/adapters';
-import type { ClockPort, DeliveryPort, ExtractionPort, OcrPort, StoragePort } from '@oncobrief/ports';
+import type {
+  ClockPort,
+  DeliveryPort,
+  ExtractionPort,
+  OcrPort,
+  PresignPutPort,
+  StoragePort,
+} from '@oncobrief/ports';
 
 /**
  * Port wiring. Adapters are selected from the environment; the rest of the
@@ -21,13 +29,35 @@ let delivery: DeliveryPort | null = null;
 export function getStorage(): StoragePort {
   if (!storage) {
     if (env.storageDriver === 's3') {
-      throw new Error(
-        'storage_driver_s3_not_wired: set STORAGE_DRIVER=fs or implement S3StorageAdapter (ADR 0007, 0013)',
-      );
+      const s3 = env.s3;
+      storage = new S3StorageAdapter({
+        bucket: s3.bucket,
+        region: s3.region,
+        credentials: {
+          accessKeyId: s3.accessKeyId,
+          secretAccessKey: s3.secretAccessKey,
+          ...(s3.sessionToken ? { sessionToken: s3.sessionToken } : {}),
+        },
+        ...(s3.endpoint ? { endpoint: s3.endpoint } : {}),
+        forcePathStyle: s3.forcePathStyle,
+      });
+    } else {
+      storage = new LocalFsStorageAdapter(env.storageFsRoot, env.sessionSecret);
     }
-    storage = new LocalFsStorageAdapter(env.storageFsRoot, env.sessionSecret);
   }
   return storage;
+}
+
+/**
+ * The direct-to-bucket upload capability. Only the S3 adapter provides it; the
+ * filesystem adapter does not, so `POST .../documents/upload-url` returns a
+ * clear configuration error locally rather than pretending to presign.
+ */
+export function getPresignPut(): PresignPutPort | null {
+  const s = getStorage();
+  return 'presignPut' in s && typeof (s as PresignPutPort).presignPut === 'function'
+    ? (s as PresignPutPort)
+    : null;
 }
 
 export function getOcr(): OcrPort {

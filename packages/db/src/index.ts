@@ -7,7 +7,9 @@ export * from './container';
 
 export * from './services/audit';
 export * from './services/auth';
+export * from './services/cognito';
 export * from './services/documents';
+export * from './services/ingestion-jobs';
 export * from './services/ledger';
 export * from './services/messages';
 export * from './services/packets';

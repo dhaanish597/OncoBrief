@@ -17,10 +17,17 @@ export const AUDIT_ACTIONS = [
   'auth.login_denied',
   'auth.logout',
   'document.uploaded',
+  'document.upload_url_issued',
+  'document.finalized',
+  'document.duplicate_candidate',
   'document.downloaded',
   'document.page_viewed',
   'document.ingested',
   'document.type_confirmed',
+  'ocr.started',
+  'ocr.completed',
+  'ocr.failed',
+  'ingestion.retry',
   'extraction.completed',
   'evidence.verified',
   'evidence.corrected',
@@ -110,6 +117,8 @@ export interface AppendAuditInput {
   outcome: AuditOutcome;
   metadata?: Record<string, unknown>;
   request?: AuditRequestMeta;
+  /** Traces one upload across S3 → SQS → Textract → Bedrock (Phase 22). */
+  correlationId?: string | null;
   occurredAt?: Date;
 }
 
@@ -129,7 +138,12 @@ export async function appendAuditEvent(q: Querier, input: AppendAuditInput): Pro
   );
   const prevHash = prevRes.rows[0]?.entry_hash ?? GENESIS_PREV_HASH;
 
-  const metadata = redactMetadata(input.metadata ?? {});
+  // The correlation id is folded into metadata so it is covered by the hash
+  // chain; the dedicated column exists for indexed lookups only.
+  const metadata = redactMetadata({
+    ...(input.metadata ?? {}),
+    ...(input.correlationId ? { correlationId: input.correlationId } : {}),
+  });
 
   const entryHash = computeAuditEntryHash(
     {
@@ -154,8 +168,8 @@ export async function appendAuditEvent(q: Querier, input: AppendAuditInput): Pro
   const res = await q.query<{ id: string }>(
     `INSERT INTO audit_event
        (org_id, seq, actor_user_id, actor_role, on_behalf_of, action, entity_kind, entity_id,
-        outcome, request_id, ip_address, user_agent, metadata_json, occurred_at, prev_hash, entry_hash)
-     VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16)
+        outcome, request_id, ip_address, user_agent, metadata_json, correlation_id, occurred_at, prev_hash, entry_hash)
+     VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17)
      RETURNING id`,
     [
       input.orgId,
@@ -171,6 +185,7 @@ export async function appendAuditEvent(q: Querier, input: AppendAuditInput): Pro
       input.request?.ipAddress ?? null,
       input.request?.userAgent ?? null,
       JSON.stringify(metadata),
+      input.correlationId ?? null,
       occurredAt,
       prevHash,
       entryHash,

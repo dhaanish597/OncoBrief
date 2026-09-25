@@ -6,13 +6,15 @@
   "main": "./src/index.ts",
   "types": "./src/index.ts",
   "exports": {
-    ".": "./src/index.ts"
+    ".": "./src/index.ts",
+    "./worker": "./src/worker.ts"
   },
   "scripts": {
     "typecheck": "tsc --noEmit",
     "lint": "eslint .",
     "migrate": "tsx src/run-migrate.ts",
     "seed": "tsx src/run-seed.ts",
+    "seed:aws": "tsx src/run-seed-aws.ts",
     "demo:reset": "tsx src/run-demo-reset.ts",
     "test": "vitest run"
   },
