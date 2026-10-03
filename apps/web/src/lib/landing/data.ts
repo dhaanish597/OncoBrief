@@ -1,7 +1,7 @@
 export type EvidenceStatus = 'VERIFIED' | 'PENDING' | 'CONFLICT' | 'SUPERSEDED'
 
 export const ROUTES = {
-  explore: '#surfaces',
+  explore: '/workspace',
   howItWorks: '#how-it-works',
   workspace: '/workspace',
 } as const

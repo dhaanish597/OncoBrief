@@ -51,6 +51,19 @@ test.describe('OncoBrief — public landing page', () => {
     const cta = page.getByRole('link', { name: /open workspace/i });
     await expect(cta).toHaveAttribute('href', '/workspace');
 
+    // The nav and hero "Explore" affordances enter the product through the same
+    // gate rather than jumping to an in-page anchor (revised 2026-10-04). The
+    // mobile menu entry is not mounted while the menu is closed, so each of
+    // these resolves to exactly one link here.
+    await expect(page.getByRole('link', { name: /^Explore platform$/ })).toHaveAttribute(
+      'href',
+      '/workspace',
+    );
+    await expect(page.getByRole('link', { name: /^Explore OncoBrief$/ })).toHaveAttribute(
+      'href',
+      '/workspace',
+    );
+
     // Anonymous: /workspace's own session guard forwards the visitor to /login,
     // so `/` stays statically prerenderable and needs no session check.
     await cta.click();

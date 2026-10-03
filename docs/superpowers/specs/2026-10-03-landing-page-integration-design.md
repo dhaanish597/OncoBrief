@@ -173,6 +173,15 @@ The landing's global resets are scoped rather than global:
 
 The primary CTA resolves by session: `/workspace` when signed in, else `/login`.
 
+**Revised 2026-10-04.** The three "Explore" affordances — the desktop nav button
+and mobile menu entry (*Explore platform*) and the hero button (*Explore
+OncoBrief*) — previously jumped to the in-page `#surfaces` anchor. They now
+target `/workspace`, the product's own entry gate: its session guard forwards an
+anonymous visitor to `/login`, while a signed-in visitor proceeds straight in
+rather than being asked to sign in again. This keeps `/workspace` the single
+entry point instead of introducing a second, and leaves the `#surfaces` section
+in place — still reachable by scrolling and via the `Surfaces` section mark.
+
 Metadata: the landing's title and description move to `(landing)/layout.tsx` as
 a route-level override. `apps/web/src/app/layout.tsx` keeps
 `OncoBrief — source-verified record readiness`, which is what the branding guard
