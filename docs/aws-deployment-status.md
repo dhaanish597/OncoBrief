@@ -1,11 +1,16 @@
 # OncoBrief — AWS Deployment Status
 
-**Last updated:** 2026-09-24
+**Last updated:** 2026-10-03
 **Region:** `ap-south-1` (Mumbai)
 **AWS account:** `375546530800`
 **Environment:** `oncobrief-dev` (Terraform, `infra/environments/dev`)
 **State:** S3 backend `oncobrief-tfstate-375546530800`, key `oncobrief/dev/terraform.tfstate`, native S3 locking (`use_lockfile`).
 
+> This document covers the **backend and platform** deployment. The web tier is
+> deployed as well — see §7 below and
+> [`final-submission-verification.md`](final-submission-verification.md) for the
+> public prototype URL.
+>
 > No credentials or secrets appear in this document. The RDS master password is
 > managed by Secrets Manager; the prototype's app-role password is documented in
 > `docs/security.md` as a known hardening item.
@@ -93,14 +98,36 @@ and verification run through the **admin Lambda** inside the VPC via
 
 ## 6. Known gaps / not done
 
-- **Web tier not deployed to AWS.** The Next.js app runs locally only; the API
-  Gateway proxy target (`backend_uri`) is empty. See the blocker in
-  `docs/e2e-verification-report.md`.
-- **API smoke test and Playwright E2E against AWS** were not run, for the same
-  reason (the workstation cannot reach the private RDS, and no SSM session
-  plugin is installed).
+- **The API Gateway proxy target (`backend_uri`) is intentionally empty.** The
+  web tier is a full-stack Next.js server that talks to RDS directly; it is not
+  an API Gateway client. API Gateway exists for the Cognito JWT bearer path.
 - The app-role database password is the prototype's fixed dev credential.
 - RDS TLS uses `rejectUnauthorized: false` (encrypted, not certificate-verified);
   bundling the RDS CA is the hardening step.
-- Account credentials used for deployment are **root** account credentials.
-  Replace with an IAM/SSO principal before any further use.
+- Deployment uses a long-lived IAM access key held in the operator's local AWS
+  credentials file rather than a federated/SSO principal. See §8.
+
+## 7. Web tier (added 2026-09-25, ADR 0016)
+
+`module.web` deploys the Next.js application as the full-stack server:
+
+| Layer | Resource |
+|---|---|
+| Registry | ECR `oncobrief-dev-web` |
+| Runtime | ECS Fargate service `oncobrief-dev-web`, 1 task, private subnets, no public IP |
+| Ingress | ALB `oncobrief-dev-web` (public, HTTP:80, admitted only from the CloudFront origin-facing prefix list) |
+| HTTPS | CloudFront `E1E7Q4M27D5UQO` → `https://dsc1vmsr4q09g.cloudfront.net` (AWS-owned certificate) |
+| Secrets | Secrets Manager `oncobrief-dev-web` (DATABASE_URL, session secret, scoped S3 keys) injected as container secrets |
+| Health check | `GET /login` → 200 |
+| Deployment | Circuit breaker with automatic rollback enabled |
+
+The web task reaches the private RDS through `aws_security_group_rule.rds_from_web`.
+S3 CORS admits presigned PUT only from the CloudFront origin.
+
+## 8. Credentials posture
+
+Deployment currently runs under an IAM principal whose access key is stored in
+the operator's local `~/.aws/credentials`. The key is **not** in this repository
+and never has been. Recommended before any further use: replace the static key
+with an IAM Identity Center (SSO) or short-lived role session, and rotate the
+existing key.

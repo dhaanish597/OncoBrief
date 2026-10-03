@@ -1,5 +1,12 @@
 # OncoBrief — End-to-End Verification Report
 
+> **Superseded.** This is the point-in-time record of the 2026-09-24
+> **backend-only** deployment, before the web tier existed. The rows marked
+> `NOT RUN` / `PARTIAL` below were resolved on 2026-09-25 when `module.web`
+> shipped the Next.js tier; see
+> [`final-submission-verification.md`](final-submission-verification.md) for the
+> current end-to-end result. Kept as a dated record, not as current status.
+
 **Deployment timestamp:** 2026-09-24 (Terraform apply ~17:52 UTC; pipeline runs 17:57–18:20 UTC)
 **AWS region:** `ap-south-1`
 **Account:** `375546530800`

@@ -87,3 +87,21 @@ variable "cognito_domain_prefix" {
   type    = string
   default = ""
 }
+
+variable "app_db_user" {
+  type        = string
+  default     = "oncobrief_app"
+  description = "Runtime database role for the web tier. Non-owner, so Row-Level Security and the append-only grants apply."
+}
+
+variable "app_db_password" {
+  type        = string
+  sensitive   = true
+  description = "Password for the oncobrief_app role. The prototype's documented dev credential. Supply via terraform.tfvars (git-ignored); never commit it."
+}
+
+variable "web_image_tag" {
+  type        = string
+  default     = "latest"
+  description = "ECR image tag deployed to the web tier. Bump to force a new task definition revision."
+}

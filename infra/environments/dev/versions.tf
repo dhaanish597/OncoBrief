@@ -5,6 +5,10 @@ terraform {
       source  = "hashicorp/aws"
       version = "~> 5.60"
     }
+    random = {
+      source  = "hashicorp/random"
+      version = "~> 3.6"
+    }
   }
   # Remote state with native S3 locking (`use_lockfile`, Terraform >= 1.10), so
   # no DynamoDB table is required. The bucket is created by infra/bootstrap.

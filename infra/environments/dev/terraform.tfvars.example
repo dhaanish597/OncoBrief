@@ -17,3 +17,11 @@ bedrock_model_id  = ""
 
 # Populate after the web backend is deployed (ALB/CloudFront/Next.js origin).
 backend_uri = ""
+
+# Web tier (ECS Fargate + ALB + CloudFront). The runtime DB role is the
+# non-owner `oncobrief_app`. Its password is the prototype's documented dev
+# credential; supply the real value in the git-ignored `terraform.tfvars`,
+# never in a committed file (this one is a template).
+app_db_user     = "oncobrief_app"
+app_db_password = "CHANGE_ME_IN_TERRAFORM_TFVARS"
+web_image_tag   = "latest"

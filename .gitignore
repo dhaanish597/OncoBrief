@@ -36,4 +36,11 @@ Thumbs.db
 crash.log
 terraform.tfvars
 !terraform.tfvars.example
+# Terraform binary plan files embed variable values and prior state. They are
+# build artifacts, never source — see docs/security.md.
+tfplan
+*.tfplan
 infra/build/
+
+# design hand-off archives (the integrated source lives under apps/web/src)
+*.zip

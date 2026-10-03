@@ -139,6 +139,80 @@ module "monitoring" {
   ocr_dlq_name      = module.sqs.ocr_dlq_name
 }
 
+# Web tier (ADR 0016): Next.js on ECS Fargate in the private subnets, behind an
+# ALB, fronted by CloudFront for HTTPS on the AWS-owned certificate. The app
+# connects directly to the private RDS; it is not an API Gateway client.
+module "web" {
+  source = "../../modules/web"
+
+  name_prefix        = var.name_prefix
+  region             = var.region
+  vpc_id             = module.vpc.vpc_id
+  public_subnet_ids  = module.vpc.public_subnet_ids
+  private_subnet_ids = module.vpc.private_subnet_ids
+
+  db_host     = module.rds.endpoint
+  db_port     = module.rds.port
+  db_name     = var.db_name
+  db_user     = var.app_db_user
+  db_password = var.app_db_password
+
+  bucket_name = module.s3.bucket_name
+  bucket_arn  = module.s3.bucket_arn
+  kms_key_arn = aws_kms_key.main.arn
+
+  cognito_region       = var.region
+  cognito_user_pool_id = module.cognito.user_pool_id
+  cognito_client_id    = module.cognito.client_id
+
+  image_tag = var.web_image_tag
+
+  environment = {
+    NODE_ENV                    = "production"
+    PORT                        = "3000"
+    HOSTNAME                    = "0.0.0.0"
+    AUTH_MODE                   = "session"
+    ONCOBRIEF_DEMO_MODE         = "true"
+    STORAGE_DRIVER              = "s3"
+    STORAGE_S3_REGION           = var.region
+    STORAGE_S3_BUCKET           = module.s3.bucket_name
+    STORAGE_S3_FORCE_PATH_STYLE = "true"
+    S3_DOCUMENTS_BUCKET         = module.s3.bucket_name
+    EXTRACTION_DRIVER           = "rule"
+    QUEUE_DRIVER                = "memory"
+    COGNITO_REGION              = var.region
+    COGNITO_USER_POOL_ID        = module.cognito.user_pool_id
+    COGNITO_CLIENT_ID           = module.cognito.client_id
+  }
+}
+
+# The RDS security group admits the web tasks. A standalone rule avoids a
+# module-argument cycle (rds -> web -> rds).
+resource "aws_security_group_rule" "rds_from_web" {
+  type                     = "ingress"
+  description              = "PostgreSQL from the OncoBrief web tier"
+  from_port                = 5432
+  to_port                  = 5432
+  protocol                 = "tcp"
+  security_group_id        = module.rds.security_group_id
+  source_security_group_id = module.web.security_group_id
+}
+
+# Direct browser -> S3 presigned PUT for document upload. The browser sends a
+# non-simple Content-Type, so the bucket must allow the CORS preflight from the
+# application origin.
+resource "aws_s3_bucket_cors_configuration" "documents" {
+  bucket = module.s3.bucket_id
+
+  cors_rule {
+    allowed_methods = ["PUT"]
+    allowed_origins = [module.web.web_url]
+    allowed_headers = ["*"]
+    expose_headers  = ["ETag"]
+    max_age_seconds = 3000
+  }
+}
+
 # S3 ObjectCreated → document ingest SQS queue. Depends on the queue policy that
 # grants s3.amazonaws.com permission to send.
 resource "aws_s3_bucket_notification" "documents" {

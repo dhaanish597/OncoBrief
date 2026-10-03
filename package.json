@@ -9,8 +9,10 @@
   },
   "scripts": {
     "typecheck": "pnpm -r --no-bail typecheck",
-    "lint": "eslint . && pnpm boundary:check",
+    "lint": "eslint . && pnpm boundary:check && pnpm branding:check",
     "boundary:check": "tsx tools/check-clinical-boundary.ts",
+    "branding:check": "tsx tools/validate-branding.ts",
+    "smoke:api": "tsx tools/api-smoke.ts",
     "test": "pnpm -r --no-bail test",
     "test:unit": "pnpm --filter @oncobrief/domain test",
     "test:integration": "pnpm --filter @oncobrief/db test",

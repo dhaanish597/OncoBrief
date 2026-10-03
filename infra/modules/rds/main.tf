@@ -27,20 +27,26 @@ resource "aws_security_group" "db" {
   description = "OncoBrief database: private, reachable only by the worker/web security groups."
   vpc_id      = var.vpc_id
 
-  ingress {
-    description     = "PostgreSQL from authorised security groups"
-    from_port       = 5432
-    to_port         = 5432
-    protocol        = "tcp"
-    security_groups = var.allowed_security_group_ids
-  }
-
   egress {
     from_port   = 0
     to_port     = 0
     protocol    = "-1"
     cidr_blocks = ["0.0.0.0/0"]
   }
+}
+
+# Ingress is managed as standalone rules (not an inline block) so the web tier
+# can add its own source security group in the environment without fighting the
+# inline list. See infra/environments/dev (aws_security_group_rule.rds_from_web).
+resource "aws_security_group_rule" "db_ingress" {
+  count                    = length(var.allowed_security_group_ids)
+  type                     = "ingress"
+  description              = "PostgreSQL from authorised security groups"
+  from_port                = 5432
+  to_port                  = 5432
+  protocol                 = "tcp"
+  security_group_id        = aws_security_group.db.id
+  source_security_group_id = var.allowed_security_group_ids[count.index]
 }
 
 resource "aws_db_parameter_group" "this" {

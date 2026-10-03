@@ -49,3 +49,20 @@ output "lambda_functions" {
 output "kms_key_arn" {
   value = aws_kms_key.main.arn
 }
+
+output "web_url" {
+  value       = module.web.web_url
+  description = "Public HTTPS URL of the OncoBrief web application (CloudFront)."
+}
+
+output "web_cloudfront_domain" {
+  value = module.web.cloudfront_domain_name
+}
+
+output "web_alb_dns_name" {
+  value = module.web.alb_dns_name
+}
+
+output "web_ecr_repository_url" {
+  value = module.web.ecr_repository_url
+}
