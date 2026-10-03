@@ -51,6 +51,36 @@ describe('classifyIntentDeterministic', () => {
     }
   });
 
+  // The boundary question is "retrieve versus decide". A judge will type these
+  // verbatim; each must be refused by the non-clinical path rather than routed
+  // to evidence retrieval or the model's general knowledge.
+  it('refuses judgment-seeking clinical questions', () => {
+    for (const q of [
+      "What stage is this patient's cancer?",
+      'Should this patient start chemotherapy?',
+      'Is this nodule concerning?',
+      'Does this patient have cancer?',
+      'Should the doctor change the treatment?',
+      'Is this urgent?',
+      'What is the risk score?',
+      'How urgent is this case?',
+    ]) {
+      expect(classifyIntentDeterministic(q)?.intent, q).toBe('unsupported_medical_question');
+    }
+  });
+
+  it('still retrieves documented values when the user asks what the record says', () => {
+    // Asking for the *documented* value is a ledger lookup, not a clinical
+    // conclusion, and must keep working — provenance is the product.
+    for (const q of [
+      'Show me the documented stage in the pathology report',
+      'Show me the pathology report',
+      'What is the latest pathology report?',
+    ]) {
+      expect(classifyIntentDeterministic(q)?.intent, q).toBe('evidence_question');
+    }
+  });
+
   it('treats an empty message as ambiguous', () => {
     expect(classifyIntentDeterministic('   ')?.intent).toBe('ambiguous_question');
   });

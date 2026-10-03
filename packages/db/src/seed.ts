@@ -284,7 +284,7 @@ export async function seed(log: (m: string) => void = () => {}): Promise<SeedSum
     log(`DEMO-003: verified ${readyFacts.rows.length} facts`);
 
     // Re-run duplicate + conflict detection now that everything is ingested.
-    const { detectNearDuplicates } = await import('./services/documents.js');
+    const { detectNearDuplicates } = await import('./services/documents');
     const dupCount = await detectNearDuplicates(client, org1, p1);
 
     // --- gaps, tasks, readiness --------------------------------------------

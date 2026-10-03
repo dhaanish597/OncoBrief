@@ -39,6 +39,19 @@ const UNSUPPORTED_MEDICAL_PATTERNS = [
   /\bwhat (?:dose|dosage)\b/i,
   /\bcan you (?:diagnose|prescribe)\b/i,
   /\bwhat(?:'s| is) the survival rate\b/i,
+
+  // Judgment-seeking phrasing. The distinction that matters is *retrieve*
+  // versus *decide*: "show me the documented stage" is a ledger lookup and
+  // stays an evidence question, while "what stage is this patient's cancer?"
+  // asks OncoBrief to state a clinical conclusion. These never reach evidence
+  // retrieval or the model's general knowledge — they are answered with the
+  // non-clinical boundary statement instead.
+  /\b(?:should|shall|ought)\b[^?]*\b(?:treat\w*|chemotherap\w*|radiother\w*|radiation|surg\w*|operat\w*|medicat\w*|drug\w*|dose|dosage|regimen|therapy)\b/i,
+  /\b(?:is|are|was|were|does|do|did)\b[^?]*\b(?:concerning|suspicious|worrying|worry|sinister|dangerous|malignant|benign|cancerous|aggressive)\b/i,
+  /\b(?:how urgent|is (?:this|it|that) urgent|urgency|triage|prioritis\w*|prioritiz\w*)\b/i,
+  /\brisk[\s_-]?(?:score|scores|stratification|category|band|level|assessment|profile)\b/i,
+  /\b(?:what|which)\s+stage\b/i,
+  /\b(?:does|do|did)\b[^?]*\b(?:have|has|had|got)\b[^?]*\b(?:cancer|carcinoma|malignan\w*|tumou?r|metasta\w*|neoplas\w*)\b/i,
 ];
 
 const EVIDENCE_PATTERNS = [

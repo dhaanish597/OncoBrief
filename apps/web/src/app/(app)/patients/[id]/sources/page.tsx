@@ -1,9 +1,10 @@
 import Link from 'next/link';
 import { DOCUMENT_TYPES, DOCUMENT_TYPE_LABEL } from '@oncobrief/domain';
-import { listDocuments } from '@oncobrief/db';
+import { getPresignPut, listDocuments } from '@oncobrief/db';
 import { withSession } from '@/lib/session';
 import { DemoBadge, EmptyFinding, OriginBadge, SectionHeading } from '@/components/evidence';
 import { confirmDocumentTypeAction, uploadDocumentAction } from '@/lib/actions';
+import { DocumentUploadForm } from '@/components/DocumentUploadForm';
 
 /**
  * Fragmented record sources. Documents are grouped by where they came from,
@@ -13,6 +14,10 @@ import { confirmDocumentTypeAction, uploadDocumentAction } from '@/lib/actions';
 export default async function SourcesPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
   const docs = await withSession(async (q) => listDocuments(q, id));
+
+  // With S3-backed storage the browser uploads straight to the bucket (the
+  // cloud pipeline); with the filesystem driver the in-process action is used.
+  const directUploadAvailable = getPresignPut() !== null;
 
   const byOrigin = new Map<string, typeof docs>();
   for (const d of docs) {
@@ -36,33 +41,11 @@ export default async function SourcesPage({ params }: { params: Promise<{ id: st
         confirmed type is what can satisfy a checklist requirement.
       </p>
 
-      <form
-        action={uploadDocumentAction}
-        className="mt-6 flex flex-wrap items-end gap-3 border border-dashed border-[var(--color-rule-strong)] bg-[var(--color-paper-raised)] p-4"
-      >
-        <input type="hidden" name="patientId" value={id} />
-        <label className="block">
-          <span className="mono block text-[11px] uppercase tracking-wider text-[var(--color-ink-soft)]">
-            Add an authorised document
-          </span>
-          <input
-            type="file"
-            name="file"
-            required
-            className="mono mt-1 block text-xs file:mr-3 file:border file:border-[var(--color-rule-strong)] file:bg-[var(--color-paper)] file:px-2 file:py-1"
-          />
-        </label>
-        <button
-          type="submit"
-          className="mono border border-[var(--color-ink)] px-3 py-1.5 text-[11px] uppercase tracking-wider"
-        >
-          Upload and ingest
-        </button>
-        <p className="mono max-w-md text-[11px] leading-relaxed text-[var(--color-ink-soft)]">
-          Uploads are hashed server-side and MIME-sniffed from magic bytes. Scans with no embedded
-          text layer are quarantined for manual transcription rather than guessed at.
-        </p>
-      </form>
+      <DocumentUploadForm
+        patientId={id}
+        fallbackAction={uploadDocumentAction}
+        directUploadAvailable={directUploadAvailable}
+      />
 
       {docs.length === 0 ? (
         <div className="mt-6">
