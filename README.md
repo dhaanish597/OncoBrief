@@ -1,6 +1,9 @@
 # OncoBrief
 
-A source-verified oncology **record-readiness and care-continuity** platform.
+Source-Verified Oncology Consultation Preparation Platform.
+
+A source-verified oncology **record-readiness** platform that organizes
+fragmented records into a human-reviewed consultation preparation workflow.
 
 OncoBrief turns fragmented documents into a structured **Evidence Ledger**. Every
 displayed fact keeps its source document, page, exact text span, extraction
@@ -20,6 +23,27 @@ and the CI-failing boundary scan in [`tools/check-clinical-boundary.ts`](tools/c
 
 ---
 
+## Deployed — Health-a-thon 2026 submission
+
+| | |
+|---|---|
+| **Frontend** | **https://dsc1vmsr4q09g.cloudfront.net** |
+| Region | `ap-south-1` (Mumbai) |
+| Runtime | Next.js on **ECS Fargate** in private subnets, behind an **ALB**, fronted by **CloudFront** for HTTPS on the AWS-owned certificate. The app connects directly to the **private RDS**; no database port is public. |
+| Pipeline | The same Evidence Ledger and AWS ingestion path: **S3 → SQS → Lambda → Textract → Bedrock → PostgreSQL**. |
+| Verification | [`docs/final-submission-verification.md`](docs/final-submission-verification.md) |
+
+Sign in with any demo username below; the sign-in form is pre-filled with the
+synthetic demo credential. No password or secret is published here.
+
+> **AI-assisted features are optional.** The evidence assistant uses an
+> external model provider when `NVIDIA_API_KEY` is configured and degrades
+> gracefully (navigation and boundary guidance only) when it is not. The
+> evidence-extraction pipeline uses Bedrock in the cloud worker; the deployed
+> web tier runs rule-based extraction for its local fallback path.
+
+---
+
 ## Run it
 
 Requirements: Node ≥ 22, pnpm 9, Docker (for Postgres).
@@ -29,8 +53,12 @@ pnpm install
 cp .env.example .env          # defaults are fine for local development
 pnpm db:up                    # docker compose up -d postgres
 pnpm demo:reset               # migrate, seed, and ingest the demo fixtures
-pnpm dev                      # http://localhost:3000
+pnpm dev                      # http://localhost:3000 — public landing at /
 ```
+
+The root path `/` is the public landing page and renders without a session.
+Everything under `/workspace` and `/patients/…` requires sign-in; an anonymous
+visit to those paths is forwarded to `/login`.
 
 `pnpm demo:reset` is idempotent. It truncates tenant data, re-seeds the
 fixtures, and re-runs the ingestion pipeline for real, then prints the demo
@@ -44,7 +72,8 @@ credentials:
 | `admin.sys@rci.demo` | org admin |
 | `auditor.k@rci.demo` | auditor |
 
-Password for all demo users: `oncobrief-demo`.
+Password for all demo users: the synthetic demo credential, pre-filled on the
+sign-in form. It is not a secret; it is not restated here.
 
 The whole flow runs offline. No third-party API call is made at any point.
 
@@ -106,7 +135,8 @@ and the decision records in [`docs/decisions/`](docs/decisions/).
 ## Layout
 
 ```
-apps/web/          Next.js UI + /api/v1 + server actions
+apps/web/          Next.js UI + /api/v1 + server actions; the public landing
+                   page is `/`, the workspace sits behind sign-in
 packages/domain/   Pure, I/O-free domain logic (the IP): state machine, span
                    validation, comparators, gaps, readiness, packet, messages,
                    RBAC, clinical-boundary guard
@@ -124,9 +154,16 @@ docs/              Governing documents, architecture, decision records
 ## Verify
 
 ```bash
-pnpm verify         # typecheck + lint + clinical-boundary scan + all tests
-pnpm test           # 301 domain unit tests + 21 Postgres integration tests
+pnpm verify         # typecheck + lint + clinical-boundary scan + branding scan + all tests
+pnpm test           # 429 tests: domain 301, adapters 24, Postgres integration 33, worker 26, web 45
 pnpm test:integration   # integration tests only (needs Postgres)
+```
+
+Product-name and deployed-API guards:
+
+```bash
+pnpm branding:check                              # fails if a retired product name leaks into a shipped surface
+SMOKE_BASE_URL=<deployed-host> pnpm smoke:api    # real sign-in + /api/v1 checks against a deployment
 ```
 
 Browser E2E (Playwright) — the demo *is* the test suite:
@@ -153,13 +190,22 @@ human-only verification, projection rebuild equivalence, and frozen packets.
 
 These are stated as gaps, not as present:
 
-- **OCR is deterministic fixtures.** Demo documents carry pre-computed spans so
-  geometry is exact and reproducible. A real upload with no text layer is
+- **OCR is deterministic fixtures in the demo.** Demo documents carry
+  pre-computed spans so geometry is exact and reproducible. In the cloud path
+  the worker calls Amazon Textract; a real upload with no text layer is
   quarantined for manual transcription rather than guessed at. Handwriting and
   low-quality Indic-script scans are beyond what is wired.
-- **No LLM is wired.** Extraction is deterministic rules. The LLM boundary is
-  specified (it may propose span-anchored candidates and nothing else) but the
-  adapter is not implemented, because no API credentials exist here.
+- **Two LLM paths are implemented, both span-constrained.** The cloud worker
+  can extract with Amazon Bedrock (`EXTRACTION_DRIVER=bedrock`, Nova via forced
+  tool use); the assistant uses an OpenAI-compatible provider
+  (`NVIDIA_API_KEY`). Both may only return candidates that are verbatim
+  substrings of the OCR spans — a candidate that fails span validation is
+  dropped, and the system never writes an unanchored fact. The deployed web
+  task runs `EXTRACTION_DRIVER=rule` for its local fallback path.
+- **The assistant degrades rather than guesses.** With no provider key
+  configured, navigation, boundary refusals and the deterministic
+  "not found in the selected record set" answer still work; only the phrasing
+  of a retrieved evidence answer is unavailable.
 - **Patient delivery is simulated**, and labelled as simulated in the UI. Real
   WhatsApp / SMS / IVR needs credentials. Voice ASR/TTS is out of scope.
 - **No SMART on FHIR implementation**, no browser-extension client.

@@ -23,6 +23,7 @@ Full detail for every decision below lives in
 | [0013](0013-object-storage-port-defaults-to-filesystem.md) | Object storage port defaults to the local filesystem | Accepted |
 | [0014](0014-raw-sql-data-access-via-node-postgres.md) | Raw SQL data access via node-postgres | Accepted |
 | [0015](0015-aws-backend-in-typescript-in-place.md) | AWS backend implemented in TypeScript, in place | Accepted |
+| [0016](0016-landing-page-integration.md) | Landing page integrated into the web app as a scoped route group | Accepted |
 
 ## Conventions
 

@@ -1,3 +1,4 @@
+import Link from 'next/link';
 import { redirect } from 'next/navigation';
 import { getSession } from '@/lib/session';
 import { loginAction } from './actions';
@@ -15,7 +16,13 @@ export default async function LoginPage({
     <main className="mx-auto flex min-h-screen max-w-6xl flex-col justify-center px-6 py-16">
       <div className="grid gap-14 md:grid-cols-[1.1fr_1fr] md:items-center">
         <section>
-          <p className="mono text-xs uppercase tracking-[0.2em] text-[var(--color-ink-soft)]">
+          <Link
+            href="/"
+            className="mono text-xs uppercase tracking-[0.2em] text-[var(--color-ink-soft)] hover:text-[var(--color-ink)]"
+          >
+            ← Back to overview
+          </Link>
+          <p className="mono mt-4 text-xs uppercase tracking-[0.2em] text-[var(--color-ink-soft)]">
             Health-a-thon 2026 · Cancer care track
           </p>
           <h1 className="mt-3 text-5xl font-semibold tracking-tight">OncoBrief</h1>

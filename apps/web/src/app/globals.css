@@ -25,6 +25,20 @@
 
   --font-mono: ui-monospace, 'SFMono-Regular', 'Cascadia Mono', Menlo, Consolas, monospace;
   --font-serif: 'Iowan Old Style', 'Palatino Linotype', Palatino, Georgia, serif;
+
+  /*
+   * Landing page palette (docs/decisions/0016). Strictly additive: no token
+   * above is redefined here, so the workspace renders exactly as before.
+   * `ink` and `ink-soft` are deliberately NOT redeclared — the landing's ink is
+   * already identical, and its ink-soft differs only by ~2%.
+   */
+  --color-ivory: #f3eee4;
+  --color-bone: #e7dfcf;
+  --color-oxblood: #6e1f26;
+  --color-teal: #1f6c67;
+  --color-sage: #8fa087;
+  --color-amber: #b9832b;
+  --color-alert: #b42c21;
 }
 
 html,
@@ -67,5 +81,142 @@ body {
 @media print {
   .no-print {
     display: none !important;
+  }
+}
+
+/* ---------------------------------------------------------------------------
+ * Landing page — the public surface at /
+ *
+ * Everything below is scoped to `.landing`, which wraps the (landing) route
+ * group. The landing arrived with a global element reset and its own fonts;
+ * both are confined here so the verified workspace is untouched. Where the
+ * landing and the workspace disagree (--font-mono, --font-serif,
+ * --color-ink-soft) the workspace's value stands, and the landing's intent is
+ * restored by rules whose specificity outranks the generated utility.
+ *
+ * See docs/decisions/0016-landing-page-integration.md
+ * ------------------------------------------------------------------------- */
+
+.landing {
+  background-color: var(--color-ivory);
+  color: var(--color-ink);
+  font-family: var(--font-geist), ui-sans-serif, system-ui, sans-serif;
+  overflow-x: clip;
+}
+
+/* The workspace's .mono/.doc-text read --font-mono/--font-serif directly, so
+   the landing's typefaces are applied by scope rather than by token. */
+.landing .font-mono {
+  font-family: var(--font-geist-mono), ui-monospace, monospace;
+}
+
+.landing .font-serif {
+  font-family: var(--font-instrument), 'Times New Roman', serif;
+}
+
+/* Replaces the landing's global `* { @apply border-border outline-ring/50 }`,
+   which would have restyled every element in the application. */
+.landing *,
+.landing *::before,
+.landing *::after {
+  border-color: color-mix(in oklab, var(--color-ink) 16%, transparent);
+}
+
+.landing :focus-visible {
+  outline: 2px solid var(--color-teal);
+  outline-offset: 2px;
+}
+
+.landing ::selection {
+  background: var(--color-oxblood);
+  color: var(--color-ivory);
+}
+
+/* The landing's smooth anchor scrolling, kept off the workspace. */
+html:has(.landing) {
+  scroll-behavior: smooth;
+  scroll-padding-top: 4.5rem;
+}
+
+@utility dot-grid {
+  background-image: radial-gradient(
+    color-mix(in oklab, var(--color-ink) 18%, transparent) 1px,
+    transparent 1px
+  );
+  background-size: 22px 22px;
+}
+
+@utility line-grid {
+  background-image:
+    linear-gradient(color-mix(in oklab, var(--color-ink) 7%, transparent) 1px, transparent 1px),
+    linear-gradient(90deg, color-mix(in oklab, var(--color-ink) 7%, transparent) 1px, transparent 1px);
+  background-size: 48px 48px;
+}
+
+@utility paper {
+  background-color: #faf6ee;
+  box-shadow:
+    0 1px 0 color-mix(in oklab, var(--color-ink) 8%, transparent),
+    0 18px 40px -24px color-mix(in oklab, var(--color-ink) 45%, transparent);
+}
+
+@utility ocr-brackets {
+  background:
+    linear-gradient(var(--color-teal), var(--color-teal)) top left / 10px 1.5px no-repeat,
+    linear-gradient(var(--color-teal), var(--color-teal)) top left / 1.5px 10px no-repeat,
+    linear-gradient(var(--color-teal), var(--color-teal)) top right / 10px 1.5px no-repeat,
+    linear-gradient(var(--color-teal), var(--color-teal)) top right / 1.5px 10px no-repeat,
+    linear-gradient(var(--color-teal), var(--color-teal)) bottom left / 10px 1.5px no-repeat,
+    linear-gradient(var(--color-teal), var(--color-teal)) bottom left / 1.5px 10px no-repeat,
+    linear-gradient(var(--color-teal), var(--color-teal)) bottom right / 10px 1.5px no-repeat,
+    linear-gradient(var(--color-teal), var(--color-teal)) bottom right / 1.5px 10px no-repeat;
+}
+
+@keyframes dash-flow {
+  to {
+    stroke-dashoffset: -24;
+  }
+}
+
+.dash-flow {
+  stroke-dasharray: 3 5;
+  animation: dash-flow 1.6s linear infinite;
+}
+
+@keyframes scan-sweep {
+  0% {
+    transform: translateY(-10%);
+    opacity: 0;
+  }
+  10%,
+  90% {
+    opacity: 1;
+  }
+  100% {
+    transform: translateY(1000%);
+    opacity: 0;
+  }
+}
+
+@keyframes slow-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.slow-spin {
+  animation: slow-spin 80s linear infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html:has(.landing) {
+    scroll-behavior: auto;
+  }
+  .landing *,
+  .landing *::before,
+  .landing *::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
   }
 }
