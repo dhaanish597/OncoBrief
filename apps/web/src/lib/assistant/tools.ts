@@ -7,6 +7,7 @@ import {
   listTasks,
   listRecordMap,
   getPageSpans,
+  listDocuments,
 } from '@oncobrief/db';
 
 export interface ToolResult<T> {
@@ -96,11 +97,48 @@ export async function searchEvidence(
       .filter((r) => r.score > 0)
       .sort((a, b) => {
         if (b.score !== a.score) return b.score - a.score;
+        // Active verified/corrected/extracted evidence ranks ahead of rejected or superseded evidence
+        const stateRank = (s: string) =>
+          s === 'verified' ? 3 : s === 'corrected' || s === 'extracted' ? 2 : s === 'conflicting' ? 1 : 0;
+        const rankDiff = stateRank(b.row.state) - stateRank(a.row.state);
+        if (rankDiff !== 0) return rankDiff;
         // Within equal relevance, prefer the most recent recording.
         return (b.row.displayDate ?? '').localeCompare(a.row.displayDate ?? '');
       });
 
     const results = scored.slice(0, 12).map((s) => s.row);
+
+    // If no timeline facts matched, check whether an uploaded document exists
+    // (e.g. an uploaded document with zero extracted facts).
+    if (results.length === 0 && tokens.length > 0) {
+      const allDocs = await listDocuments(q, patientId);
+      const matchingDocs = allDocs.filter((d) => {
+        const docHaystack = `${d.filename} ${d.documentType ?? ''} ${d.issuingFacility ?? ''}`.toLowerCase();
+        return tokens.some((token) => docHaystack.includes(token));
+      });
+      if (matchingDocs.length > 0) {
+        return {
+          success: true,
+          data: matchingDocs.slice(0, 6).map((d) => ({
+            evidenceFactId: d.id,
+            factType: 'document.uploaded',
+            valueText: `${d.filename} (${d.documentType ? d.documentType.replaceAll('_', ' ') : 'unclassified'}) — uploaded record, status: ${d.ingestStatus}, ${d.factCount} extracted facts`,
+            displayDate: d.documentDate,
+            state: d.typeConfirmed ? 'verified' : 'extracted',
+            documentId: d.id,
+            documentName: d.filename,
+            pageNumber: d.pageCount ? 1 : null,
+            confidenceBand: d.typeConfidence ?? 'high',
+            extractorKind: 'system',
+            extractorName: 'document.registry',
+            extractorVersion: 'v1',
+            verbatimQuote: `Uploaded document: ${d.filename} (status: ${d.ingestStatus})`,
+            reviewerName: null,
+            reviewedAt: null,
+          })),
+        };
+      }
+    }
 
     return {
       success: true,
@@ -189,7 +227,43 @@ export async function findDocument(
         reviewerName: r.reviewerName,
         reviewedAt: r.reviewedAt,
       }));
-    return { success: true, data: results };
+
+    if (results.length > 0) {
+      return { success: true, data: results };
+    }
+
+    // An uploaded document with zero extracted facts is still a present document;
+    // do not treat it as absent when searched by name.
+    const allDocs = await listDocuments(q, patientId);
+    const matchingDocs = allDocs.filter(
+      (d) =>
+        d.filename.toLowerCase().includes(lowerName) ||
+        (d.documentType && d.documentType.toLowerCase().includes(lowerName)),
+    );
+    if (matchingDocs.length > 0) {
+      return {
+        success: true,
+        data: matchingDocs.slice(0, 6).map((d) => ({
+          evidenceFactId: d.id,
+          factType: 'document.uploaded',
+          valueText: `${d.filename} (${d.documentType ? d.documentType.replaceAll('_', ' ') : 'unclassified'}) — uploaded record, status: ${d.ingestStatus}, ${d.factCount} extracted facts`,
+          displayDate: d.documentDate,
+          state: d.typeConfirmed ? 'verified' : 'extracted',
+          documentId: d.id,
+          documentName: d.filename,
+          pageNumber: d.pageCount ? 1 : null,
+          confidenceBand: d.typeConfidence ?? 'high',
+          extractorKind: 'system',
+          extractorName: 'document.registry',
+          extractorVersion: 'v1',
+          verbatimQuote: `Uploaded document: ${d.filename} (status: ${d.ingestStatus})`,
+          reviewerName: null,
+          reviewedAt: null,
+        })),
+      };
+    }
+
+    return { success: true, data: [] };
   } catch (error) {
     return { success: false, error: error instanceof Error ? error.message : 'Failed to find document' };
   }
@@ -268,10 +342,9 @@ export async function getCaseContext(
   }>
 > {
   try {
-    const [timeline, recordMap] = await Promise.all([
-      getTimeline(q, patientId),
-      listRecordMap(q, patientId),
-    ]);
+    const timeline = await getTimeline(q, patientId);
+    const recordMap = await listRecordMap(q, patientId);
+    const allDocs = await listDocuments(q, patientId);
 
     return {
       success: true,
@@ -283,7 +356,7 @@ export async function getCaseContext(
           (g) => g.status === 'missing' && g.requirementKind === 'required',
         ).length,
         openTasksCount: timeline.filter((t) => t.state === 'extracted').length,
-        documentCount: new Set(timeline.map((t) => t.documentId)).size,
+        documentCount: allDocs.length,
         readinessBand: recordMap.readiness?.band ?? null,
       },
     };

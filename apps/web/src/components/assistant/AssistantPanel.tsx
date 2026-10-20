@@ -342,7 +342,7 @@ export function AssistantPanel({ onClose }: { onClose: () => void }) {
               {m.role === 'assistant' && (m.sources?.length ?? 0) > 0 ? (
                 <div className="mt-2 space-y-2" data-testid="assistant-sources">
                   {m.sources!.map((s) => (
-                    <SourceCard key={s.evidenceFactId + s.documentId} source={s} />
+                    <SourceCard key={s.evidenceFactId + (s.documentId ?? '')} source={s} />
                   ))}
                 </div>
               ) : null}

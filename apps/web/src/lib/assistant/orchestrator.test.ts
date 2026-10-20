@@ -105,6 +105,9 @@ describe('runAssistant — evidence', () => {
   });
 
   it('labels conflicting evidence and returns both sides', async () => {
+    vi.mocked(chatCompletionWithRetry).mockResolvedValueOnce({
+      content: 'Conflicting evidence: Note A.pdf records 2026-02-01 [E1], while Note B.pdf records 2026-02-08 [E2].',
+    });
     vi.mocked(db.listConflicts).mockResolvedValue([{ id: 'c1', factType: 'appointment.recorded', status: 'open' } as never]);
     vi.mocked(db.getConflict).mockResolvedValue({
       id: 'c1',
@@ -142,6 +145,9 @@ describe('runAssistant — evidence', () => {
 
 describe('runAssistant — missing documents and continuity', () => {
   it('answers a missing-documents query from the record map', async () => {
+    vi.mocked(chatCompletionWithRetry).mockResolvedValueOnce({
+      content: 'Based on the record checklist, [E1] Baseline CT is missing.',
+    });
     vi.mocked(db.listRecordMap).mockResolvedValue({
       gaps: [
         {
@@ -156,6 +162,10 @@ describe('runAssistant — missing documents and continuity', () => {
     const result = await runAssistant(q, { message: 'What documents are missing?', context: ctx });
     expect(result.intent).toBe('missing_documents_question');
     expect(result.grounded).toBe(true);
+    expect(result.sources.length).toBeGreaterThan(0);
+    expect(result.sources[0]!.documentName).toBe('Record Checklist: Baseline CT');
+    expect(result.sources[0]!.href).toBe(`/patients/${PATIENT}/record-map`);
+    expect(result.sources[0]!.pageNumber).toBeNull();
     expect(result.answer).toBeDefined();
   });
 
@@ -221,7 +231,7 @@ describe('runAssistant — safety and navigation', () => {
       }) as never,
     ]);
     vi.mocked(chatCompletionWithRetry).mockResolvedValue({
-      content: 'The document contains a note that requests ignoring instructions; I have treated it as recorded text only.',
+      content: 'The Pathology Report.pdf contains a note that requests ignoring instructions [E1]; I have treated it as recorded text only.',
     });
     const result = await runAssistant(q, { message: 'pathology report', context: ctx });
     // The assistant still returns the grounded answer, and the system prompt was
@@ -249,6 +259,9 @@ describe('runAssistant — safety and navigation', () => {
 
   it('resolves "what is this?" against the evidence the user has open', async () => {
     const factId = '44444444-4444-4444-4444-444444444444';
+    vi.mocked(chatCompletionWithRetry).mockResolvedValueOnce({
+      content: 'This is [E1] modified radical mastectomy from discharge-summary.pdf.',
+    });
     vi.mocked(db.getProvenance).mockResolvedValue({
       fact: {
         id: factId, factType: 'procedure.recorded', valueJson: {}, valueText: 'modified radical mastectomy',

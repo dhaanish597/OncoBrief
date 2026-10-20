@@ -98,8 +98,9 @@ export async function evaluateAndPersistGaps(
     document_type: string | null;
     document_date: string | null;
     type_confirmed_by: string | null;
+    ingest_status: string;
   }>(
-    `SELECT id, document_type, document_date::text AS document_date, type_confirmed_by
+    `SELECT id, document_type, document_date::text AS document_date, type_confirmed_by, ingest_status
        FROM document
       WHERE org_id = $1 AND patient_id = $2 AND duplicate_of_document_id IS NULL`,
     [orgId, patientId],
@@ -130,6 +131,7 @@ export async function evaluateAndPersistGaps(
     documentType: r.document_type as DocumentForGap['documentType'],
     documentDate: r.document_date,
     typeConfirmed: r.type_confirmed_by !== null,
+    ingestStatus: r.ingest_status,
   }));
 
   const existing = existingRes.rows.map((r) => ({

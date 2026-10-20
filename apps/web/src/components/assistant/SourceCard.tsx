@@ -4,7 +4,7 @@ import { ConfidenceBand, MachineBadge, StateBadge, factTypeLabel } from '@/compo
 
 export interface SourceCardData {
   evidenceFactId: string;
-  documentId: string;
+  documentId: string | null;
   documentName: string;
   pageNumber: number | null;
   factType: string;

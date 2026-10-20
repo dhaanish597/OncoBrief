@@ -28,6 +28,8 @@ export interface DocumentForGap {
   documentType: DocumentType | null;
   documentDate: string | Date | null;
   typeConfirmed: boolean;
+  ingestStatus?: string | null;
+  factCount?: number;
 }
 
 export interface ExistingGap {
@@ -52,6 +54,9 @@ export function evaluateGaps(
 ): EvaluatedGap[] {
   const byItem = new Map(existingGaps.map((g) => [g.checklistItemId, g]));
 
+  const PROCESSING_STATUSES = new Set(['received', 'rendering', 'ocr_running', 'classifying', 'extracting']);
+  const inProcessingDocs = documents.filter((d) => d.ingestStatus && PROCESSING_STATUSES.has(d.ingestStatus));
+
   return items.map((item) => {
     const existing = byItem.get(item.id);
     // A human waiver is preserved; gap evaluation never overrides it.
@@ -65,7 +70,9 @@ export function evaluateGaps(
     }
 
     const matching = documents.filter((d) => d.documentType === item.requiredDocumentType);
-    const confirmed = matching.filter((d) => d.typeConfirmed);
+    const confirmed = matching.filter(
+      (d) => d.typeConfirmed && (!d.ingestStatus || d.ingestStatus === 'ready'),
+    );
 
     if (confirmed.length > 0) {
       const chosen = pickMostRecent(confirmed);
@@ -78,14 +85,26 @@ export function evaluateGaps(
     }
 
     if (matching.length > 0) {
-      // A document is present but its type has not been human-confirmed, so it
-      // cannot count toward the requirement yet. This is `partial`, not
+      // A document is present but its type has not been human-confirmed or is still in processing,
+      // so it cannot count toward the requirement yet. This is `partial`, not
       // `satisfied` — and not `missing`, because the paper is there.
       return {
         checklistItemId: item.id,
         status: 'partial' as const,
         satisfiedByDocumentId: null,
         candidateDocumentId: pickMostRecent(matching).id,
+      };
+    }
+
+    // If an unclassified document is still processing in the pipeline,
+    // this requirement cannot be definitively classified as missing yet.
+    const unclassifiedProcessing = inProcessingDocs.filter((d) => !d.documentType);
+    if (unclassifiedProcessing.length > 0) {
+      return {
+        checklistItemId: item.id,
+        status: 'partial' as const,
+        satisfiedByDocumentId: null,
+        candidateDocumentId: pickMostRecent(unclassifiedProcessing).id,
       };
     }
 

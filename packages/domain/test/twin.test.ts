@@ -75,6 +75,48 @@ describe('evaluateGaps', () => {
     ], []);
     expect(gaps.find((g) => g.checklistItemId === 'ci-path')!.satisfiedByDocumentId).toBe('new');
   });
+
+  it('does not classify a document still processing as definitively missing', () => {
+    const gaps = evaluateGaps(
+      ITEMS,
+      [
+        doc('d1', 'referral_letter', true),
+        { id: 'd2', documentType: 'pathology_report', documentDate: '2025-01-01', typeConfirmed: false, ingestStatus: 'ocr_running' },
+      ],
+      [],
+    );
+    const path = gaps.find((g) => g.checklistItemId === 'ci-path')!;
+    expect(path.status).toBe('partial');
+    expect(path.candidateDocumentId).toBe('d2');
+  });
+
+  it('does not classify a requirement as missing when an unclassified document is still processing', () => {
+    const gaps = evaluateGaps(
+      ITEMS,
+      [
+        doc('d1', 'referral_letter', true),
+        { id: 'd2', documentType: null, documentDate: '2025-01-01', typeConfirmed: false, ingestStatus: 'rendering' },
+      ],
+      [],
+    );
+    const path = gaps.find((g) => g.checklistItemId === 'ci-path')!;
+    expect(path.status).toBe('partial');
+    expect(path.candidateDocumentId).toBe('d2');
+  });
+
+  it('treats an uploaded document with zero extracted facts as present if confirmed', () => {
+    const gaps = evaluateGaps(
+      ITEMS,
+      [
+        doc('d1', 'referral_letter', true),
+        { id: 'd2', documentType: 'pathology_report', documentDate: '2025-01-01', typeConfirmed: true, ingestStatus: 'ready', factCount: 0 },
+      ],
+      [],
+    );
+    const path = gaps.find((g) => g.checklistItemId === 'ci-path')!;
+    expect(path.status).toBe('satisfied');
+    expect(path.satisfiedByDocumentId).toBe('d2');
+  });
 });
 
 describe('computeReadiness', () => {

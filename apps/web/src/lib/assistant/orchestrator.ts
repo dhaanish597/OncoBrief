@@ -17,12 +17,13 @@ import {
   ASSISTANT_SYSTEM_PROMPT,
   buildUserPrompt,
   isEvidenceAnswerGrounded,
+  findCitedEvidenceItems,
   type PromptEvidence,
 } from './prompt';
 
 export interface SourceCard {
   evidenceFactId: string;
-  documentId: string;
+  documentId: string | null;
   documentName: string;
   pageNumber: number | null;
   factType: string;
@@ -35,6 +36,28 @@ export interface SourceCard {
   reviewerName: string | null;
   reviewedAt: string | null;
   href: string;
+}
+
+const UUID_REGEX = /\b[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}\b/g;
+
+/**
+ * Strips raw internal database UUIDs, storage keys, and internal identifiers
+ * from user-facing assistant prose to prevent implementation detail leakage.
+ */
+export function sanitizeUserFacingProse(text: string): string {
+  let cleaned = text
+    .replace(/\s*\(documentId=[^)]*\)/gi, '')
+    .replace(/\bdocumentId=[0-9a-fA-F-]+\s*/gi, '')
+    .replace(/\bid=[0-9a-fA-F-]{36}\b/gi, '')
+    .replace(/s3:\/\/[^\s]+/gi, '[internal storage]')
+    .replace(/\/api\/v1\/storage\/[^\s]+/gi, '[internal storage]');
+
+  cleaned = cleaned.replace(UUID_REGEX, '[record]');
+
+  return cleaned
+    .replace(/\s{2,}/g, ' ')
+    .replace(/\(\s*\)/g, '')
+    .trim();
 }
 
 export interface NavigationSuggestion {
@@ -72,12 +95,9 @@ const NO_EVIDENCE_ANSWER =
   "I couldn't find that information in the selected record set.";
 
 function toSourceCard(item: EvidenceSearchResult): SourceCard {
-  const params = new URLSearchParams();
-  params.set('fact', item.evidenceFactId);
-  if (item.pageNumber) params.set('page', String(item.pageNumber));
   return {
     evidenceFactId: item.evidenceFactId,
-    documentId: item.documentId,
+    documentId: item.documentId || null,
     documentName: item.documentName,
     pageNumber: item.pageNumber,
     factType: item.factType,
@@ -94,10 +114,22 @@ function toSourceCard(item: EvidenceSearchResult): SourceCard {
 }
 
 function attachHref(cards: SourceCard[], patientId: string): SourceCard[] {
-  return cards.map((c) => ({
-    ...c,
-    href: `/patients/${patientId}/sources/${c.documentId}?fact=${c.evidenceFactId}${c.pageNumber ? `&page=${c.pageNumber}` : ''}`,
-  }));
+  return cards.map((c) => {
+    let href = '';
+    if (c.factType === 'record.requirement' || c.extractorName === 'record-map.checklist') {
+      href = `/patients/${patientId}/record-map`;
+    } else if (c.factType === 'task' || c.extractorName === 'admin.task') {
+      href = `/patients/${patientId}/tasks`;
+    } else if (c.documentId) {
+      href = `/patients/${patientId}/sources/${c.documentId}?fact=${c.evidenceFactId}${c.pageNumber ? `&page=${c.pageNumber}` : ''}`;
+    } else {
+      href = `/patients/${patientId}/evidence`;
+    }
+    return {
+      ...c,
+      href,
+    };
+  });
 }
 
 function suggestionsFor(route: string, _intent: Intent): string[] {
@@ -139,11 +171,11 @@ async function retrieveEvidence(
     const items = (result.data ?? []).map((g) => ({
       evidenceFactId: g.id,
       factType: 'record.requirement',
-      valueText: `${g.label} — ${g.status}`,
+      valueText: `${g.label} — ${g.status === 'partial' ? 'in-flight / pending confirmation' : 'missing'}`,
       displayDate: null,
       state: g.status,
-      documentId: g.satisfiedByDocumentId ?? '',
-      documentName: g.requiredDocumentType,
+      documentId: g.satisfiedByDocumentId ?? g.candidateDocumentId ?? '',
+      documentName: `Record Checklist: ${g.label}`,
       pageNumber: null,
       confidenceBand: 'n/a',
       extractorKind: 'rule',
@@ -164,7 +196,7 @@ async function retrieveEvidence(
       valueText: `${t.title} — ${t.status}`,
       displayDate: t.dueOn,
       state: t.status,
-      documentId: t.origin.documentId ?? t.origin.evidenceFactId ?? t.origin.recordGapId ?? '',
+      documentId: t.origin.documentId ?? '',
       documentName: 'task origin',
       pageNumber: null,
       confidenceBand: 'n/a',
@@ -383,7 +415,9 @@ export async function runAssistant(
   }
 
   const allItems = evidence.flatMap((e) => e.items);
-  const conflict = allItems.some((i) => i.factType === 'conflict.member') || evidence.some((e) => e.label.includes('Conflicting'));
+  const conflict =
+    allItems.some((i) => i.factType === 'conflict.member' || i.state === 'conflicting') ||
+    evidence.some((e) => e.label.includes('Conflicting'));
 
   if (allItems.length === 0) {
     // Deterministic no-evidence answer. The LLM is not asked to speculate.
@@ -458,8 +492,16 @@ export async function runAssistant(
       ? `${NO_EVIDENCE_ANSWER} I found related evidence but could not produce a grounded answer from it. Please open the sources directly.`
       : answer;
 
+  const sanitizedAnswer = sanitizeUserFacingProse(validatedAnswer);
+
+  let relevantItems: typeof allItems = [];
+  if (grounding === 'grounded') {
+    const cited = findCitedEvidenceItems(answer, evidence);
+    relevantItems = cited.length > 0 ? cited : allItems;
+  }
+
   const deduped = new Map<string, (typeof allItems)[number]>();
-  for (const item of allItems) {
+  for (const item of relevantItems) {
     const key = `${item.documentId}|${item.factType}|${item.valueText}`;
     if (!deduped.has(key)) deduped.set(key, item);
   }
@@ -485,14 +527,24 @@ export async function runAssistant(
       }),
     ),
     context.patientId,
-  ).filter((s) => s.documentId !== '');
+  ).filter((s) => s.href !== '');
+
+  const isGrounded = grounding === 'grounded' && sources.length > 0;
 
   // Source navigation: offer to open the top source.
-  const top = sources.find((s) => s.documentId);
+  const top = sources[0];
   const nav = top
     ? {
-        action: 'OPEN_EVIDENCE' as const,
-        label: `Open ${top.documentName}${top.pageNumber ? ` page ${top.pageNumber}` : ''}`,
+        action: top.factType === 'record.requirement'
+          ? ('OPEN_MISSING_DOCUMENTS' as const)
+          : top.factType === 'task'
+          ? ('OPEN_CONTINUITY' as const)
+          : ('OPEN_EVIDENCE' as const),
+        label: top.factType === 'record.requirement'
+          ? 'Open Record Map'
+          : top.factType === 'task'
+          ? 'Open Tasks'
+          : `Open ${top.documentName}${top.pageNumber ? ` page ${top.pageNumber}` : ''}`,
         href: top.href,
       }
     : null;
@@ -508,9 +560,9 @@ export async function runAssistant(
   });
 
   return {
-    answer: validatedAnswer,
+    answer: sanitizedAnswer,
     intent,
-    grounded: grounding !== 'ungrounded',
+    grounded: isGrounded,
     sources,
     navigation: nav,
     conflict,
