@@ -90,6 +90,7 @@ export interface AppendLedgerInput {
 async function appendLedgerEntry(q: Querier, input: AppendLedgerInput): Promise<{ id: string; seq: number }> {
   const guard = transition({
     from: input.fromState,
+    to: input.toState,
     action: input.action,
     actorKind: input.actor.kind,
     ...(input.actor.role ? { actorRole: input.actor.role } : {}),
@@ -408,6 +409,38 @@ export async function reinstateEvidence(q: Querier, input: HumanActionInput & { 
   });
 }
 
+export async function supersedeEvidence(
+  q: Querier,
+  input: HumanActionInput & { reason: string; supersedingFactId?: string },
+): Promise<void> {
+  const fact = await requireFact(q, input.factId);
+  const from = await getFactState(q, input.factId);
+  if (from === 'superseded') {
+    // Idempotent retry: already superseded
+    return;
+  }
+  await appendLedgerEntry(q, {
+    orgId: fact.org_id,
+    patientId: fact.patient_id,
+    evidenceFactId: input.factId,
+    action: 'fact_superseded',
+    fromState: from,
+    toState: 'superseded',
+    actor: input.actor,
+    reason: input.reason,
+    payload: { superseding_fact_id: input.supersedingFactId ?? null },
+  });
+  await appendAuditEvent(q, {
+    orgId: fact.org_id,
+    actor: toAuditActor(input.actor),
+    action: 'evidence.superseded',
+    entityKind: 'evidence_fact',
+    entityId: input.factId,
+    outcome: 'success',
+    metadata: { reason: input.reason, superseding_fact_id: input.supersedingFactId ?? null },
+  });
+}
+
 export interface CorrectEvidenceInput extends HumanActionInput {
   /** The new value. The original fact is never touched. */
   value: FactValue;
@@ -698,28 +731,44 @@ export async function resolveConflict(q: Querier, input: ResolveConflictInput): 
       `UPDATE conflict_member SET member_role = 'superseded' WHERE conflict_set_id = $1`,
       [input.conflictSetId],
     );
-    if (input.replacement && members[0]) {
+    if (input.replacement && members.length > 0) {
+      const baseMemberId =
+        input.winnerFactId && members.includes(input.winnerFactId) ? input.winnerFactId : members[0]!;
       const baseFact = await q.query<{ document_id: string; fact_type: FactType; observed_on: string | null }>(
         'SELECT document_id, fact_type, observed_on FROM evidence_fact WHERE id = $1',
-        [members[0]],
+        [baseMemberId],
       );
       const spans = await q.query<{ text_span_id: string }>(
         'SELECT text_span_id FROM evidence_span_link WHERE evidence_fact_id = $1 ORDER BY ordinal',
-        [members[0]],
+        [baseMemberId],
       );
       const bf = baseFact.rows[0]!;
       const inserted = await insertFact(q, {
-        orgId, patientId, factType: bf.fact_type, value: input.replacement.value,
+        orgId,
+        patientId,
+        factType: bf.fact_type,
+        value: input.replacement.value,
         verbatimQuote: input.replacement.verbatimQuote,
         spanIds: spans.rows.map((r) => r.text_span_id),
-        documentId: bf.document_id, extractorKind: 'human', extractorName: 'human.conflict_resolution',
-        extractorVersion: 'v1', confidenceRaw: null, observedOn: bf.observed_on,
-        createdBy: input.actor.userId, correctsFactId: members[0],
+        documentId: bf.document_id,
+        extractorKind: 'human',
+        extractorName: 'human.conflict_resolution',
+        extractorVersion: 'v1',
+        confidenceRaw: null,
+        observedOn: bf.observed_on,
+        createdBy: input.actor.userId,
+        correctsFactId: baseMemberId,
       });
       if (!inserted.ok) throw new LedgerGuardError('span_validation_failed', inserted.reason);
       await appendLedgerEntry(q, {
-        orgId, patientId, evidenceFactId: inserted.factId, action: 'fact_verified',
-        fromState: 'extracted', toState: 'verified', actor: input.actor, reason: null,
+        orgId,
+        patientId,
+        evidenceFactId: inserted.factId,
+        action: 'fact_verified',
+        fromState: 'extracted',
+        toState: 'verified',
+        actor: input.actor,
+        reason: null,
         payload: { origin: 'conflict_resolution', conflict_set_id: input.conflictSetId },
       });
     }

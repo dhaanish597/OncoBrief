@@ -40,6 +40,7 @@ const LEGAL: LegalCase[] = [
   { from: 'verified', action: 'fact_superseded', to: 'superseded', actor: 'human', reason: 'newer record' },
 
   { from: 'conflicting', action: 'conflict_resolved', to: 'verified', actor: 'human', reason: 'retain both', resolutionKind: 'retain_both' },
+  { from: 'conflicting', action: 'conflict_resolved', to: 'verified', actor: 'human', reason: 'this one wins', resolutionKind: 'mark_superseded' },
   { from: 'conflicting', action: 'conflict_resolved', to: 'superseded', actor: 'human', reason: 'this one loses', resolutionKind: 'mark_superseded' },
   { from: 'conflicting', action: 'conflict_resolved', to: 'corrected', actor: 'human', reason: 'both wrong', resolutionKind: 'corrected' },
   { from: 'conflicting', action: 'fact_superseded', to: 'superseded', actor: 'human', reason: 'superseded' },
@@ -53,6 +54,7 @@ describe('evidence state machine — legal transitions', () => {
       const actor = c.actor === 'system' ? SYSTEM : HUMAN;
       const result = transition({
         from: c.from,
+        to: c.to,
         action: c.action,
         ...actor,
         reason: c.reason,

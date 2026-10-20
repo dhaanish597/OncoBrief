@@ -102,7 +102,8 @@ export async function getTimeline(q: Querier, patientId: string): Promise<Timeli
     corrects_fact_id: string | null; replaced_by_fact_id: string | null; version: string;
   }>(
     `SELECT te.id, te.evidence_fact_id, te.fact_type, te.value_text,
-            te.display_date::text AS display_date, ef.observed_on::text AS observed_on, te.state,
+            te.display_date::text AS display_date, ef.observed_on::text AS observed_on,
+            coalesce(es.state, te.state, 'extracted') AS state,
             te.document_id, d.original_filename,
             ef.confidence_band, ef.extractor_kind, ef.extractor_name, ef.extractor_version,
             ef.verbatim_quote, ef.corrects_fact_id,

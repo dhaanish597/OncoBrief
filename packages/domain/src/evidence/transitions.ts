@@ -25,6 +25,7 @@ export type GuardError =
 
 export interface GuardInput {
   from: EvidenceStateValue | null;
+  to?: EvidenceStateValue;
   action: LedgerAction;
   actorKind: 'human' | 'system';
   actorRole?: Role;
@@ -83,7 +84,7 @@ const RULES: readonly Rule[] = [
     permission: 'evidence:correct',
   },
   { from: 'extracted', action: 'fact_flagged_conflicting', to: 'conflicting', actor: 'system', minReason: 0 },
-  { from: 'extracted', action: 'fact_superseded', to: 'superseded', actor: 'human', minReason: 3 },
+  { from: 'extracted', action: 'fact_superseded', to: 'superseded', actor: 'human', minReason: 3, permission: 'evidence:correct' },
 
   // verified — a later document may reopen a settled fact (staleness).
   { from: 'verified', action: 'fact_flagged_conflicting', to: 'conflicting', actor: 'system', minReason: 0 },
@@ -103,7 +104,7 @@ const RULES: readonly Rule[] = [
     minReason: 3,
     permission: 'evidence:reject',
   },
-  { from: 'verified', action: 'fact_superseded', to: 'superseded', actor: 'human', minReason: 3 },
+  { from: 'verified', action: 'fact_superseded', to: 'superseded', actor: 'human', minReason: 3, permission: 'evidence:correct' },
 
   // conflicting — human-only resolution. The system has no opinion.
   {
@@ -113,6 +114,15 @@ const RULES: readonly Rule[] = [
     actor: 'human',
     minReason: 3,
     resolutionKind: 'retain_both',
+    permission: 'conflict:resolve',
+  },
+  {
+    from: 'conflicting',
+    action: 'conflict_resolved',
+    to: 'verified',
+    actor: 'human',
+    minReason: 3,
+    resolutionKind: 'mark_superseded',
     permission: 'conflict:resolve',
   },
   {
@@ -133,7 +143,7 @@ const RULES: readonly Rule[] = [
     resolutionKind: 'corrected',
     permission: 'conflict:resolve',
   },
-  { from: 'conflicting', action: 'fact_superseded', to: 'superseded', actor: 'human', minReason: 3 },
+  { from: 'conflicting', action: 'fact_superseded', to: 'superseded', actor: 'human', minReason: 3, permission: 'conflict:resolve' },
 
   // rejected — undo a mistaken rejection.
   {
@@ -162,7 +172,7 @@ export function transition(input: GuardInput): GuardResult {
     };
   }
 
-  // conflict_resolved has three legal targets disambiguated by resolutionKind.
+  // conflict_resolved has legal targets disambiguated by resolutionKind (and optionally input.to).
   let rule: Rule | undefined;
   if (action === 'conflict_resolved') {
     if (!resolutionKind) {
@@ -172,7 +182,9 @@ export function transition(input: GuardInput): GuardResult {
         message: 'conflict_resolved requires a resolutionKind.',
       };
     }
-    rule = candidates.find((r) => r.resolutionKind === resolutionKind);
+    rule =
+      (input.to ? candidates.find((r) => r.resolutionKind === resolutionKind && r.to === input.to) : undefined) ??
+      candidates.find((r) => r.resolutionKind === resolutionKind);
     if (!rule) {
       return {
         ok: false,
@@ -181,7 +193,7 @@ export function transition(input: GuardInput): GuardResult {
       };
     }
   } else {
-    rule = candidates[0];
+    rule = (input.to ? candidates.find((r) => r.to === input.to) : undefined) ?? candidates[0];
     if (!rule) {
       return {
         ok: false,

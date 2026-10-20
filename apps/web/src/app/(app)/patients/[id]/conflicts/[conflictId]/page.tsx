@@ -132,10 +132,39 @@ export default async function ReconciliationRoom({
               title="Correct the structured event"
               description="Both existing extractions are superseded and a human-authored value replaces them. The original values are preserved for audit."
               action={
-                <OutcomeForm conflictId={conflict.id} patientId={id} resolutionKind="corrected" buttonLabel="correct both" testId="resolve-corrected">
-                  <p className="mono text-[11px] leading-relaxed text-[var(--color-ink-soft)]">
-                    No new value is typed here: correction of a single fact is done on the evidence
-                    row, where its provenance anchor is preserved.
+                <OutcomeForm
+                  conflictId={conflict.id}
+                  patientId={id}
+                  resolutionKind="corrected"
+                  buttonLabel="correct both"
+                  testId="resolve-corrected"
+                >
+                  <label className="mono block text-[11px] uppercase tracking-wider text-[var(--color-ink-soft)]">
+                    Base source for provenance anchor
+                  </label>
+                  <select
+                    name="winnerFactId"
+                    required
+                    className="mono mt-1 w-full border border-[var(--color-rule-strong)] bg-white px-2 py-1 text-xs"
+                  >
+                    {conflict.members.map((m, i) => (
+                      <option key={m.factId} value={m.factId}>
+                        source {String.fromCharCode(65 + i)} — {m.documentName} (p. {m.pageNumber})
+                      </option>
+                    ))}
+                  </select>
+                  <label className="mono mt-2 block text-[11px] uppercase tracking-wider text-[var(--color-ink-soft)]">
+                    Human-authored corrected value
+                  </label>
+                  <input
+                    name="valueText"
+                    required
+                    placeholder="Enter corrected value..."
+                    defaultValue={conflict.members[0]?.valueText ?? ''}
+                    className="mono mt-1 w-full border border-[var(--color-rule-strong)] bg-white px-2 py-1 text-xs"
+                  />
+                  <p className="mono mt-1 text-[11px] text-[var(--color-ink-soft)]">
+                    Both conflicting extractions are superseded; a human-authored verified fact replaces them.
                   </p>
                 </OutcomeForm>
               }

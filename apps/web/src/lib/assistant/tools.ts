@@ -97,9 +97,9 @@ export async function searchEvidence(
       .filter((r) => r.score > 0)
       .sort((a, b) => {
         if (b.score !== a.score) return b.score - a.score;
-        // Active verified/corrected/extracted evidence ranks ahead of rejected or superseded evidence
+        // Active verified/extracted evidence ranks ahead of conflicting and historical (superseded/corrected/rejected) evidence
         const stateRank = (s: string) =>
-          s === 'verified' ? 3 : s === 'corrected' || s === 'extracted' ? 2 : s === 'conflicting' ? 1 : 0;
+          s === 'verified' ? 3 : s === 'extracted' ? 2 : s === 'conflicting' ? 1 : 0;
         const rankDiff = stateRank(b.row.state) - stateRank(a.row.state);
         if (rankDiff !== 0) return rankDiff;
         // Within equal relevance, prefer the most recent recording.

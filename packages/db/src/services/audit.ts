@@ -33,6 +33,7 @@ export const AUDIT_ACTIONS = [
   'evidence.corrected',
   'evidence.rejected',
   'evidence.reinstated',
+  'evidence.superseded',
   'conflict.detected',
   'conflict.resolved',
   'task.created',

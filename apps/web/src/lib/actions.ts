@@ -32,6 +32,7 @@ import {
   reinstateEvidence,
   resolveConflict,
   submitPacket,
+  supersedeEvidence,
   verifyEvidence,
   waiveGap,
   withdrawPacket,
@@ -80,36 +81,84 @@ export async function verifyEvidenceAction(fd: FormData): Promise<void> {
 
 export async function correctEvidenceAction(fd: FormData): Promise<void> {
   const factId = str(fd, 'factId');
+  const patientId = str(fd, 'patientId');
   const reason = str(fd, 'reason');
   const valueText = str(fd, 'valueText');
   const verbatimQuote = str(fd, 'verbatimQuote');
+
+  if (!reason || reason.trim().length < 3) {
+    throw new Error('reason_required');
+  }
+  if (!valueText || valueText.trim().length === 0) {
+    throw new Error('value_required');
+  }
+
   await withSession(async (q, s) => {
     requirePermission(s.role, 'evidence:correct');
-    const existing = await q.query<{ fact_type: string; value_json: unknown }>(
-      'SELECT fact_type, value_json FROM evidence_fact WHERE id = $1',
+    const existing = await q.query<{ fact_type: string; value_json: unknown; org_id: string; patient_id: string }>(
+      'SELECT fact_type, value_json, org_id, patient_id FROM evidence_fact WHERE id = $1',
       [factId],
     );
     const row = existing.rows[0];
-    if (!row) throw new Error('fact_not_found');
+    if (!row || row.org_id !== s.orgId || row.patient_id !== patientId) {
+      throw new Error('fact_not_found');
+    }
     const prior = row.value_json as { kind: string };
-    const kind = prior.kind as 'text' | 'date' | 'facility' | 'cycle' | 'identifier';
+    const kind = prior?.kind as 'text' | 'date' | 'facility' | 'cycle' | 'identifier';
     let value: unknown;
-    if (kind === 'date') value = { kind, date: valueText };
-    else if (kind === 'facility') value = { kind, name: valueText };
-    else if (kind === 'cycle') value = { kind, label: valueText };
+    if (kind === 'date') value = { kind, date: valueText.trim() };
+    else if (kind === 'facility') value = { kind, name: valueText.trim() };
+    else if (kind === 'cycle') value = { kind, label: valueText.trim() };
     else if (kind === 'identifier') {
-      value = { ...(prior as object), value: valueText };
-    } else value = { kind: 'text', text: valueText };
+      value = { ...(prior as object), value: valueText.trim() };
+    } else value = { kind: 'text', text: valueText.trim() };
 
     await correctEvidence(q, {
       factId,
       actor: { kind: 'human', userId: s.userId, role: s.role },
       value: value as never,
       verbatimQuote,
-      reason,
+      reason: reason.trim(),
     });
+    await computeAndPersistReadiness(q, { orgId: s.orgId, patientId, computedBy: s.userId });
   });
   revalidatePath(patientPath(fd, 'evidence'));
+  revalidatePath(patientPath(fd, 'conflicts'));
+  revalidatePath(patientPath(fd, 'record-map'));
+}
+
+export async function supersedeEvidenceAction(fd: FormData): Promise<void> {
+  const factId = str(fd, 'factId');
+  const patientId = str(fd, 'patientId');
+  const reason = str(fd, 'reason');
+  const supersedingFactId = optionalStr(fd, 'supersedingFactId');
+
+  if (!reason || reason.trim().length < 3) {
+    throw new Error('reason_required');
+  }
+
+  await withSession(async (q, s) => {
+    requirePermission(s.role, 'evidence:correct');
+    const existing = await q.query<{ org_id: string; patient_id: string }>(
+      'SELECT org_id, patient_id FROM evidence_fact WHERE id = $1',
+      [factId],
+    );
+    const row = existing.rows[0];
+    if (!row || row.org_id !== s.orgId || row.patient_id !== patientId) {
+      throw new Error('fact_not_found');
+    }
+
+    await supersedeEvidence(q, {
+      factId,
+      reason: reason.trim(),
+      actor: { kind: 'human', userId: s.userId, role: s.role },
+      ...(supersedingFactId ? { supersedingFactId } : {}),
+    });
+    await computeAndPersistReadiness(q, { orgId: s.orgId, patientId, computedBy: s.userId });
+  });
+  revalidatePath(patientPath(fd, 'evidence'));
+  revalidatePath(patientPath(fd, 'conflicts'));
+  revalidatePath(patientPath(fd, 'record-map'));
 }
 
 export async function rejectEvidenceAction(fd: FormData): Promise<void> {
@@ -143,18 +192,71 @@ export async function resolveConflictAction(fd: FormData): Promise<void> {
   if (!['retain_both', 'mark_superseded', 'corrected'].includes(resolutionKind)) {
     throw new Error('unknown_resolution_kind');
   }
+  if (!reason || reason.trim().length < 3) {
+    throw new Error('reason_required');
+  }
+  if (resolutionKind === 'mark_superseded' && !winnerFactId) {
+    throw new Error('winner_required');
+  }
+
   await withSession(async (q, s) => {
     requirePermission(s.role, 'conflict:resolve');
+
+    let replacement: { value: never; verbatimQuote: string } | undefined;
+    if (resolutionKind === 'corrected') {
+      const valueText = optionalStr(fd, 'valueText');
+      if (!valueText || valueText.trim().length === 0) {
+        throw new Error('value_required');
+      }
+      const baseId = winnerFactId;
+      const baseRow = baseId
+        ? await q.query<{ fact_type: string; value_json: unknown; verbatim_quote: string; org_id: string; patient_id: string }>(
+            'SELECT fact_type, value_json, verbatim_quote, org_id, patient_id FROM evidence_fact WHERE id = $1',
+            [baseId],
+          )
+        : await q.query<{ fact_type: string; value_json: unknown; verbatim_quote: string; org_id: string; patient_id: string }>(
+            `SELECT ef.fact_type, ef.value_json, ef.verbatim_quote, ef.org_id, ef.patient_id
+               FROM conflict_member cm
+               JOIN evidence_fact ef ON ef.id = cm.evidence_fact_id
+              WHERE cm.conflict_set_id = $1
+              ORDER BY ef.created_at LIMIT 1`,
+            [conflictId],
+          );
+      const row = baseRow.rows[0];
+      if (!row || row.org_id !== s.orgId || row.patient_id !== patientId) {
+        throw new Error('base_fact_not_found');
+      }
+      const prior = row.value_json as { kind: string };
+      const kind = prior?.kind as 'text' | 'date' | 'facility' | 'cycle' | 'identifier';
+      let value: unknown;
+      if (kind === 'date') value = { kind, date: valueText.trim() };
+      else if (kind === 'facility') value = { kind, name: valueText.trim() };
+      else if (kind === 'cycle') value = { kind, label: valueText.trim() };
+      else if (kind === 'identifier') value = { ...(prior as object), value: valueText.trim() };
+      else value = { kind: 'text', text: valueText.trim() };
+
+      replacement = {
+        value: value as never,
+        verbatimQuote: row.verbatim_quote,
+      };
+    }
+
     await resolveConflict(q, {
       conflictSetId: conflictId,
       resolutionKind,
-      reason,
+      reason: reason.trim(),
       actor: { kind: 'human', userId: s.userId, role: s.role },
       ...(winnerFactId ? { winnerFactId } : {}),
+      ...(replacement ? { replacement } : {}),
     });
+
+    await computeAndPersistReadiness(q, { orgId: s.orgId, patientId, computedBy: s.userId });
   });
+
   revalidatePath(`/patients/${patientId}/conflicts`);
   revalidatePath(`/patients/${patientId}/conflicts/${conflictId}`);
+  revalidatePath(`/patients/${patientId}/evidence`);
+  revalidatePath(`/patients/${patientId}/record-map`);
   redirect(`/patients/${patientId}/conflicts`);
 }
 
@@ -283,7 +385,9 @@ export async function uploadDocumentAction(fd: FormData): Promise<void> {
   const file = fd.get('file');
   await withSession(async (q, s) => {
     requirePermission(s.role, 'document:upload');
+    const MAX_UPLOAD_SIZE = 20 * 1024 * 1024; // 20 MB
     if (!(file instanceof File) || file.size === 0) throw new Error('no_file');
+    if (file.size > MAX_UPLOAD_SIZE) throw new Error('file_too_large');
     const bytes = Buffer.from(await file.arrayBuffer());
     const { createDocument, ingestDocument } = await import('@oncobrief/db');
     const { documentId } = await createDocument(q, getStorage(), {

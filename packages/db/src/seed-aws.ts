@@ -5,6 +5,7 @@ import { getStorage } from './container';
 import { getMigratorPool } from './client';
 import { env } from './env';
 import { reserveDocumentForUpload, storageKeyFor } from './services/documents';
+import { assignChecklist, computeAndPersistReadiness } from './services/twin';
 
 /**
  * AWS-pipeline demo seeder (Phase 24).
@@ -172,10 +173,42 @@ export async function seedAws(log: (m: string) => void = () => {}): Promise<AwsS
       ).rows[0]!.id;
     resolvedPatientId = patientId;
 
+    // Assign checklist template and assess initial readiness if not yet assigned
+    const tplRes = await client.query<{ id: string }>(
+      'SELECT id FROM checklist_template WHERE org_id = $1 ORDER BY created_at LIMIT 1',
+      [org.id],
+    );
+    const tpl = tplRes.rows[0]?.id;
+    if (tpl) {
+      const hasChecklist = (
+        await client.query<{ id: string }>(
+          'SELECT id FROM patient_checklist WHERE patient_id = $1',
+          [patientId],
+        )
+      ).rows[0];
+      if (!hasChecklist) {
+        await assignChecklist(client, { orgId: org.id, patientId, templateId: tpl, userId: uploader });
+        log(`assigned checklist template to DEMO-AWS-001 (${tpl})`);
+      }
+      await computeAndPersistReadiness(client, { orgId: org.id, patientId, computedBy: uploader });
+    }
+
     // Reserve every document first so the duplicate shares no bytes with a
     // distinct document id.
     const byName = new Map<string, string>();
     for (const doc of DOCS) {
+      const existingDoc = (
+        await client.query<{ id: string }>(
+          'SELECT id FROM document WHERE patient_id = $1 AND original_filename = $2',
+          [patientId, doc.filename],
+        )
+      ).rows[0];
+      if (existingDoc) {
+        log(`document ${doc.filename} already seeded (${existingDoc.id})`);
+        documentIds.push(existingDoc.id);
+        continue;
+      }
+
       const documentId = randomUUID();
       const key = storageKeyFor(org.id, patientId, documentId, '.txt');
       const correlationId = `up:${documentId}`;

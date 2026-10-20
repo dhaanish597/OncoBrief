@@ -12,6 +12,7 @@ import {
   correctEvidenceAction,
   rejectEvidenceAction,
   reinstateEvidenceAction,
+  supersedeEvidenceAction,
   verifyEvidenceAction,
 } from '@/lib/actions';
 
@@ -150,19 +151,28 @@ export function EvidenceRow({ row }: { row: EvidenceRowData }) {
                 verify
               </button>
             </form>
-            <RejectForm row={row} />
             <CorrectForm row={row} />
+            <SupersedeForm row={row} />
+            <RejectForm row={row} />
           </>
         ) : null}
 
         {row.state === 'verified' ? (
-          <span className="mono text-[11px] text-[var(--color-ink-soft)]">confirmed against source</span>
+          <>
+            <span className="mono text-[11px] text-[var(--color-ink-soft)]">confirmed against source</span>
+            <CorrectForm row={row} />
+            <SupersedeForm row={row} />
+            <RejectForm row={row} />
+          </>
         ) : null}
 
         {row.state === 'conflicting' ? (
-          <span className="mono text-[11px] text-[var(--color-state-conflicting)]">
-            open the reconciliation room
-          </span>
+          <Link
+            href={`/patients/${row.patientId}/conflicts`}
+            className="mono border border-[var(--color-state-conflicting)] bg-[#fff5f5] px-2 py-1 text-[11px] text-[var(--color-state-conflicting)] hover:underline"
+          >
+            open the reconciliation room →
+          </Link>
         ) : null}
 
         {row.state === 'rejected' ? (
@@ -265,6 +275,44 @@ function CorrectForm({ row }: { row: EvidenceRowData }) {
           className="mono mt-2 w-full border border-[var(--color-state-corrected)] px-2.5 py-1 text-[11px] uppercase tracking-wider"
         >
           record correction
+        </button>
+      </form>
+    </details>
+  );
+}
+
+function SupersedeForm({ row }: { row: EvidenceRowData }) {
+  return (
+    <details className="relative">
+      <summary className="mono cursor-pointer list-none border border-[var(--color-rule-strong)] px-2.5 py-1 text-[11px] uppercase tracking-wider text-[var(--color-ink-soft)] hover:text-[var(--color-ink)]">
+        supersede
+      </summary>
+      <form
+        action={supersedeEvidenceAction}
+        className="absolute right-0 z-40 mt-1 w-80 border border-[var(--color-rule-strong)] bg-[var(--color-paper-raised)] p-3 shadow-[6px_6px_0_rgba(27,26,23,0.08)]"
+      >
+        <input type="hidden" name="factId" value={row.evidenceFactId} />
+        <input type="hidden" name="patientId" value={row.patientId} />
+        <p className="mono text-[11px] text-[var(--color-ink-soft)]">
+          Mark this fact as superseded by newer or replacement evidence. It is retained for audit and will no longer be treated as an active fact.
+        </p>
+        <label className="mono mt-2 block text-[11px] uppercase tracking-wider text-[var(--color-ink-soft)]">
+          Reason (required)
+        </label>
+        <textarea
+          name="reason"
+          required
+          minLength={3}
+          rows={2}
+          placeholder="e.g. Superseded by newer repeat biopsy..."
+          className="mt-1 w-full border border-[var(--color-rule-strong)] bg-white px-2 py-1 text-xs"
+        />
+        <button
+          type="submit"
+          data-testid="supersede-evidence"
+          className="mono mt-2 w-full border border-[var(--color-ink)] px-2.5 py-1 text-[11px] uppercase tracking-wider hover:bg-[var(--color-accent-soft)]"
+        >
+          mark superseded
         </button>
       </form>
     </details>
