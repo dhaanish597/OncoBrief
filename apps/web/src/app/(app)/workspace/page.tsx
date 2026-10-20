@@ -1,6 +1,8 @@
 import Link from 'next/link';
+import { forbidden } from 'next/navigation';
+import { can } from '@oncobrief/domain';
 import { listPatients } from '@oncobrief/db';
-import { withSession } from '@/lib/session';
+import { requireSession, withSession } from '@/lib/session';
 import { ReadinessBand } from '@/components/evidence';
 
 /**
@@ -9,6 +11,11 @@ import { ReadinessBand } from '@/components/evidence';
  * by record readiness, and each row states what is outstanding.
  */
 export default async function WorkspacePage() {
+  const session = await requireSession();
+  if (!can(session.role, 'patient:read')) {
+    forbidden();
+  }
+
   const patients = await withSession(async (q) => listPatients(q));
 
   return (

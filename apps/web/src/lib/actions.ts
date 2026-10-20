@@ -3,7 +3,16 @@
 import 'server-only';
 import { revalidatePath } from 'next/cache';
 import { redirect } from 'next/navigation';
-import { can, isDocumentType, isTaskKind, type Permission, type Role, type TaskStatus } from '@oncobrief/domain';
+import {
+  can,
+  isDocumentType,
+  isTaskKind,
+  isTaskOriginKind,
+  isTaskStatus,
+  type Permission,
+  type Role,
+  type TaskStatus,
+} from '@oncobrief/domain';
 import {
   approveMessage,
   approvePacket,
@@ -154,6 +163,7 @@ export async function resolveConflictAction(fd: FormData): Promise<void> {
 export async function createTaskAction(fd: FormData): Promise<void> {
   const patientId = str(fd, 'patientId');
   const originKind = str(fd, 'originKind');
+  if (!isTaskOriginKind(originKind)) throw new Error('unknown_origin_kind');
   const taskKind = str(fd, 'taskKind');
   if (!isTaskKind(taskKind)) throw new Error('unknown_task_kind');
   const originId = str(fd, 'originId');
@@ -198,13 +208,21 @@ export async function assignTaskAction(fd: FormData): Promise<void> {
 
 export async function taskStatusAction(fd: FormData): Promise<void> {
   const patientId = str(fd, 'patientId');
+  const taskId = str(fd, 'taskId');
+  const toStatusRaw = str(fd, 'toStatus');
+  if (!isTaskStatus(toStatusRaw)) {
+    throw new Error('invalid_task_status');
+  }
+  const toStatus: TaskStatus = toStatusRaw;
+  const note = optionalStr(fd, 'note');
+
   await withSession(async (q, s) => {
     requirePermission(s.role, 'task:create');
     await changeTaskStatus(q, {
-      taskId: str(fd, 'taskId'),
-      toStatus: str(fd, 'toStatus') as TaskStatus,
+      taskId,
+      toStatus,
       actorId: s.userId,
-      ...(optionalStr(fd, 'note') ? { note: str(fd, 'note') } : {}),
+      ...(note ? { note } : {}),
     });
   });
   revalidatePath(`/patients/${patientId}/tasks`);
@@ -212,8 +230,15 @@ export async function taskStatusAction(fd: FormData): Promise<void> {
 
 export async function commentTaskAction(fd: FormData): Promise<void> {
   const patientId = str(fd, 'patientId');
+  const taskId = str(fd, 'taskId');
+  const note = str(fd, 'note').trim();
+  if (!note) {
+    throw new Error('empty_note');
+  }
+
   await withSession(async (q, s) => {
-    await commentTask(q, { taskId: str(fd, 'taskId'), actorId: s.userId, note: str(fd, 'note') });
+    requirePermission(s.role, 'task:create');
+    await commentTask(q, { taskId, actorId: s.userId, note });
   });
   revalidatePath(`/patients/${patientId}/tasks`);
 }
@@ -232,6 +257,7 @@ export async function waiveGapAction(fd: FormData): Promise<void> {
 export async function refreshReadinessAction(fd: FormData): Promise<void> {
   const patientId = str(fd, 'patientId');
   await withSession(async (q, s) => {
+    requirePermission(s.role, 'checklist:author');
     await computeAndPersistReadiness(q, { orgId: s.orgId, patientId, computedBy: s.userId });
   });
   revalidatePath(`/patients/${patientId}`);

@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server';
+import { can } from '@oncobrief/domain';
 import { appendAuditEvent, getPageSpans, getDocument } from '@oncobrief/db';
 import { getSession, tenantCtx } from '@/lib/session';
 import { withTenant } from '@oncobrief/db';
@@ -29,6 +30,9 @@ async function handle(
 ) {
   const session = await getSession();
   if (!session) return NextResponse.json({ error: { code: 'unauthorized' } }, { status: 401 });
+  if (!can(session.role, 'document:read_page')) {
+    return NextResponse.json({ error: { code: 'forbidden' } }, { status: 403 });
+  }
 
   const { id, documentId, pageNumber } = await paramsPromise;
   const page = Number(pageNumber);

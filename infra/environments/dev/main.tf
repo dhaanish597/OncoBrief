@@ -167,6 +167,9 @@ module "web" {
 
   image_tag = var.web_image_tag
 
+  origin_certificate_arn = var.origin_certificate_arn
+  custom_origin_domain   = var.custom_origin_domain
+
   environment = {
     NODE_ENV                    = "production"
     PORT                        = "3000"

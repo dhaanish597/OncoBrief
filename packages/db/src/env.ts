@@ -40,6 +40,12 @@ export const env = {
   get migratorUrl(): string {
     return required('DATABASE_MIGRATOR_URL', 'postgres://postgres:postgres@localhost:5432/oncobrief');
   },
+  get databaseSslCa(): string | undefined {
+    return process.env.DATABASE_SSL_CA;
+  },
+  get databaseSslCaPath(): string | undefined {
+    return process.env.DATABASE_SSL_CA_PATH;
+  },
   get sessionSecret(): string {
     return required('SESSION_COOKIE_SECRET', 'dev-only-insecure-secret-replace-me');
   },

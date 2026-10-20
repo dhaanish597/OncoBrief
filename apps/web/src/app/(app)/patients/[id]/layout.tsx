@@ -1,6 +1,7 @@
-import { notFound } from 'next/navigation';
+import { forbidden, notFound } from 'next/navigation';
+import { can } from '@oncobrief/domain';
 import { getPatient, listConflicts, listRecordMap, listTasks } from '@oncobrief/db';
-import { withSession } from '@/lib/session';
+import { requireSession, withSession } from '@/lib/session';
 import { DemoBadge, ReadinessBand } from '@/components/evidence';
 import { PatientTabs } from '@/components/PatientTabs';
 import { refreshReadinessAction } from '@/lib/actions';
@@ -13,6 +14,11 @@ export default async function PatientLayout({
   params: Promise<{ id: string }>;
 }) {
   const { id } = await params;
+
+  const session = await requireSession();
+  if (!can(session.role, 'patient:read')) {
+    forbidden();
+  }
 
   const data = await withSession(async (q) => {
     const patient = await getPatient(q, id);
@@ -49,15 +55,17 @@ export default async function PatientLayout({
 
         <div className="flex items-center gap-3">
           <ReadinessBand band={recordMap.readiness?.band ?? null} />
-          <form action={refreshReadinessAction}>
-            <input type="hidden" name="patientId" value={patient.id} />
-            <button
-              type="submit"
-              className="mono border border-[var(--color-rule-strong)] px-3 py-1.5 text-[11px] uppercase tracking-wider hover:bg-[var(--color-accent-soft)]"
-            >
-              recompute
-            </button>
-          </form>
+          {can(session.role, 'checklist:author') ? (
+            <form action={refreshReadinessAction}>
+              <input type="hidden" name="patientId" value={patient.id} />
+              <button
+                type="submit"
+                className="mono border border-[var(--color-rule-strong)] px-3 py-1.5 text-[11px] uppercase tracking-wider hover:bg-[var(--color-accent-soft)]"
+              >
+                recompute
+              </button>
+            </form>
+          ) : null}
         </div>
       </div>
 

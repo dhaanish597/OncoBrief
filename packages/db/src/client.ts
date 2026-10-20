@@ -1,6 +1,8 @@
+import { existsSync, readFileSync } from 'node:fs';
+import { resolve } from 'node:path';
 import { Pool, type PoolClient, type QueryResult, type QueryResultRow } from 'pg';
 import type { Role } from '@oncobrief/domain';
-import { env } from './env';
+import { env, repoRootPath } from './env';
 
 /**
  * Tenant-scoped database access.
@@ -15,42 +17,174 @@ import { env } from './env';
 let appPool: Pool | null = null;
 let migratorPool: Pool | null = null;
 
+export interface SslOptions {
+  rejectUnauthorized: boolean;
+  ca: string;
+  servername?: string;
+}
+
+export interface ResolvedPoolOptions {
+  connectionString: string;
+  ssl?: SslOptions;
+}
+
+function getBundledRdsCaPath(): string | null {
+  const candidate1 = resolve(repoRootPath, 'packages/db/certs/rds-global-bundle.pem');
+  if (existsSync(candidate1)) return candidate1;
+  const candidate2 = resolve(process.cwd(), 'packages/db/certs/rds-global-bundle.pem');
+  if (existsSync(candidate2)) return candidate2;
+  return null;
+}
+
+export function resolveTrustedCa(
+  caOverride?: string | null,
+  caPathOverride?: string,
+  allowBundledFallback = true,
+): string | null {
+  if (caOverride !== undefined) {
+    if (caOverride === null || caOverride.trim().length === 0) return null;
+    const val = caOverride.trim();
+    if (val.includes('-----BEGIN CERTIFICATE-----')) return val;
+    try {
+      const decoded = Buffer.from(val, 'base64').toString('utf8');
+      if (decoded.includes('-----BEGIN CERTIFICATE-----')) return decoded;
+    } catch {
+      /* not base64 */
+    }
+    return val;
+  }
+
+  const envCa = process.env.DATABASE_SSL_CA;
+  if (envCa && envCa.trim().length > 0) {
+    const val = envCa.trim();
+    if (val.includes('-----BEGIN CERTIFICATE-----')) return val;
+    try {
+      const decoded = Buffer.from(val, 'base64').toString('utf8');
+      if (decoded.includes('-----BEGIN CERTIFICATE-----')) return decoded;
+    } catch {
+      /* not base64 */
+    }
+    return val;
+  }
+
+  if (caPathOverride) {
+    if (existsSync(caPathOverride)) {
+      return readFileSync(caPathOverride, 'utf8');
+    }
+    return null; // Explicit path was provided but does not exist: fail closed!
+  }
+
+  const envCaPath = process.env.DATABASE_SSL_CA_PATH;
+  if (envCaPath) {
+    if (existsSync(envCaPath)) {
+      return readFileSync(envCaPath, 'utf8');
+    }
+    return null; // Explicit env path was provided but does not exist: fail closed!
+  }
+
+  if (allowBundledFallback) {
+    const bundledPath = getBundledRdsCaPath();
+    if (bundledPath) {
+      return readFileSync(bundledPath, 'utf8');
+    }
+  }
+
+  return null;
+}
+
 /**
- * Build pool options from a connection string.
+ * Build pool options from a connection string with verified TLS.
  *
- * pg 8 treats `sslmode=require` as `verify-full`, which fails against an RDS
- * instance whose CA is not in Node's trust store ("self-signed certificate in
- * certificate chain"). For a remote host we therefore enable TLS with
- * `rejectUnauthorized: false` — the connection is still encrypted, but the
- * server certificate is not verified. Bundling the RDS global CA bundle is the
- * production hardening step (docs/security.md). Local development has no
- * `sslmode` and is unaffected.
+ * For remote/production PostgreSQL instances (e.g. AWS RDS), SSL certificate
+ * verification is enforced with `rejectUnauthorized: true`, the trusted CA
+ * bundle, and hostname matching (`verify-full` equivalent). Connections fail
+ * closed if SSL is requested but no CA is available. Local development without
+ * `sslmode` connects via plain TCP.
  */
-function poolOptions(connectionString: string): { connectionString: string; ssl?: { rejectUnauthorized: boolean } } {
+export function resolvePoolOptions(
+  connectionString: string,
+  overrides?: {
+    ca?: string | null;
+    caPath?: string;
+    requireSsl?: boolean;
+    allowBundledFallback?: boolean;
+  },
+): ResolvedPoolOptions {
   try {
     const parsed = new URL(connectionString);
     const sslmode = parsed.searchParams.get('sslmode');
-    if (sslmode && sslmode !== 'disable') {
+    const sslParam = parsed.searchParams.get('ssl');
+    const isExplicitDisable = sslmode === 'disable' || sslParam === 'false' || sslParam === '0';
+
+    if (isExplicitDisable) {
       parsed.searchParams.delete('sslmode');
+      parsed.searchParams.delete('ssl');
       parsed.searchParams.delete('uselibpqcompat');
-      return { connectionString: parsed.toString(), ssl: { rejectUnauthorized: false } };
+      return { connectionString: parsed.toString() };
     }
-  } catch {
-    /* not a URL; fall through to the raw string */
+
+    const sslRequested =
+      Boolean(sslmode && sslmode !== 'disable') ||
+      sslParam === 'true' ||
+      sslParam === '1' ||
+      overrides?.requireSsl === true ||
+      process.env.DATABASE_SSL === 'true';
+
+    if (!sslRequested) {
+      return { connectionString };
+    }
+
+    const ca = resolveTrustedCa(overrides?.ca, overrides?.caPath, overrides?.allowBundledFallback);
+    if (!ca) {
+      throw new Error(
+        `Database TLS verification failed: SSL is required (${sslmode ?? 'require'}) but no trusted CA certificate was provided. Set DATABASE_SSL_CA or DATABASE_SSL_CA_PATH, or ensure the RDS CA bundle is installed.`,
+      );
+    }
+
+    parsed.searchParams.delete('sslmode');
+    parsed.searchParams.delete('ssl');
+    parsed.searchParams.delete('uselibpqcompat');
+
+    const ssl: SslOptions = {
+      rejectUnauthorized: true,
+      ca,
+      ...(parsed.hostname ? { servername: parsed.hostname } : {}),
+    };
+
+    return {
+      connectionString: parsed.toString(),
+      ssl,
+    };
+  } catch (err) {
+    if (err instanceof TypeError && err.message.includes('Invalid URL')) {
+      if (overrides?.requireSsl || process.env.DATABASE_SSL === 'true') {
+        const ca = resolveTrustedCa(overrides?.ca, overrides?.caPath);
+        if (!ca) {
+          throw new Error(
+            'Database TLS verification failed: SSL is required but no trusted CA certificate was provided.',
+          );
+        }
+        return {
+          connectionString,
+          ssl: { rejectUnauthorized: true, ca },
+        };
+      }
+      return { connectionString };
+    }
+    throw err;
   }
-  return { connectionString };
 }
 
 export function getAppPool(): Pool {
   if (!appPool) {
-    appPool = new Pool({ ...poolOptions(env.databaseUrl), max: 10 });
+    appPool = new Pool({ ...resolvePoolOptions(env.databaseUrl), max: 10 });
   }
   return appPool;
 }
 
 export function getMigratorPool(): Pool {
   if (!migratorPool) {
-    migratorPool = new Pool({ ...poolOptions(env.migratorUrl), max: 3 });
+    migratorPool = new Pool({ ...resolvePoolOptions(env.migratorUrl), max: 3 });
   }
   return migratorPool;
 }

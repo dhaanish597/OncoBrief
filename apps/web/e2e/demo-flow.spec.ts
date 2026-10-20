@@ -11,12 +11,16 @@ import { expect, test, type Page } from '@playwright/test';
 
 const CLINICIAN = { email: 'dr.rao@rci.demo', password: 'oncobrief-demo' };
 
-async function login(page: Page): Promise<void> {
+async function loginAs(page: Page, email: string, password = CLINICIAN.password): Promise<void> {
   await page.goto('/login');
-  await page.getByLabel('Email').fill(CLINICIAN.email);
-  await page.getByLabel('Password').fill(CLINICIAN.password);
+  await page.getByLabel('Email').fill(email);
+  await page.getByLabel('Password').fill(password);
   await page.getByRole('button', { name: 'Open the workspace' }).click();
   await expect(page).toHaveURL(/\/workspace/);
+}
+
+async function login(page: Page): Promise<void> {
+  await loginAs(page, CLINICIAN.email, CLINICIAN.password);
 }
 
 async function openPatient(page: Page, code: string): Promise<void> {
@@ -116,8 +120,8 @@ test.describe('OncoBrief — evidence-first demo flow', () => {
     }
   });
 
-  test('11 the audit trail verifies its hash chain', async ({ page }) => {
-    await login(page);
+  test('11 the audit trail verifies its hash chain as auditor', async ({ page }) => {
+    await loginAs(page, 'auditor.k@rci.demo');
     await openPatient(page, 'DEMO-001');
     await page.getByTestId('tab-audit').click();
 
@@ -127,13 +131,15 @@ test.describe('OncoBrief — evidence-first demo flow', () => {
     await expect(page.getByText(/evidence.verified|conflict.resolved|document.page_viewed/).first()).toBeVisible();
   });
 
-  test('rbac: a coordinator sees no approve control', async ({ page }) => {
-    await page.goto('/login');
-    await page.getByLabel('Email').fill('coord.anita@rci.demo');
-    await page.getByLabel('Password').fill(CLINICIAN.password);
-    await page.getByRole('button', { name: 'Open the workspace' }).click();
-    await expect(page).toHaveURL(/\/workspace/);
+  test('rbac: clinician cannot view the audit trail', async ({ page }) => {
+    await login(page);
+    await openPatient(page, 'DEMO-001');
+    const response = await page.goto(page.url().replace(/\/evidence$/, '/audit'));
+    expect([403, 404]).toContain(response?.status() ?? 0);
+  });
 
+  test('rbac: a coordinator sees no approve control', async ({ page }) => {
+    await loginAs(page, 'coord.anita@rci.demo');
     await openPatient(page, 'DEMO-003');
     await page.getByTestId('tab-packet').click();
     await expect(page.getByTestId('approve-packet')).toHaveCount(0);

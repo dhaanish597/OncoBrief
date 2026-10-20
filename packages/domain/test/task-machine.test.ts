@@ -1,9 +1,33 @@
 import { describe, expect, it } from 'vitest';
-import { transitionTask, taskStatusesFrom, type TaskStatus } from '../src/index';
+import {
+  transitionTask,
+  taskStatusesFrom,
+  isTaskStatus,
+  isTaskOriginKind,
+  TASK_STATUSES,
+  TASK_ORIGIN_KINDS,
+  type TaskStatus,
+} from '../src/index';
 
 const ALL: TaskStatus[] = ['open', 'assigned', 'in_progress', 'blocked', 'done', 'cancelled'];
 
 describe('task status machine', () => {
+  it('validates task status type guards', () => {
+    for (const status of TASK_STATUSES) {
+      expect(isTaskStatus(status)).toBe(true);
+    }
+    expect(isTaskStatus('unknown')).toBe(false);
+    expect(isTaskStatus('')).toBe(false);
+    expect(isTaskStatus('destroyed')).toBe(false);
+  });
+
+  it('validates task origin kind type guards', () => {
+    for (const origin of TASK_ORIGIN_KINDS) {
+      expect(isTaskOriginKind(origin)).toBe(true);
+    }
+    expect(isTaskOriginKind('random')).toBe(false);
+    expect(isTaskOriginKind('')).toBe(false);
+  });
   it('allows the documented transitions', () => {
     const legal: [TaskStatus, TaskStatus][] = [
       ['open', 'assigned'],

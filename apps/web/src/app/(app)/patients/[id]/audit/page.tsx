@@ -1,5 +1,8 @@
-import { listPatientAudit, verifyLedgerChain } from '@oncobrief/db';
-import { withSession } from '@/lib/session';
+import React from 'react';
+import { forbidden, notFound } from 'next/navigation';
+import { can } from '@oncobrief/domain';
+import { getPatient, listPatientAudit, verifyLedgerChain } from '@oncobrief/db';
+import { requireSession, withSession } from '@/lib/session';
 import { EmptyFinding, SectionHeading } from '@/components/evidence';
 
 /**
@@ -12,7 +15,15 @@ import { EmptyFinding, SectionHeading } from '@/components/evidence';
 export default async function AuditPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
 
+  const session = await requireSession();
+  if (!can(session.role, 'audit:read')) {
+    forbidden();
+  }
+
   const data = await withSession(async (q, s) => {
+    const patient = await getPatient(q, id);
+    if (!patient) notFound();
+
     const [events, chain] = await Promise.all([
       listPatientAudit(q, id),
       verifyLedgerChain(q, s.orgId),

@@ -105,3 +105,15 @@ variable "web_image_tag" {
   default     = "latest"
   description = "ECR image tag deployed to the web tier. Bump to force a new task definition revision."
 }
+
+variable "origin_certificate_arn" {
+  type        = string
+  default     = ""
+  description = "ACM certificate ARN for origin HTTPS listener. Required for end-to-end CloudFront-to-ALB TLS."
+}
+
+variable "custom_origin_domain" {
+  type        = string
+  default     = ""
+  description = "Custom DNS name pointing to the ALB. Required because AWS ALB DNS (*.elb.amazonaws.com) cannot be issued ACM certificates."
+}

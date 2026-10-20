@@ -63,6 +63,33 @@ mutating permission; `org_admin` cannot verify, correct or approve.
   Other AWS APIs use the NAT gateway by default (an interface-endpoint
   alternative is cheaper and documented in the module).
 
+## Transport security
+
+- **PostgreSQL TLS:** Database connections in remote environments enforce full
+  certificate verification (`verify-full` equivalent: `rejectUnauthorized: true`,
+  trusted CA bundle, and SNI hostname verification). Amazon RDS connections verify
+  against the bundled RDS global CA certificate bundle (`packages/db/certs/rds-global-bundle.pem`).
+  Custom CA certificates may be configured via `DATABASE_SSL_CA` or `DATABASE_SSL_CA_PATH`.
+  The unconditional bypass (`rejectUnauthorized: false`) is removed; connections fail
+  closed if SSL is requested but no trusted CA is available.
+- **Edge to CloudFront:** Enforced HTTPS with `redirect-to-https` using the
+  AWS-managed `*.cloudfront.net` certificate.
+- **CloudFront to ALB Origin:**
+  - *Current deployed state:* Uses AWS-generated ALB DNS (`*.elb.amazonaws.com`)
+    with HTTP:80 origin protocol policy. The ALB security group admits only
+    CloudFront origin-facing IP ranges (`com.amazonaws.global.cloudfront.origin-facing`).
+  - *Hardening requirements for full origin HTTPS:* AWS ACM cannot issue certificates
+    for AWS-owned `*.elb.amazonaws.com` hostnames. CloudFront-to-ALB HTTPS requires:
+    1. A customer-managed domain (e.g. `origin.oncobrief.org` / `*.oncobrief.org`)
+       managed via Route 53.
+    2. An ACM certificate issued in the ALB region (`ap-south-1`) covering the
+       custom origin domain.
+    3. Route 53 CNAME / Alias record mapping the origin domain to the ALB DNS name.
+    4. Supplying `origin_certificate_arn` and `custom_origin_domain` in Terraform,
+       which activates the ALB HTTPS listener (port 443 with TLS 1.3/1.2),
+       security group port 443 ingress, port 80 redirect to 443, and CloudFront
+       `https-only` origin protocol policy.
+
 ## Audit
 
 Two append-only, hash-chained streams. `audit_event` records actor, action,

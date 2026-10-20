@@ -158,8 +158,9 @@ Migrations `0001`–`0007` are idempotent and tracked in `schema_migration`.
 3. **Replace the app-role DB credential.** `migrations/0001` creates
    `oncobrief_app` with a fixed dev password. Rotate it and move it to Secrets
    Manager for anything beyond the prototype.
-4. **Bundle the RDS CA** and set `sslmode=verify-full` to replace
-   `rejectUnauthorized:false`.
+4. **RDS CA Bundled:** The RDS global CA bundle is bundled in `packages/db/certs/rds-global-bundle.pem`
+   with `rejectUnauthorized: true` and SNI hostname verification (`sslmode=verify-full` equivalent).
+   In production, set `sslmode=verify-full` in `DATABASE_URL`.
 5. **Replace root-account deployment credentials** with an IAM/SSO principal.
 6. Add a WAF, GuardDuty, Backup, and a DPDP compliance review before any pilot —
    none are present.

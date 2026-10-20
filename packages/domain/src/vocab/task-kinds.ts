@@ -40,6 +40,12 @@ export const TASK_KIND_LABEL: Record<TaskKind, string> = {
 export const TASK_ORIGIN_KINDS = ['evidence', 'record_gap', 'conflict', 'document'] as const;
 export type TaskOriginKind = (typeof TASK_ORIGIN_KINDS)[number];
 
+const ORIGIN_SET: ReadonlySet<string> = new Set(TASK_ORIGIN_KINDS);
+
+export function isTaskOriginKind(value: string): value is TaskOriginKind {
+  return ORIGIN_SET.has(value);
+}
+
 export const TASK_STATUSES = [
   'open',
   'assigned',
@@ -49,3 +55,9 @@ export const TASK_STATUSES = [
   'cancelled',
 ] as const;
 export type TaskStatus = (typeof TASK_STATUSES)[number];
+
+const STATUS_SET: ReadonlySet<string> = new Set(TASK_STATUSES);
+
+export function isTaskStatus(value: string): value is TaskStatus {
+  return STATUS_SET.has(value);
+}

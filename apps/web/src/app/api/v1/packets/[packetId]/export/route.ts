@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
-import { appendAuditEvent, getPacket, packetExportJson } from '@oncobrief/db';
+import { can } from '@oncobrief/domain';
+import { appendAuditEvent, getPacket, packetExportJson, withTenant } from '@oncobrief/db';
 import { getSession, tenantCtx } from '@/lib/session';
-import { withTenant } from '@oncobrief/db';
 
 /**
  * Packet export. Only an approved packet exports, and every export is audited
@@ -13,6 +13,10 @@ export async function GET(
 ) {
   const session = await getSession();
   if (!session) return NextResponse.json({ error: { code: 'unauthorized' } }, { status: 401 });
+
+  if (!can(session.role, 'packet:export')) {
+    return NextResponse.json({ error: { code: 'forbidden' } }, { status: 403 });
+  }
 
   const { packetId } = await params;
 

@@ -74,6 +74,16 @@ variable "environment" {
   type    = map(string)
   default = {}
 }
+variable "origin_certificate_arn" {
+  type        = string
+  default     = ""
+  description = "ACM certificate ARN for ALB origin HTTPS listener. Required for end-to-end CloudFront-to-ALB TLS."
+}
+variable "custom_origin_domain" {
+  type        = string
+  default     = ""
+  description = "Custom DNS name pointing to the ALB. Required because AWS ALB DNS (*.elb.amazonaws.com) cannot be issued ACM certificates."
+}
 variable "tags" {
   type    = map(string)
   default = {}
@@ -197,7 +207,7 @@ resource "aws_iam_role_policy" "execution_secrets" {
 # --- security groups ---------------------------------------------------------
 resource "aws_security_group" "alb" {
   name        = "${var.name_prefix}-web-alb"
-  description = "OncoBrief ALB: HTTP from CloudFront only."
+  description = "OncoBrief ALB: traffic from CloudFront only."
   vpc_id      = var.vpc_id
 
   ingress {
@@ -206,6 +216,17 @@ resource "aws_security_group" "alb" {
     to_port         = 80
     protocol        = "tcp"
     prefix_list_ids = [data.aws_ec2_managed_prefix_list.cloudfront.id]
+  }
+
+  dynamic "ingress" {
+    for_each = var.origin_certificate_arn != "" ? [1] : []
+    content {
+      description     = "HTTPS from CloudFront origin-facing ranges"
+      from_port       = 443
+      to_port         = 443
+      protocol        = "tcp"
+      prefix_list_ids = [data.aws_ec2_managed_prefix_list.cloudfront.id]
+    }
   }
 
   egress {
@@ -276,6 +297,29 @@ resource "aws_lb_listener" "http" {
   load_balancer_arn = aws_lb.web.arn
   port              = 80
   protocol          = "HTTP"
+
+  default_action {
+    type             = var.origin_certificate_arn != "" ? "redirect" : "forward"
+    target_group_arn = var.origin_certificate_arn != "" ? null : aws_lb_target_group.web.arn
+
+    dynamic "redirect" {
+      for_each = var.origin_certificate_arn != "" ? [1] : []
+      content {
+        port        = "443"
+        protocol    = "HTTPS"
+        status_code = "HTTP_301"
+      }
+    }
+  }
+}
+
+resource "aws_lb_listener" "https" {
+  count             = var.origin_certificate_arn != "" ? 1 : 0
+  load_balancer_arn = aws_lb.web.arn
+  port              = 443
+  protocol          = "HTTPS"
+  ssl_policy        = "ELBSecurityPolicy-TLS13-1-2-2021-06"
+  certificate_arn   = var.origin_certificate_arn
 
   default_action {
     type             = "forward"
@@ -368,12 +412,12 @@ resource "aws_cloudfront_distribution" "web" {
   comment = "${var.name_prefix} OncoBrief web tier"
 
   origin {
-    domain_name = aws_lb.web.dns_name
+    domain_name = var.custom_origin_domain != "" ? var.custom_origin_domain : aws_lb.web.dns_name
     origin_id   = "alb"
     custom_origin_config {
       http_port              = 80
       https_port             = 443
-      origin_protocol_policy = "http-only"
+      origin_protocol_policy = var.origin_certificate_arn != "" ? "https-only" : "http-only"
       origin_ssl_protocols   = ["TLSv1.2"]
     }
   }

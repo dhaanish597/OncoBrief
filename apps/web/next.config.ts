@@ -6,6 +6,9 @@ const repoRoot = resolve(process.cwd(), '..', '..');
 
 const config: NextConfig = {
   reactStrictMode: true,
+  experimental: {
+    authInterrupts: true,
+  },
   // Workspace packages export TypeScript source directly (ADR 0014 / pnpm
   // workspace layout), so Next must transpile them.
   transpilePackages: [
