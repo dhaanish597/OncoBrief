@@ -44,3 +44,8 @@ infra/build/
 
 # design hand-off archives (the integrated source lives under apps/web/src)
 *.zip
+
+# screenshots and local images
+audit/screenshots/
+*.png
+

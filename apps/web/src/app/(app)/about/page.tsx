@@ -72,9 +72,14 @@ export default function AboutPage() {
             IVR needs credentials this environment does not have.
           </li>
           <li>
-            <strong>No LLM is used.</strong> Extraction is deterministic rules; the LLM boundary is
-            specified but not wired. The spans a fact cites are always literally present in the
-            document, enforced by a substring check before anything reaches the ledger.
+            <strong>Language models are optional and span-constrained.</strong> Extraction runs
+            deterministically by default. A model may be used to <em>propose</em> candidates — the
+            cloud worker can call Amazon Bedrock, and the assistant uses an OpenAI-compatible
+            provider — but every candidate must cite a span that is literally present in the
+            document, checked by a substring test before anything reaches the ledger. A candidate
+            that fails that check is dropped, so a model can never write an unanchored fact. With no
+            provider configured, the assistant still answers navigation and boundary questions and
+            still returns the deterministic &ldquo;not found in the selected record set&rdquo; answer.
           </li>
           <li>
             <strong>No penetration test, WAF, key management or compliance review.</strong> Stated
