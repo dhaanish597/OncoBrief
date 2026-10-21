@@ -3,9 +3,11 @@ import {
   chatCompletion,
   chatCompletionWithRetry,
   NvidiaLlmError,
+  isLlmConfigured,
   sarvamStt,
   sarvamTts,
   SarvamError,
+  isSarvamConfigured,
 } from '@oncobrief/adapters';
 
 /**
@@ -71,6 +73,20 @@ describe('NVIDIA LLM provider', () => {
     delete process.env.NVIDIA_API_KEY;
     await expect(chatCompletion({ messages: [] })).rejects.toBeInstanceOf(NvidiaLlmError);
   });
+
+  it('correctly identifies when LLM is configured vs placeholder or omitted', () => {
+    process.env.NVIDIA_API_KEY = 'nvapi-real-key-123';
+    expect(isLlmConfigured()).toBe(true);
+
+    process.env.NVIDIA_API_KEY = 'your_key_here';
+    expect(isLlmConfigured()).toBe(false);
+
+    process.env.NVIDIA_API_KEY = '';
+    expect(isLlmConfigured()).toBe(false);
+
+    delete process.env.NVIDIA_API_KEY;
+    expect(isLlmConfigured()).toBe(false);
+  });
 });
 
 describe('Sarvam voice provider', () => {
@@ -111,5 +127,19 @@ describe('Sarvam voice provider', () => {
   it('raises when the key is missing', async () => {
     delete process.env.SARVAM_API_KEY;
     await expect(sarvamTts({ text: 'hello', languageCode: 'en-IN' })).rejects.toBeInstanceOf(SarvamError);
+  });
+
+  it('correctly identifies when Sarvam is configured vs placeholder or omitted', () => {
+    process.env.SARVAM_API_KEY = 'sarvam-real-key-123';
+    expect(isSarvamConfigured()).toBe(true);
+
+    process.env.SARVAM_API_KEY = 'your_key_here';
+    expect(isSarvamConfigured()).toBe(false);
+
+    process.env.SARVAM_API_KEY = '';
+    expect(isSarvamConfigured()).toBe(false);
+
+    delete process.env.SARVAM_API_KEY;
+    expect(isSarvamConfigured()).toBe(false);
   });
 });

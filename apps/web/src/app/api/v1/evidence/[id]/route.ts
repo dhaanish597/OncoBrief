@@ -41,9 +41,11 @@ export async function GET(request: Request, { params }: { params: Promise<{ id: 
     let documentUrl: string | null = null;
     try {
       const storage = getStorage();
-      documentUrl = await storage.presignGet(doc.storage_key, PAGE_PRESIGN_TTL_SECONDS);
-    } catch {
-      // Storage not reachable for a presign: still return provenance.
+      if (doc.storage_key) {
+        documentUrl = await storage.presignGet(doc.storage_key, PAGE_PRESIGN_TTL_SECONDS);
+      }
+    } catch (err) {
+      console.warn('Failed to presign document URL:', err);
       documentUrl = null;
     }
 

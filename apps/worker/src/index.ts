@@ -1,7 +1,7 @@
 import { closePools } from '@oncobrief/db/worker';
-import { loadConfig } from './config';
+import { loadConfig, type WorkerConfig } from './config';
 import { JsonLogger } from './logger';
-import { buildAsyncOcr, buildExtractor, buildQueue, buildStorage } from './ports';
+import { createPorts } from './ports';
 import { PostgresIngestionStore } from './postgres-store';
 import { handleDocumentIngest } from './handlers/document-ingest';
 import { handleOcrResult } from './handlers/ocr-result';
@@ -12,8 +12,8 @@ import type { QueuePort } from '@oncobrief/ports';
  * OncoBrief ingestion worker (ADR 0015).
  *
  * Two SQS consumers in one process:
- *   document-ingest : S3 ObjectCreated → hash → start Textract
- *   ocr-result      : Textract completion (or self-poll) → normalise �� promote
+ *   document-ingest : S3 ObjectCreated → hash → start Textract / Sarvam / Local OCR
+ *   ocr-result      : OCR completion (or self-poll) → normalise → promote
  *
  * S3 and SQS are at-least-once. Every handler is idempotent against the
  * database, and a message is deleted only after the handler returns. A
@@ -28,24 +28,29 @@ async function main(): Promise<void> {
   const logger = new JsonLogger(config.workerName);
 
   if (config.queueDriver === 'memory') {
-    logger.error(
-      {},
-      'QUEUE_DRIVER=memory is for tests only; the worker needs a real queue. Set QUEUE_DRIVER=sqs.',
-    );
-    process.exit(2);
+    if (process.env.NODE_ENV === 'production') {
+      logger.error(
+        {},
+        'QUEUE_DRIVER=memory is forbidden in production; set QUEUE_DRIVER=sqs.',
+      );
+      process.exit(2);
+    } else {
+      logger.warn(
+        { queue_driver: 'memory' },
+        'Starting worker with in-memory queue. Messages will not persist across worker restarts.',
+      );
+    }
   }
 
-  const queue = buildQueue(config);
-  const storage = buildStorage(config);
-  const ocr = buildAsyncOcr(config);
-  const { extractor, kind } = buildExtractor(config);
+  const ports = createPorts(config);
   const useTextractNotifications = Boolean(config.textractNotificationTopicArn);
 
   logger.info(
     {
       queue_driver: config.queueDriver,
       storage_driver: config.storageDriver,
-      extraction_driver: kind,
+      extraction_driver: ports.extractorKind,
+      ocr_driver: config.ocrDriver,
       region: config.region,
       document_queue: config.documentQueue,
       ocr_result_queue: config.ocrResultQueue,
@@ -62,7 +67,7 @@ async function main(): Promise<void> {
   process.on('SIGTERM', () => stop('SIGTERM'));
 
   await Promise.all([
-    poll(config.documentQueue, async (message) => {
+    poll(ports.queue, config.documentQueue, config, logger, async (message) => {
       const parsed = parseIngestMessage(message.body);
       if (!parsed) {
         logger.warn({ error_code: 'unparseable_message' }, 'unparseable document-ingest message; leaving for DLQ');
@@ -71,10 +76,10 @@ async function main(): Promise<void> {
       const store = new PostgresIngestionStore(parsed.orgId);
       await handleDocumentIngest(parsed, {
         store,
-        queue,
-        storage,
-        ocr,
-        extractor,
+        queue: ports.queue,
+        storage: ports.storage,
+        ocr: ports.ocr,
+        extractor: ports.extractor,
         logger,
         config: {
           documentQueue: config.documentQueue,
@@ -86,7 +91,7 @@ async function main(): Promise<void> {
       });
       return true;
     }),
-    poll(config.ocrResultQueue, async (message) => {
+    poll(ports.queue, config.ocrResultQueue, config, logger, async (message) => {
       const parsed = parseOcrMessage(message.body);
       if (!parsed || !parsed.orgId) {
         logger.warn({ error_code: 'unparseable_message' }, 'unparseable ocr-result message; leaving for DLQ');
@@ -95,16 +100,16 @@ async function main(): Promise<void> {
       const store = new PostgresIngestionStore(parsed.orgId);
       await handleOcrResult(parsed, {
         store,
-        queue,
-        storage,
-        ocr,
-        extractor,
+        queue: ports.queue,
+        storage: ports.storage,
+        ocr: ports.ocr,
+        extractor: ports.extractor,
         logger,
         config: {
           ocrResultQueue: config.ocrResultQueue,
           ocrPollDelaySeconds: config.ocrPollDelaySeconds,
           ocrMaxPolls: config.ocrMaxPolls,
-          extractorKind: kind,
+          extractorKind: ports.extractorKind,
         },
         orgId: parsed.orgId,
       });
@@ -117,13 +122,12 @@ async function main(): Promise<void> {
 }
 
 async function poll(
+  queue: QueuePort,
   queueName: string,
+  config: WorkerConfig,
+  logger: JsonLogger,
   handle: (message: { body: unknown; receiptHandle: string; receiveCount: number }) => Promise<boolean>,
 ): Promise<void> {
-  const config = loadConfig();
-  const queue: QueuePort = buildQueue(config);
-  const logger = new JsonLogger(config.workerName);
-
   while (running) {
     let messages;
     try {

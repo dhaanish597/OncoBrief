@@ -38,14 +38,23 @@ export class NvidiaLlmError extends Error {
   }
 }
 
+/**
+ * Checks whether an external NVIDIA LLM is configured with a real API key.
+ * Placeholder values like 'your_key_here' are treated as unconfigured.
+ */
+export function isLlmConfigured(): boolean {
+  const apiKey = process.env.NVIDIA_API_KEY?.trim();
+  return Boolean(apiKey && apiKey !== 'your_key_here' && !apiKey.startsWith('your_'));
+}
+
 function getConfig() {
   // Read lazily at request time so the root .env (loaded by @oncobrief/db) is
   // already in process.env. The key never leaves the server.
-  const apiKey = process.env.NVIDIA_API_KEY;
+  const apiKey = process.env.NVIDIA_API_KEY?.trim();
   const baseUrl = process.env.NVIDIA_BASE_URL ?? 'https://integrate.api.nvidia.com/v1';
   const model = process.env.NVIDIA_MODEL ?? DEFAULT_MODEL;
 
-  if (!apiKey) {
+  if (!apiKey || apiKey === 'your_key_here' || apiKey.startsWith('your_')) {
     throw new NvidiaLlmError('NVIDIA_API_KEY not configured', 500, false);
   }
 

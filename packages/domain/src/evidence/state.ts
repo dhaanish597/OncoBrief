@@ -9,6 +9,23 @@ export const EVIDENCE_STATES = [
 
 export type EvidenceStateValue = (typeof EVIDENCE_STATES)[number];
 
+export type ReviewState =
+  | 'extracted'
+  | 'needs_review'
+  | 'conflicting'
+  | 'verified'
+  | 'corrected'
+  | 'rejected';
+
+export const REVIEW_STATES: readonly ReviewState[] = [
+  'extracted',
+  'needs_review',
+  'conflicting',
+  'verified',
+  'corrected',
+  'rejected',
+];
+
 export const LEDGER_ACTIONS = [
   'fact_extracted',
   'fact_verified',

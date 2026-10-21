@@ -6,26 +6,31 @@ import type { EvidenceStateValue } from '@oncobrief/domain';
  * and a pointer to its source.
  */
 
-const STATE_STYLE: Record<EvidenceStateValue, { fg: string; bg: string; glyph: string; label: string }> = {
+type DisplayState = EvidenceStateValue | 'processing';
+
+const STATE_STYLE: Record<DisplayState, { fg: string; bg: string; glyph: string; label: string }> = {
   extracted: { fg: 'var(--color-state-extracted)', bg: '#fdf3df', glyph: '◌', label: 'unverified' },
   verified: { fg: 'var(--color-state-verified)', bg: '#e8f3ea', glyph: '✓', label: 'verified' },
   conflicting: { fg: 'var(--color-state-conflicting)', bg: '#fbe9e8', glyph: '⚠', label: 'conflicting' },
   corrected: { fg: 'var(--color-state-corrected)', bg: '#e8eefb', glyph: '✎', label: 'corrected' },
-  rejected: { fg: 'var(--color-state-rejected)', bg: '#eeeeee', glyph: '✕', label: 'rejected' },
-  superseded: { fg: 'var(--color-state-superseded)', bg: '#eeeeee', glyph: '⌫', label: 'superseded' },
+  rejected: { fg: 'var(--color-state-rejected)', bg: '#f4f3f1', glyph: '✕', label: 'rejected' },
+  superseded: { fg: 'var(--color-state-superseded)', bg: '#f0f2f5', glyph: '⌫', label: 'superseded' },
+  processing: { fg: 'var(--color-state-processing)', bg: '#f5f0fc', glyph: '⟳', label: 'processing' },
 };
 
 export function StateBadge({ state, compact = false }: { state: string; compact?: boolean }) {
-  const s = STATE_STYLE[state as EvidenceStateValue] ?? STATE_STYLE.extracted;
+  const s = STATE_STYLE[state as DisplayState] ?? STATE_STYLE.extracted;
   return (
     <span
       data-testid={`state-${state}`}
+      role="status"
+      aria-label={`Evidence state: ${s.label}`}
       className="mono inline-flex items-center gap-1 whitespace-nowrap border px-1.5 py-0.5 text-[11px] uppercase tracking-wide"
       style={{ color: s.fg, backgroundColor: s.bg, borderColor: s.fg }}
       title={s.label}
     >
-      <span aria-hidden>{s.glyph}</span>
-      {compact ? null : <span>{s.label}</span>}
+      <span aria-hidden="true">{s.glyph}</span>
+      {compact ? <span className="sr-only">{s.label}</span> : <span>{s.label}</span>}
     </span>
   );
 }
@@ -33,8 +38,13 @@ export function StateBadge({ state, compact = false }: { state: string; compact?
 export function ConfidenceBand({ band }: { band: string }) {
   const marks = band === 'high' ? '●●●' : band === 'medium' ? '●●○' : '●○○';
   return (
-    <span className="mono text-[11px] text-[var(--color-ink-soft)]" title={`${band} confidence`}>
-      {marks}
+    <span
+      className="mono text-[11px] text-[var(--color-ink-soft)]"
+      role="img"
+      aria-label={`${band} confidence`}
+      title={`${band} confidence`}
+    >
+      <span aria-hidden="true">{marks}</span>
     </span>
   );
 }
@@ -42,20 +52,29 @@ export function ConfidenceBand({ band }: { band: string }) {
 export function MachineBadge({ kind }: { kind: string }) {
   if (kind === 'human') {
     return (
-      <span className="mono border border-[var(--color-ink-soft)] px-1.5 py-0.5 text-[11px] uppercase tracking-wide">
+      <span
+        aria-label="Extraction author: human-authored"
+        className="mono border border-[var(--color-ink-soft)] px-1.5 py-0.5 text-[11px] uppercase tracking-wide"
+      >
         human-authored
       </span>
     );
   }
   if (kind === 'fixture') {
     return (
-      <span className="mono border border-[var(--color-rule-strong)] px-1.5 py-0.5 text-[11px] uppercase tracking-wide text-[var(--color-ink-soft)]">
+      <span
+        aria-label="Extraction author: synthetic fixture"
+        className="mono border border-[var(--color-rule-strong)] px-1.5 py-0.5 text-[11px] uppercase tracking-wide text-[var(--color-ink-soft)]"
+      >
         fixture
       </span>
     );
   }
   return (
-    <span className="mono border border-dashed border-[var(--color-rule-strong)] px-1.5 py-0.5 text-[11px] uppercase tracking-wide text-[var(--color-ink-soft)]">
+    <span
+      aria-label="Extraction author: machine-extracted"
+      className="mono border border-dashed border-[var(--color-rule-strong)] px-1.5 py-0.5 text-[11px] uppercase tracking-wide text-[var(--color-ink-soft)]"
+    >
       machine-extracted
     </span>
   );
@@ -63,7 +82,11 @@ export function MachineBadge({ kind }: { kind: string }) {
 
 export function DemoBadge() {
   return (
-    <span className="mono border border-[var(--color-accent)] px-1.5 py-0.5 text-[11px] uppercase tracking-wide text-[var(--color-accent)]">
+    <span
+      role="note"
+      aria-label="Synthetic demo fixture — not a real patient"
+      className="mono border border-[var(--color-accent)] px-1.5 py-0.5 text-[11px] uppercase tracking-wide text-[var(--color-accent)]"
+    >
       demo fixture
     </span>
   );
@@ -86,19 +109,22 @@ export function OriginBadge({ origin }: { origin: string }) {
 
 /** The record-readiness band. Never a score (architecture §9.3). */
 export function ReadinessBand({ band }: { band: string | null }) {
-  const map: Record<string, { fg: string; bg: string; label: string }> = {
-    ready: { fg: 'var(--color-state-verified)', bg: '#e8f3ea', label: 'Record ready' },
-    gaps: { fg: 'var(--color-state-extracted)', bg: '#fdf3df', label: 'Gaps to close' },
-    blocked: { fg: 'var(--color-state-conflicting)', bg: '#fbe9e8', label: 'Blocked' },
+  const map: Record<string, { fg: string; bg: string; glyph: string; label: string }> = {
+    ready: { fg: 'var(--color-state-verified)', bg: '#e8f3ea', glyph: '●', label: 'Record ready' },
+    gaps: { fg: 'var(--color-state-extracted)', bg: '#fdf3df', glyph: '◐', label: 'Gaps to close' },
+    blocked: { fg: 'var(--color-state-conflicting)', bg: '#fbe9e8', glyph: '■', label: 'Blocked' },
   };
-  const s = map[band ?? ''] ?? { fg: 'var(--color-ink-soft)', bg: '#eeeeee', label: 'Not assessed' };
+  const s = map[band ?? ''] ?? { fg: 'var(--color-ink-soft)', bg: '#eeeeee', glyph: '○', label: 'Not assessed' };
   return (
     <span
       data-testid="readiness-band"
-      className="inline-flex items-center gap-2 border px-2 py-1 text-xs font-medium"
+      role="status"
+      aria-label={`Record readiness status: ${s.label}`}
+      className="inline-flex items-center gap-1.5 border px-2 py-0.5 text-xs font-medium"
       style={{ color: s.fg, backgroundColor: s.bg, borderColor: s.fg }}
     >
-      {s.label}
+      <span aria-hidden="true">{s.glyph}</span>
+      <span>{s.label}</span>
     </span>
   );
 }

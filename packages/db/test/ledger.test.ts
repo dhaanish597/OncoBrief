@@ -137,6 +137,57 @@ describe('conflict resolution', () => {
     expect(audit.rowCount).toBeGreaterThan(0);
   });
 
+  it('human resolves a contradiction with mark_superseded and member_role is updated', async () => {
+    const ctx = await clinicianCtx();
+
+    // The seeded DEMO-002 appointment conflict.
+    const conflict = await withSuperuser((c) =>
+      c.query<{ id: string }>(
+        `SELECT cs.id FROM conflict_set cs JOIN patient p ON p.id = cs.patient_id
+          WHERE p.demo_code = 'DEMO-002' AND cs.status = 'open' LIMIT 1`,
+      ),
+    );
+    const conflictId = conflict.rows[0]?.id;
+    expect(conflictId).toBeTruthy();
+
+    const members = await withSuperuser((c) =>
+      c.query<{ evidence_fact_id: string }>(
+        `SELECT evidence_fact_id FROM conflict_member WHERE conflict_set_id = $1 ORDER BY evidence_fact_id`,
+        [conflictId],
+      ),
+    );
+    expect(members.rows.length).toBeGreaterThan(1);
+    const winnerId = members.rows[0]!.evidence_fact_id;
+    const loserId = members.rows[1]!.evidence_fact_id;
+
+    await withTenant(ctx, (q) =>
+      resolveConflict(q, {
+        conflictSetId: conflictId!,
+        resolutionKind: 'mark_superseded',
+        winnerFactId: winnerId,
+        reason: 'July appointment note supersedes the earlier June scheduling.',
+        actor: { kind: 'human', ...asClinician, userId: fx.clinicians.clinician },
+      }),
+    );
+
+    const roles = await withSuperuser((c) =>
+      c.query<{ evidence_fact_id: string; member_role: string; state: string }>(
+        `SELECT cm.evidence_fact_id, cm.member_role, es.state
+           FROM conflict_member cm
+           JOIN evidence_state es ON es.evidence_fact_id = cm.evidence_fact_id
+          WHERE cm.conflict_set_id = $1`,
+        [conflictId],
+      ),
+    );
+
+    const winner = roles.rows.find((r) => r.evidence_fact_id === winnerId);
+    const loser = roles.rows.find((r) => r.evidence_fact_id === loserId);
+    expect(winner?.member_role).toBe('retained');
+    expect(winner?.state).toBe('verified');
+    expect(loser?.member_role).toBe('superseded');
+    expect(loser?.state).toBe('superseded');
+  });
+
   it('refuses a second resolution of the same conflict set', async () => {
     const ctx = await clinicianCtx();
     const conflict = await withSuperuser((c) =>

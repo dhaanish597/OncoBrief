@@ -2,10 +2,10 @@ import { randomUUID } from 'node:crypto';
 import { NextResponse } from 'next/server';
 import {
   appendAuditEvent,
+  env,
   extensionForContentType,
   getPatient,
   getPresignPut,
-  isAllowedUploadContentType,
   reserveDocumentForUpload,
   storageKeyFor,
   withTenant,
@@ -13,33 +13,104 @@ import {
 import { can } from '@oncobrief/domain';
 import { resolveApiCaller } from '@/lib/auth-api';
 
-/**
- * `POST /api/v1/patients/{patient_id}/documents/upload-url` (Phase 2).
- *
- * Allocates a document id, reserves a tenant-scoped row, and returns a
- * short-lived presigned PUT so the bytes go **directly** to object storage.
- * Large PDFs never transit the application process.
- *
- * Trust is preserved because the hash is not trusted from the client: the
- * worker re-reads the object, computes SHA-256 and the real MIME type, and only
- * then can evidence be derived. The presigned key is tenant-prefixed and the
- * caller's `org_id` is asserted before signing, so a swapped identifier cannot
- * produce a valid signature.
- *
- * Authorization is enforced server-side (Layer 2 policy + Layer 3 RLS); the
- * frontend is never trusted for it.
- */
-
 const MAX_BYTES = 25 * 1024 * 1024;
 const PRESIGN_TTL_SECONDS = 900;
+const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+const ALLOWED_MIME_TYPES = new Set([
+  'application/pdf',
+  'image/png',
+  'image/jpeg',
+  'image/tiff',
+  'image/webp',
+  'application/fhir+json',
+  'application/json',
+  'application/dicom',
+  'text/plain',
+  'text/vcard',
+]);
 
 export async function POST(request: Request, { params }: { params: Promise<{ id: string }> }) {
+  // 1. resolveApiCaller(request) -> 401 UNAUTHORIZED if null.
   const session = await resolveApiCaller(request);
   if (!session) {
     return NextResponse.json({ error: { code: 'unauthorized' } }, { status: 401 });
   }
+
+  // 2. can(caller.role, 'document:upload') -> 403 FORBIDDEN if false.
   if (!can(session.role, 'document:upload')) {
     return NextResponse.json({ error: { code: 'forbidden' } }, { status: 403 });
+  }
+
+  // 3. Validate params.id is a valid UUID -> 400 BAD_REQUEST if invalid.
+  const { id: patientId } = await params;
+  if (!patientId || !UUID_REGEX.test(patientId)) {
+    return NextResponse.json(
+      { error: { code: 'bad_request', message: 'Invalid patient UUID' } },
+      { status: 400 },
+    );
+  }
+
+  // 4. Parse await request.json() inside try/catch and verify non-null object -> 400 INVALID_JSON if malformed.
+  let body: Record<string, unknown>;
+  try {
+    const parsed = await request.json();
+    if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) {
+      return NextResponse.json({ error: { code: 'invalid_json' } }, { status: 400 });
+    }
+    body = parsed as Record<string, unknown>;
+  } catch {
+    return NextResponse.json({ error: { code: 'invalid_json' } }, { status: 400 });
+  }
+
+  // 5. Validate filename / fileName (non-empty string, <= 255 chars) -> 400 VALIDATION_ERROR.
+  const rawFilename = body['filename'] ?? body['fileName'];
+  const filename = typeof rawFilename === 'string' ? rawFilename.trim() : '';
+  if (!filename || filename.length > 255) {
+    return NextResponse.json(
+      { error: { code: 'validation_error', message: 'filename is required (<= 255 chars)' } },
+      { status: 400 },
+    );
+  }
+
+  // 6. Validate contentType / mimeType against the non-interpretive intake allowlist -> 400 UNSUPPORTED_MEDIA_TYPE.
+  const rawContentType = body['contentType'] ?? body['mimeType'];
+  const mimeType = typeof rawContentType === 'string' ? rawContentType.trim() : '';
+  if (!mimeType || !ALLOWED_MIME_TYPES.has(mimeType)) {
+    return NextResponse.json(
+      { error: { code: 'unsupported_media_type', message: 'Unsupported MIME type' } },
+      { status: 400 },
+    );
+  }
+
+  // 7. Validate sizeBytes / byteSize (> 0 and <= 25 * 1024 * 1024 bytes) -> 400 if <= 0, 413 PAYLOAD_TOO_LARGE if > 26,214,400.
+  const rawSize = body['sizeBytes'] ?? body['byteSize'];
+  const byteSize = typeof rawSize === 'number' ? rawSize : 0;
+  if (byteSize <= 0) {
+    return NextResponse.json(
+      { error: { code: 'validation_error', message: 'sizeBytes must be greater than 0' } },
+      { status: 400 },
+    );
+  }
+  if (byteSize > MAX_BYTES) {
+    return NextResponse.json(
+      { error: { code: 'payload_too_large', maxBytes: MAX_BYTES } },
+      { status: 413 },
+    );
+  }
+
+  // 8. Only after Steps 1–7 pass: If STORAGE_DRIVER === 'fs', return 501 NOT_IMPLEMENTED; otherwise return 200/201 with S3 presigned URL.
+  if (env.storageDriver === 'fs') {
+    return NextResponse.json(
+      {
+        error: {
+          code: 'not_implemented',
+          message:
+            'Direct upload requires S3-compatible storage. Set STORAGE_DRIVER=s3 (MinIO locally) and retry.',
+        },
+      },
+      { status: 501 },
+    );
   }
 
   const presigner = getPresignPut();
@@ -54,34 +125,6 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
       },
       { status: 501 },
     );
-  }
-
-  const { id: patientId } = await params;
-
-  let body: {
-    filename?: unknown;
-    mimeType?: unknown;
-    byteSize?: unknown;
-    documentDate?: unknown;
-    issuingFacility?: unknown;
-    sourceKind?: unknown;
-  };
-  try {
-    body = (await request.json()) as typeof body;
-  } catch {
-    return NextResponse.json({ error: { code: 'invalid_json' } }, { status: 400 });
-  }
-
-  const filename = typeof body.filename === 'string' ? body.filename.trim() : '';
-  const mimeType = typeof body.mimeType === 'string' ? body.mimeType : '';
-  const byteSize = typeof body.byteSize === 'number' ? body.byteSize : 0;
-
-  if (!filename) return NextResponse.json({ error: { code: 'filename_required' } }, { status: 400 });
-  if (!isAllowedUploadContentType(mimeType)) {
-    return NextResponse.json({ error: { code: 'unsupported_content_type' } }, { status: 415 });
-  }
-  if (byteSize > MAX_BYTES) {
-    return NextResponse.json({ error: { code: 'upload_too_large', maxBytes: MAX_BYTES } }, { status: 413 });
   }
 
   const documentId = randomUUID();
@@ -102,16 +145,17 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
       filename,
       mimeType,
       storageKey: s3Key,
-      sourceKind: (typeof body.sourceKind === 'string' ? body.sourceKind : 'upload') as 'upload',
-      documentDate: typeof body.documentDate === 'string' ? body.documentDate : null,
-      issuingFacility: typeof body.issuingFacility === 'string' ? body.issuingFacility : null,
+      sourceKind: (typeof body['sourceKind'] === 'string' ? body['sourceKind'] : 'upload') as 'upload',
+      documentDate: typeof body['documentDate'] === 'string' ? body['documentDate'] : null,
+      issuingFacility: typeof body['issuingFacility'] === 'string' ? body['issuingFacility'] : null,
       correlationId,
     });
 
     await appendAuditEvent(q, {
       orgId: session.orgId,
       actor: { userId: session.userId, role: session.role },
-      action: 'document.upload_url_issued',      entityKind: 'document',
+      action: 'document.upload_url_issued',
+      entityKind: 'document',
       entityId: documentId,
       outcome: 'success',
       correlationId,
@@ -141,6 +185,6 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
       required_headers: presigned.requiredHeaders,
       correlation_id: correlationId,
     },
-    { status: 201 },
+    { status: 200 },
   );
 }

@@ -82,24 +82,42 @@ export default async function RecordMapPage({ params }: { params: Promise<{ id: 
                       <input type="hidden" name="originKind" value="record_gap" />
                       <input type="hidden" name="originId" value={g.id} />
                       <input type="hidden" name="taskKind" value="retrieve_document" />
-                      <input
-                        name="title"
-                        required
-                        defaultValue={`Retrieve ${g.label.toLowerCase()}`}
-                        className="mono w-full border border-[var(--color-rule-strong)] bg-white px-2 py-1 text-xs"
-                      />
-                      <input
-                        name="dueOn"
-                        type="date"
-                        className="mono w-full border border-[var(--color-rule-strong)] bg-white px-2 py-1 text-xs"
-                      />
+                      <div>
+                        <label
+                          htmlFor={`task-title-${g.id}`}
+                          className="mono block text-[10px] uppercase tracking-wider text-[var(--color-ink-soft)]"
+                        >
+                          Task title
+                        </label>
+                        <input
+                          id={`task-title-${g.id}`}
+                          name="title"
+                          required
+                          defaultValue={`Retrieve ${g.label.toLowerCase()}`}
+                          className="mono mt-0.5 w-full border border-[var(--color-rule-strong)] bg-white px-2 py-1 text-xs"
+                        />
+                      </div>
+                      <div>
+                        <label
+                          htmlFor={`task-due-${g.id}`}
+                          className="mono block text-[10px] uppercase tracking-wider text-[var(--color-ink-soft)]"
+                        >
+                          Target due date
+                        </label>
+                        <input
+                          id={`task-due-${g.id}`}
+                          name="dueOn"
+                          type="date"
+                          className="mono mt-0.5 w-full border border-[var(--color-rule-strong)] bg-white px-2 py-1 text-xs"
+                        />
+                      </div>
                       <button
                         type="submit"
-                        className="mono w-full border border-[var(--color-ink)] px-2 py-1 text-[11px] uppercase tracking-wider"
+                        className="mono w-full border border-[var(--color-ink)] px-2 py-1.5 text-[11px] uppercase tracking-wider hover:bg-[var(--color-accent-soft)]"
                       >
                         create task from this gap
                       </button>
-                      <p className="mono text-[11px] text-[var(--color-ink-soft)]">
+                      <p className="mono text-[10px] text-[var(--color-ink-soft)]">
                         The gap is the task’s source link, so the task can always explain why it
                         exists.
                       </p>

@@ -689,7 +689,7 @@ export async function resolveConflict(q: Querier, input: ResolveConflictInput): 
       });
     }
     await q.query(
-      `UPDATE conflict_member SET member_role = 'retained' WHERE conflict_set_id = $1`,
+      `UPDATE conflict_member SET member_role = 'retained'::conflict_member_role WHERE conflict_set_id = $1`,
       [input.conflictSetId],
     );
   } else if (input.resolutionKind === 'mark_superseded') {
@@ -712,7 +712,7 @@ export async function resolveConflict(q: Querier, input: ResolveConflictInput): 
       }
     }
     await q.query(
-      `UPDATE conflict_member SET member_role = CASE WHEN evidence_fact_id = $2 THEN 'retained' ELSE 'superseded' END
+      `UPDATE conflict_member SET member_role = CASE WHEN evidence_fact_id = $2 THEN 'retained'::conflict_member_role ELSE 'superseded'::conflict_member_role END
          WHERE conflict_set_id = $1`,
       [input.conflictSetId, input.winnerFactId],
     );
@@ -728,7 +728,7 @@ export async function resolveConflict(q: Querier, input: ResolveConflictInput): 
       });
     }
     await q.query(
-      `UPDATE conflict_member SET member_role = 'superseded' WHERE conflict_set_id = $1`,
+      `UPDATE conflict_member SET member_role = 'superseded'::conflict_member_role WHERE conflict_set_id = $1`,
       [input.conflictSetId],
     );
     if (input.replacement && members.length > 0) {

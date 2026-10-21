@@ -99,6 +99,12 @@ export const env = {
   get demoMode(): boolean {
     return (process.env.ONCOBRIEF_DEMO_MODE ?? 'true') === 'true';
   },
+  get ocrDriver(): 'auto' | 'sarvam' | 'textract' | 'local-pdf' | 'fixture' {
+    return (process.env.OCR_DRIVER ?? 'auto') as 'auto' | 'sarvam' | 'textract' | 'local-pdf' | 'fixture';
+  },
+  get sarvamApiKey(): string | undefined {
+    return process.env.SARVAM_API_KEY;
+  },
   isTest(): boolean {
     return process.env.NODE_ENV === 'test' || process.env.VITEST === 'true';
   },

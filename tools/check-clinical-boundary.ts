@@ -1,15 +1,12 @@
 /**
  * Clinical-boundary scan (architecture §18.1).
  *
- * CI-failing check that scans system-authored string tables and identifiers
- * across the repository for forbidden clinical concepts, using the domain
- * package's own single source of truth (`scanForBoundaryViolation`).
+ * CI-failing check that recursively inspects all .ts and .tsx source files
+ * across apps/web/src, apps/worker/src, packages/domain/src, packages/adapters/src,
+ * and packages/db/src (excluding *.test.ts, *.spec.ts, and clinical-boundary.ts itself)
+ * for forbidden clinical concepts.
  *
  *   node --import tsx tools/check-clinical-boundary.ts
- *
- * The scan looks at the closed vocabularies and the UI string tables, not at
- * fixture document text (a document may legitimately contain the word
- * "prognosis"; the system may not compute one).
  */
 import { readFileSync, readdirSync, statSync } from 'node:fs';
 import { join, relative } from 'node:path';
@@ -24,9 +21,20 @@ import {
 } from '../packages/domain/src/index.js';
 
 const root = process.cwd();
-const SCAN_DIRS = ['packages', 'apps'];
+const TARGET_DIRS = [
+  'apps/web/src',
+  'apps/worker/src',
+  'packages/domain/src',
+  'packages/adapters/src',
+  'packages/db/src',
+];
 const SOURCE_EXT = /\.(ts|tsx)$/;
-const IGNORE = /(node_modules|\.next|dist|test|__tests__|fixtures?)/;
+const IGNORE_PATTERNS = [
+  'node_modules',
+  '.next',
+  'dist',
+  '__tests__',
+];
 
 const registryStrings: [string, string][] = [
   ...Object.entries(FACT_TYPE_LABEL),
@@ -37,6 +45,22 @@ const registryStrings: [string, string][] = [
   ...Object.entries(READINESS_BAND_LABEL),
 ];
 
+function shouldSkip(filePath: string): boolean {
+  const norm = filePath.replaceAll('\\', '/');
+  if (norm.endsWith('.test.ts') || norm.endsWith('.test.tsx') || norm.endsWith('.spec.ts') || norm.endsWith('.spec.tsx')) {
+    return true;
+  }
+  if (norm.endsWith('clinical-boundary.ts')) {
+    return true;
+  }
+  for (const ign of IGNORE_PATTERNS) {
+    if (norm.includes(`/${ign}/`) || norm.includes(`/${ign}`)) {
+      return true;
+    }
+  }
+  return false;
+}
+
 function walk(dir: string, out: string[] = []): string[] {
   let entries: string[];
   try {
@@ -46,7 +70,7 @@ function walk(dir: string, out: string[] = []): string[] {
   }
   for (const name of entries) {
     const full = join(dir, name);
-    if (IGNORE.test(full)) continue;
+    if (shouldSkip(full)) continue;
     const st = statSync(full);
     if (st.isDirectory()) walk(full, out);
     else if (SOURCE_EXT.test(full)) out.push(full);
@@ -62,16 +86,23 @@ for (const [key, value] of registryStrings) {
   }
 }
 
-// Scan identifier-looking string literals in UI label tables. We look for
-// snake_case / kebab-case tokens (identifiers), not prose, to avoid flagging
-// quoted document text.
+// Regex to find identifier and string literal candidates
 const IDENTIFIER_RE = /['"`]([a-z][a-z0-9_]*(?:[_-][a-z0-9_]+)+)['"`]/g;
+const CODE_TOKEN_RE = /\b(calculateTnm|computeTnm|inferStaging|calculateRecist|recistResponse|trialEligibilityScore|prescribeTreatment|interpretImaging|diagnoseDicom)\b/i;
 
-for (const dir of SCAN_DIRS) {
-  for (const file of walk(join(root, dir))) {
+for (const dir of TARGET_DIRS) {
+  const fullDir = join(root, dir);
+  for (const file of walk(fullDir)) {
     const rel = relative(root, file).replaceAll('\\', '/');
-    if (!rel.includes('/ui/') && !rel.includes('/vocab/') && !rel.includes('/labels')) continue;
     const text = readFileSync(file, 'utf8');
+
+    // 1. Check code tokens / function names
+    const codeMatch = CODE_TOKEN_RE.exec(text);
+    if (codeMatch) {
+      violations.push(`${rel}: forbidden clinical inference pattern "${codeMatch[0]}"`);
+    }
+
+    // 2. Check identifier string literals
     let m: RegExpExecArray | null;
     while ((m = IDENTIFIER_RE.exec(text)) !== null) {
       const token = m[1]!;

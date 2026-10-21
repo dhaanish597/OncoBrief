@@ -27,6 +27,11 @@ export const FORBIDDEN_CONCEPT_PATTERNS: readonly { id: string; re: RegExp }[] =
   { id: 'next_step_suggestion', re: bounded('next[\\s_-]?step[\\s_-]?suggest') },
   { id: 'patient_status', re: bounded('patient[\\s_-]?status') },
   { id: 'acuity', re: bounded('acuity') },
+  { id: 'tnm_staging_calc', re: bounded('(?:comput|calculat|deriv|infer)[\\s._-]?(?:tnm|staging)') },
+  { id: 'recist_calc', re: bounded('recist[\\s._-]?(?:progress|respons|calc|comput)') },
+  { id: 'trial_eligibility_scoring', re: bounded('(?:trial|medical)[\\s._-]?eligibility[\\s._-]?(?:scor|evaluat|screen)') },
+  { id: 'imaging_interpretation', re: bounded('(?:interpret|diagnos)[\\s._-]?(?:imaging|radiology|dicom|scan)') },
+  { id: 'treatment_prescribing', re: bounded('(?:prescrib|prescription)[\\s._-]?(?:treatment|regimen)') },
 ];
 
 /**

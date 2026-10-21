@@ -2,6 +2,8 @@ export interface SarvamSttOptions {
   audioData: Buffer;
   languageCode?: string;
   model?: string;
+  mimeType?: string;
+  filename?: string;
 }
 
 export interface SarvamSttResult {
@@ -35,7 +37,7 @@ export class SarvamError extends Error {
 const SARVAM_BASE_URL = 'https://api.sarvam.ai';
 // Model ids verified against the live Sarvam API: saarika:v2 and bulbul:v2 are
 // retired; these are the current defaults.
-const DEFAULT_STT_MODEL = 'saarika:v2.5';
+const DEFAULT_STT_MODEL = 'saaras:v3';
 const DEFAULT_TTS_MODEL = 'bulbul:v3';
 const DEFAULT_SPEAKER = 'shubh';
 
@@ -66,10 +68,15 @@ export function normalizeLanguageCode(code: string): SupportedLanguage {
   return 'en-IN';
 }
 
+export function isSarvamConfigured(): boolean {
+  const apiKey = process.env.SARVAM_API_KEY?.trim();
+  return Boolean(apiKey && apiKey !== 'your_key_here' && !apiKey.startsWith('your_'));
+}
+
 function getApiKey(): string {
   // Read lazily at request time; the key never leaves the server.
-  const apiKey = process.env.SARVAM_API_KEY;
-  if (!apiKey) {
+  const apiKey = process.env.SARVAM_API_KEY?.trim();
+  if (!apiKey || apiKey === 'your_key_here' || apiKey.startsWith('your_')) {
     throw new SarvamError('SARVAM_API_KEY not configured', 500, false);
   }
   return apiKey;
@@ -80,10 +87,38 @@ export async function sarvamStt(options: SarvamSttOptions): Promise<SarvamSttRes
   const model = options.model ?? DEFAULT_STT_MODEL;
   const languageCode = normalizeLanguageCode(options.languageCode ?? 'en-IN');
 
+  // Normalize MIME type to Sarvam API whitelist (strip codecs parameters like ;codecs=opus)
+  const rawMime = (options.mimeType ?? 'audio/wav').split(';')[0]?.trim().toLowerCase() ?? 'audio/wav';
+  const mimeType = rawMime.includes('webm')
+    ? 'audio/webm'
+    : rawMime.includes('mp4') || rawMime.includes('m4a')
+      ? 'audio/mp4'
+      : rawMime.includes('ogg') || rawMime.includes('opus')
+        ? 'audio/ogg'
+        : rawMime.includes('aac')
+          ? 'audio/aac'
+          : rawMime.includes('mp3') || rawMime.includes('mpeg')
+            ? 'audio/mpeg'
+            : 'audio/wav';
+
+  const defaultFilename =
+    mimeType === 'audio/webm'
+      ? 'audio.webm'
+      : mimeType === 'audio/mp4'
+        ? 'audio.mp4'
+        : mimeType === 'audio/ogg'
+          ? 'audio.ogg'
+          : mimeType === 'audio/aac'
+            ? 'audio.aac'
+            : mimeType === 'audio/mpeg'
+              ? 'audio.mp3'
+              : 'audio.wav';
+  const filename = options.filename ?? defaultFilename;
+
   const formData = new FormData();
   const bytes = new Uint8Array(options.audioData);
-  const blob = new Blob([bytes], { type: 'audio/wav' });
-  formData.append('file', blob, 'audio.wav');
+  const blob = new Blob([bytes], { type: mimeType });
+  formData.append('file', blob, filename);
   formData.append('model', model);
   formData.append('language_code', languageCode);
 
@@ -107,7 +142,13 @@ export async function sarvamStt(options: SarvamSttOptions): Promise<SarvamSttRes
       let errorMessage = `Sarvam STT error: ${response.status}`;
       try {
         const errorJson = JSON.parse(errorText);
-        errorMessage = errorJson.message ?? errorMessage;
+        errorMessage =
+          (typeof errorJson.error?.message === 'string' && errorJson.error.message) ||
+          (typeof errorJson.message === 'string' && errorJson.message) ||
+          (typeof errorJson.detail === 'string' && errorJson.detail) ||
+          (Array.isArray(errorJson.detail) && JSON.stringify(errorJson.detail)) ||
+          errorText ||
+          errorMessage;
       } catch {
         errorMessage = errorText || errorMessage;
       }

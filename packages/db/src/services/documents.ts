@@ -114,6 +114,36 @@ export function sniffContentType(bytes: Buffer): string | null {
   if (bytes.length >= 3 && bytes[0] === 0xff && bytes[1] === 0xd8 && bytes[2] === 0xff) return 'image/jpeg';
   if (bytes.length >= 8 && bytes[0] === 0x89 && bytes.subarray(1, 4).toString('latin1') === 'PNG')
     return 'image/png';
+  if (
+    bytes.length >= 4 &&
+    ((bytes[0] === 0x49 && bytes[1] === 0x49 && bytes[2] === 0x2a && bytes[3] === 0x00) ||
+      (bytes[0] === 0x4d && bytes[1] === 0x4d && bytes[2] === 0x00 && bytes[3] === 0x2a))
+  ) {
+    return 'image/tiff';
+  }
+  if (
+    bytes.length >= 12 &&
+    bytes.subarray(0, 4).toString('latin1') === 'RIFF' &&
+    bytes.subarray(8, 12).toString('latin1') === 'WEBP'
+  ) {
+    return 'image/webp';
+  }
+  if (bytes.length >= 132 && bytes.subarray(128, 132).toString('latin1') === 'DICM') {
+    return 'application/dicom';
+  }
+  const textHead = bytes.subarray(0, 512).toString('utf8');
+  if (textHead.includes('BEGIN:VCARD')) {
+    return 'text/vcard';
+  }
+  if (textHead.trim().startsWith('{')) {
+    try {
+      const parsed = JSON.parse(bytes.toString('utf8'));
+      if (parsed.resourceType) return 'application/fhir+json';
+      return 'application/json';
+    } catch {
+      // not valid json
+    }
+  }
   // Plain text / synthetic fixture documents.
   if (bytes.subarray(0, 512).every((b) => b === 9 || b === 10 || b === 13 || (b >= 32 && b < 127))) {
     return 'text/plain';
@@ -125,7 +155,13 @@ const EXT_BY_MIME: Record<string, string> = {
   'application/pdf': '.pdf',
   'image/jpeg': '.jpg',
   'image/png': '.png',
+  'image/tiff': '.tiff',
+  'image/webp': '.webp',
+  'application/fhir+json': '.json',
+  'application/json': '.json',
+  'application/dicom': '.dcm',
   'text/plain': '.txt',
+  'text/vcard': '.vcf',
 };
 
 const MAX_BYTES = 25 * 1024 * 1024;
@@ -204,7 +240,7 @@ const FILENAME_HINTS: [RegExp, DocumentType][] = [
   [/\bct\b|ct[-_]|radiology|imaging|\bmri\b|\bpet\b|mammograph|ultrasound|x[-_]?ray/i, 'radiology_report'],
   [/referral|refer[-_]/i, 'referral_letter'],
   [/prescription|\brx\b/i, 'prescription'],
-  [/\bcbc\b|laborator|\blab\b[-_]|haematolog|hematolog|biochem/i, 'lab_report'],
+  [/(?:^|[\W_])cbc(?:[\W_]|$)|laborator|(?:^|[\W_])lab(?:[\W_]|$)|haematolog|hematolog|biochem/i, 'lab_report'],
   [/chemotherapy|treatment[-_ ]?summary|radiation[-_ ]?summary/i, 'treatment_summary'],
   [/appointment/i, 'appointment_letter'],
   [/insurance|authoriz|pre[-_]?auth|pmjay|ayushman/i, 'insurance_authorization'],
@@ -215,7 +251,7 @@ const FILENAME_HINTS: [RegExp, DocumentType][] = [
 ];
 
 const TEXT_HINTS: [RegExp, DocumentType][] = [
-  [/histopathology report|microscopy|specimen/i, 'pathology_report'],
+  [/histopathology report|microscopy|biopsy specimen|surgical specimen/i, 'pathology_report'],
   [/discharge summary/i, 'discharge_summary'],
   [/computed tomography|\bct scan\b|\bmri\b|\bpet[- ]?ct\b|mammograph/i, 'radiology_report'],
   [/referral note|referred to/i, 'referral_letter'],
@@ -457,35 +493,138 @@ export async function ingestDocument(
 ): Promise<IngestionResult> {
   await q.query(`UPDATE document SET ingest_status = 'rendering' WHERE id = $1`, [documentId]);
 
-  const pages = fixturePages ?? [];
-  if (pages.length === 0) {
+  if (fixturePages && fixturePages.length > 0) {
+    const normalized: NormalizedPage[] = [];
+    for (const page of fixturePages) {
+      const ocr = await deps.ocr.extract({
+        documentId,
+        pageNumber: page.pageNumber,
+        imageBytes: null,
+        fixture: { plainText: page.plainText, spans: page.spans },
+      });
+      normalized.push({
+        pageNumber: page.pageNumber,
+        widthPx: page.widthPx,
+        heightPx: page.heightPx,
+        plainText: ocr.plainText,
+        spans: ocr.spans,
+        engine: ocr.engine,
+        engineVersion: ocr.engineVersion,
+      });
+    }
+    return ingestNormalizedPages(q, deps.extractor, documentId, normalized);
+  }
+
+  // Real upload path: load bytes from storage and run OCR
+  const docRes = await q.query<{
+    id: string;
+    org_id: string;
+    patient_id: string;
+    original_filename: string;
+    mime_type: string;
+    storage_key: string;
+  }>(
+    'SELECT id, org_id, patient_id, original_filename, mime_type, storage_key FROM document WHERE id = $1',
+    [documentId],
+  );
+  const doc = docRes.rows[0];
+  if (!doc) throw new Error('document_not_found');
+
+  let bytes: Buffer | null = null;
+  try {
+    bytes = await deps.storage.get(doc.storage_key);
+  } catch {
     await q.query(
-      `UPDATE document SET ingest_status = 'quarantined', ingest_error = 'manual_transcription_required' WHERE id = $1`,
+      `UPDATE document SET ingest_status = 'quarantined', ingest_error = 'document_content_missing' WHERE id = $1`,
       [documentId],
     );
     return {
-      documentId, status: 'quarantined', pages: 0, spans: 0, candidates: 0,
-      promoted: 0, rejected: 0, conflictsCreated: 0, conflictsFlagged: 0, documentType: null,
+      documentId,
+      status: 'quarantined',
+      pages: 0,
+      spans: 0,
+      candidates: 0,
+      promoted: 0,
+      rejected: 0,
+      conflictsCreated: 0,
+      conflictsFlagged: 0,
+      documentType: null,
     };
   }
 
+  if (!bytes || bytes.length === 0) {
+    await q.query(
+      `UPDATE document SET ingest_status = 'quarantined', ingest_error = 'document_content_empty' WHERE id = $1`,
+      [documentId],
+    );
+    return {
+      documentId,
+      status: 'quarantined',
+      pages: 0,
+      spans: 0,
+      candidates: 0,
+      promoted: 0,
+      rejected: 0,
+      conflictsCreated: 0,
+      conflictsFlagged: 0,
+      documentType: null,
+    };
+  }
+
+  // Detect authoritative page count
+  let pageCount = 1;
+  const rawStr = bytes.toString('latin1');
+  if (doc.mime_type === 'application/pdf' || rawStr.startsWith('%PDF-')) {
+    const countMatch = rawStr.match(/\/Type\s*\/Pages[\s\S]*?\/Count\s+(\d+)/);
+    if (countMatch && countMatch[1]) {
+      pageCount = Math.max(1, parseInt(countMatch[1], 10));
+    } else {
+      const pageObjs = rawStr.match(/\/Type\s*\/Page\b/g);
+      if (pageObjs) {
+        pageCount = Math.max(1, pageObjs.length);
+      }
+    }
+  }
+
   const normalized: NormalizedPage[] = [];
-  for (const page of pages) {
+  let totalPlainText = '';
+
+  for (let p = 1; p <= pageCount; p++) {
     const ocr = await deps.ocr.extract({
       documentId,
-      pageNumber: page.pageNumber,
-      imageBytes: null,
-      fixture: { plainText: page.plainText, spans: page.spans },
+      pageNumber: p,
+      imageBytes: bytes,
     });
+    totalPlainText += ocr.plainText;
     normalized.push({
-      pageNumber: page.pageNumber,
-      widthPx: page.widthPx,
-      heightPx: page.heightPx,
+      pageNumber: p,
+      widthPx: 612,
+      heightPx: 792,
       plainText: ocr.plainText,
       spans: ocr.spans,
       engine: ocr.engine,
       engineVersion: ocr.engineVersion,
     });
+  }
+
+  // If no usable text layer was found across all pages
+  if (totalPlainText.trim().length === 0 && normalized.every((p) => p.spans.length === 0)) {
+    await q.query(
+      `UPDATE document SET ingest_status = 'quarantined', ingest_error = 'manual_transcription_required', page_count = $2 WHERE id = $1`,
+      [documentId, pageCount],
+    );
+    return {
+      documentId,
+      status: 'quarantined',
+      pages: pageCount,
+      spans: 0,
+      candidates: 0,
+      promoted: 0,
+      rejected: 0,
+      conflictsCreated: 0,
+      conflictsFlagged: 0,
+      documentType: null,
+    };
   }
 
   return ingestNormalizedPages(q, deps.extractor, documentId, normalized);

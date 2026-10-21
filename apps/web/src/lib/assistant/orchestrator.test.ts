@@ -9,6 +9,7 @@ vi.mock('@oncobrief/adapters', () => ({
       super(message);
     }
   },
+  isLlmConfigured: vi.fn(() => true),
 }));
 
 vi.mock('@oncobrief/db', () => ({
@@ -23,7 +24,7 @@ vi.mock('@oncobrief/db', () => ({
 }));
 
 import * as db from '@oncobrief/db';
-import { chatCompletionWithRetry, NvidiaLlmError } from '@oncobrief/adapters';
+import { chatCompletionWithRetry, NvidiaLlmError, isLlmConfigured } from '@oncobrief/adapters';
 import { runAssistant } from './orchestrator';
 
 const q = {} as Querier;
@@ -283,5 +284,34 @@ describe('runAssistant — safety and navigation', () => {
     expect(result.sources.length).toBeGreaterThan(0);
     expect(result.sources[0]!.documentName).toBe('discharge-summary.pdf');
     expect(result.sources[0]!.state).toBe('verified');
+  });
+
+  it('falls back to deterministic grounded synthesis when LLM is not configured', async () => {
+    vi.mocked(isLlmConfigured).mockReturnValueOnce(false);
+    vi.mocked(db.listRecordMap).mockResolvedValue({
+      gaps: [
+        {
+          id: 'g1',
+          label: 'Baseline CT',
+          requirementKind: 'required',
+          status: 'missing',
+          rationale: 'Needed for staging',
+          requiredDocumentType: 'imaging_report',
+          satisfiedByDocumentId: null,
+          candidateDocumentId: null,
+        },
+      ],
+      origins: [],
+      readiness: null,
+    });
+    const result = await runAssistant(q, { message: 'What documents are missing?', context: ctx });
+    expect(result.intent).toBe('missing_documents_question');
+    expect(result.grounded).toBe(true);
+    expect(result.sources.length).toBeGreaterThan(0);
+    expect(result.sources[0]!.documentName).toBe('Record Checklist: Baseline CT');
+    expect(result.sources[0]!.href).toBe(`/patients/${PATIENT}/record-map`);
+    expect(result.answer).toContain('Baseline CT: missing');
+    expect(result.answer).toContain('[E1]');
+    expect(chatCompletionWithRetry).not.toHaveBeenCalled();
   });
 });

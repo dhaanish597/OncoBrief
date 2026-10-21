@@ -58,7 +58,8 @@ export default async function ConflictsPage({ params }: { params: Promise<{ id: 
 
                 <Link
                   href={`/patients/${id}/conflicts/${c.id}`}
-                  className="mono mt-3 inline-block border border-[var(--color-ink)] px-3 py-1.5 text-[11px] uppercase tracking-wider"
+                  aria-label={`Open reconciliation room for ${c.factType.replaceAll('.', ' · ').replaceAll('_', ' ')}`}
+                  className="mono mt-3 inline-block border border-[var(--color-ink)] px-3 py-1.5 text-[11px] uppercase tracking-wider hover:bg-[var(--color-accent-soft)]"
                 >
                   open reconciliation room →
                 </Link>
@@ -73,12 +74,28 @@ export default async function ConflictsPage({ params }: { params: Promise<{ id: 
           <h3 className="mono mb-2 text-[11px] uppercase tracking-[0.2em] text-[var(--color-ink-soft)]">
             Resolved ({resolved.length})
           </h3>
-          <ul className="mono border-t border-[var(--color-rule-strong)] text-xs">
+          <ul className="mono border-t border-[var(--color-rule-strong)] bg-[var(--color-paper-raised)] text-xs">
             {resolved.map((c) => (
-              <li key={c.id} className="flex items-center gap-3 border-b border-[var(--color-rule)] px-3 py-2">
-                <span className="text-[var(--color-ink-soft)]">{c.factType}</span>
-                <span>{c.resolvedKind ?? c.status}</span>
-                <span className="text-[var(--color-ink-soft)]">{c.memberValueTexts.join('  |  ')}</span>
+              <li
+                key={c.id}
+                className="flex flex-wrap items-center justify-between gap-3 border-b border-[var(--color-rule)] px-3 py-2.5"
+              >
+                <div className="flex flex-wrap items-center gap-2.5">
+                  <span className="font-medium text-[var(--color-ink)]">
+                    {c.factType.replaceAll('.', ' · ').replaceAll('_', ' ')}
+                  </span>
+                  <span className="border border-[var(--color-state-verified)] bg-[#e8f3ea] px-1.5 py-0.5 text-[10px] uppercase text-[var(--color-state-verified)]">
+                    {c.resolvedKind?.replaceAll('_', ' ') ?? c.status}
+                  </span>
+                  <span className="text-[var(--color-ink-soft)]">{c.memberValueTexts.join('  vs  ')}</span>
+                </div>
+                <Link
+                  href={`/patients/${id}/conflicts/${c.id}`}
+                  className="text-[11px] text-[var(--color-accent)] underline decoration-dotted hover:decoration-solid"
+                  aria-label={`View resolution decision for ${c.factType}`}
+                >
+                  view decision →
+                </Link>
               </li>
             ))}
           </ul>

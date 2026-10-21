@@ -3,6 +3,7 @@ import {
   authLookupUser,
   env,
   mapGroupsToRole,
+  validateSessionToken,
   verifyCognitoJwt,
   type TenantContext,
 } from '@oncobrief/db';
@@ -66,12 +67,26 @@ export async function resolveApiCaller(request: Request): Promise<ApiCaller | nu
   // A Cognito bearer is honoured in every mode: it lets an API client present a
   // user-pool JWT (for example through the API Gateway Cognito authorizer) while
   // browsers keep using the opaque session cookie. If a bearer is present but
-  // does not resolve, session mode still falls back to the cookie, so the
-  // existing session flow is unchanged.
+  // does not resolve as Cognito, check if it's a valid session token before fallback.
   const bearer = request.headers.get('authorization');
   if (bearer && bearer.startsWith('Bearer ')) {
     const caller = await resolveCognito(request);
     if (caller) return caller;
+
+    const token = bearer.slice('Bearer '.length).trim();
+    if (token) {
+      const session = await validateSessionToken(token);
+      if (session) {
+        return {
+          ctx: tenantCtx(session),
+          role: session.role,
+          userId: session.userId,
+          orgId: session.orgId,
+          email: null,
+          source: 'session',
+        };
+      }
+    }
   } else if (env.authMode === 'cognito') {
     return null;
   }

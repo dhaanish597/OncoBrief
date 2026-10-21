@@ -1,10 +1,12 @@
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
-import { getDocument, getPageSpans, getProvenance, getTimeline } from '@oncobrief/db';
+import { getDocument, getPageSpans, getProvenance, getStorage, getTimeline } from '@oncobrief/db';
+import { segmentDocumentPacket } from '@oncobrief/domain';
 import { withSession } from '@/lib/session';
 import { EvidenceRow } from '@/components/EvidenceRow';
 import { PageViewBeacon } from '@/components/PageViewBeacon';
 import { MachineBadge, StateBadge } from '@/components/evidence';
+import { SourcePaneView } from '@/components/SourcePaneView';
 
 /**
  * The Source Inspector (architecture §22.3). A rendered page on the left with
@@ -27,17 +29,56 @@ export default async function SourceInspectorPage({
   const data = await withSession(async (q) => {
     const doc = await getDocument(q, id, documentId);
     if (!doc) return null;
-    const provenance = factId ? await getProvenance(q, factId) : null;
+    let effectiveFactId = factId ?? null;
+    let provenance = effectiveFactId ? await getProvenance(q, effectiveFactId) : null;
+    if (provenance && provenance.fact.documentId !== documentId) {
+      // Cross-document guard: never cross-associate a fact from another document
+      provenance = null;
+      effectiveFactId = null;
+    }
+    if (!provenance) {
+      // Find the first fact explicitly anchored to this specific document
+      const firstFactRes = await q.query<{ id: string }>(
+        'SELECT id FROM evidence_fact WHERE document_id = $1 ORDER BY created_at LIMIT 1',
+        [documentId],
+      );
+      if (firstFactRes.rows[0]) {
+        effectiveFactId = firstFactRes.rows[0].id;
+        provenance = await getProvenance(q, effectiveFactId);
+      }
+    }
     const pageNumber = Number(pageParam) || provenance?.spans[0]?.pageNumber || 1;
     const page = await getPageSpans(q, documentId, pageNumber);
-    const timeline = factId ? await getTimeline(q, id) : [];
-    const row = factId ? (timeline.find((t) => t.evidenceFactId === factId) ?? null) : null;
-    return { doc, provenance, page, pageNumber, row };
+    const timeline = effectiveFactId ? await getTimeline(q, id) : [];
+    const row = effectiveFactId ? (timeline.find((t) => t.evidenceFactId === effectiveFactId) ?? null) : null;
+
+    let documentUrl: string | null = null;
+    if (doc.storageKey) {
+      try {
+        const storage = getStorage();
+        documentUrl = await storage.presignGet(doc.storageKey, 3600);
+      } catch {
+        // Storage unconfigured or offline
+      }
+    }
+
+    const allPagesRes = await q.query<{ page_number: number; plain_text: string }>(
+      'SELECT page_number, plain_text FROM document_page WHERE document_id = $1 ORDER BY page_number',
+      [documentId],
+    );
+    const subDocs = segmentDocumentPacket(
+      allPagesRes.rows.map((r) => ({
+        pageNumber: r.page_number,
+        plainText: r.plain_text,
+      })),
+    );
+
+    return { doc, provenance, page, pageNumber, row, documentUrl, subDocs };
   });
 
   if (!data) notFound();
-  const { doc, provenance, page, pageNumber, row } = data;
-  const highlight = new Set(provenance?.spans.map((s) => s.id) ?? []);
+  const { doc, provenance, page, pageNumber, row, documentUrl, subDocs } = data;
+  const highlightSpanIds = provenance?.spans.map((s) => s.id) ?? [];
 
   return (
     <div>
@@ -90,8 +131,10 @@ export default async function SourceInspectorPage({
                     <Link
                       key={n}
                       href={`/patients/${id}/sources/${documentId}?${factId ? `fact=${factId}&` : ''}page=${n}`}
-                      className="ml-2 underline decoration-dotted"
-                      style={{ color: n === pageNumber ? 'var(--color-ink)' : undefined }}
+                      aria-label={`Go to page ${n}`}
+                      aria-current={n === pageNumber ? 'page' : undefined}
+                      className="ml-2 underline decoration-dotted hover:decoration-solid"
+                      style={{ color: n === pageNumber ? 'var(--color-ink)' : undefined, fontWeight: n === pageNumber ? 600 : 400 }}
                     >
                       {n}
                     </Link>
@@ -100,39 +143,21 @@ export default async function SourceInspectorPage({
             </span>
           </div>
 
-          {page ? (
-            <div className="relative aspect-[1/1.414] w-full overflow-hidden border border-t-0 border-[var(--color-rule-strong)] bg-white">
-              {page.spans.map((span) => {
-                const isHighlight = highlight.has(span.id);
-                return (
-                  <span
-                    key={span.id}
-                    data-span-id={span.id}
-                    data-highlight={isHighlight ? 'true' : undefined}
-                    className="absolute whitespace-pre"
-                    style={{
-                      left: `${span.bbox.x * 100}%`,
-                      top: `${span.bbox.y * 100}%`,
-                      maxWidth: '94%',
-                      fontSize: '0.72rem',
-                      lineHeight: 1.35,
-                      fontFamily: 'var(--font-serif)',
-                      color: 'var(--color-ink)',
-                      background: isHighlight ? 'rgba(154,107,18,0.28)' : 'transparent',
-                      boxShadow: isHighlight ? '0 0 0 2px rgba(154,107,18,0.7)' : undefined,
-                      padding: '0 2px',
-                    }}
-                  >
-                    {span.text}
-                  </span>
-                );
-              })}
-            </div>
-          ) : (
-            <p className="mono border border-t-0 border-[var(--color-rule-strong)] px-3 py-6 text-xs text-[var(--color-ink-soft)]">
-              No text layer for this page.
-            </p>
-          )}
+          <SourcePaneView
+            documentName={doc.filename}
+            pageNumber={pageNumber}
+            spans={page?.spans ?? []}
+            highlightSpanIds={highlightSpanIds}
+            label="Source"
+            documentUrl={documentUrl}
+            mimeType={doc.mimeType}
+            widthPx={page?.widthPx}
+            heightPx={page?.heightPx}
+            subDocs={subDocs}
+            patientId={id}
+            documentId={documentId}
+            activeFactId={factId}
+          />
 
           <p className="mono mt-2 text-[11px] text-[var(--color-ink-soft)]">
             Highlight geometry is read from <code>text_span</code> normalised coordinates. Engine:{' '}

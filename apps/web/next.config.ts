@@ -18,7 +18,7 @@ const config: NextConfig = {
     '@oncobrief/db',
   ],
   // Native / server-only modules must not be bundled.
-  serverExternalPackages: ['pg', '@node-rs/argon2'],
+  serverExternalPackages: ['pg', '@node-rs/argon2', 'dotenv'],
   outputFileTracingRoot: repoRoot,
   typedRoutes: false,
   eslint: { ignoreDuringBuilds: true },
@@ -30,7 +30,11 @@ const config: NextConfig = {
       const externals = Array.isArray(webpackConfig.externals) ? webpackConfig.externals : [];
       webpackConfig.externals = [
         ...externals,
-        { '@node-rs/argon2': 'commonjs @node-rs/argon2', pg: 'commonjs pg' },
+        {
+          '@node-rs/argon2': 'commonjs @node-rs/argon2',
+          pg: 'commonjs pg',
+          dotenv: 'commonjs dotenv',
+        },
       ];
     }
     return webpackConfig;

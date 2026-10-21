@@ -10,6 +10,7 @@ vi.mock('@oncobrief/adapters', () => ({
       super(message);
     }
   },
+  isLlmConfigured: vi.fn(() => true),
 }));
 
 vi.mock('@oncobrief/db', () => ({

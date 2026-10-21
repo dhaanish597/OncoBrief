@@ -225,6 +225,16 @@ export function AssistantPanel({ onClose }: { onClose: () => void }) {
     onClose();
   }, [pendingNav, router, onClose]);
 
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        onClose();
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [onClose]);
+
   const onKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
     if (e.key === 'Enter' && !e.shiftKey) {
       e.preventDefault();
@@ -239,8 +249,9 @@ export function AssistantPanel({ onClose }: { onClose: () => void }) {
   return (
     <div
       data-testid="assistant-panel"
-      className="fixed inset-x-0 bottom-0 z-50 flex h-[92vh] flex-col border border-[var(--color-rule-strong)] bg-[var(--color-paper)] shadow-[0_8px_40px_rgba(27,26,23,0.18)] sm:inset-x-auto sm:right-6 sm:bottom-6 sm:h-[42rem] sm:max-h-[calc(100vh-3rem)] sm:w-[26rem]"
+      className="fixed inset-x-0 bottom-0 z-50 flex h-[92vh] max-h-[100dvh] flex-col border border-[var(--color-rule-strong)] bg-[var(--color-paper)] shadow-[0_8px_40px_rgba(27,26,23,0.18)] sm:inset-x-auto sm:right-6 sm:bottom-6 sm:h-[42rem] sm:max-h-[calc(100vh-3rem)] sm:w-[26rem]"
       role="dialog"
+      aria-modal="true"
       aria-label="Ask OncoBrief"
     >
       <header className="flex items-start gap-2 border-b border-[var(--color-rule-strong)] bg-[var(--color-paper-raised)] px-4 py-3">
@@ -333,7 +344,17 @@ export function AssistantPanel({ onClose }: { onClose: () => void }) {
               >
                 {m.role === 'assistant' && m.conflict ? (
                   <p className="mono mb-1 text-[10px] font-semibold uppercase tracking-wider text-[var(--color-state-conflicting)]">
-                    Conflicting evidence
+                    ⚠ Conflicting evidence in record
+                  </p>
+                ) : null}
+                {m.role === 'assistant' && m.intent === 'missing_document' ? (
+                  <p className="mono mb-1 text-[10px] font-semibold uppercase tracking-wider text-[var(--color-state-extracted)]">
+                    ◐ Record gap identified
+                  </p>
+                ) : null}
+                {m.role === 'assistant' && m.grounded && (m.sources?.length ?? 0) > 0 ? (
+                  <p className="mono mb-1 text-[10px] uppercase tracking-wider text-[var(--color-state-verified)]">
+                    ✓ Grounded from evidence ledger
                   </p>
                 ) : null}
                 {m.content}

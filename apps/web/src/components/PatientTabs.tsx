@@ -24,7 +24,10 @@ export function PatientTabs({
   const pathname = usePathname();
 
   return (
-    <nav className="no-print flex flex-wrap items-stretch border-b border-[var(--color-rule-strong)] bg-[var(--color-paper-raised)]">
+    <nav
+      aria-label="Patient workspace navigation"
+      className="no-print flex items-stretch overflow-x-auto whitespace-nowrap scrollbar-none border-b border-[var(--color-rule-strong)] bg-[var(--color-paper-raised)] sm:flex-wrap"
+    >
       {TABS.map((tab) => {
         const href = `/patients/${patientId}/${tab.segment}`;
         const active = pathname === href || pathname.startsWith(`${href}/`);
@@ -35,7 +38,7 @@ export function PatientTabs({
             href={href}
             data-testid={`tab-${tab.segment}`}
             aria-current={active ? 'page' : undefined}
-            className="mono flex items-center gap-2 border-b-2 px-4 py-2.5 text-[11px] uppercase tracking-wider transition-colors"
+            className="mono flex items-center gap-2 border-b-2 px-3.5 py-2.5 text-[11px] uppercase tracking-wider transition-colors shrink-0 sm:shrink"
             style={{
               borderBottomColor: active ? 'var(--color-accent)' : 'transparent',
               color: active ? 'var(--color-ink)' : 'var(--color-ink-soft)',
@@ -44,7 +47,9 @@ export function PatientTabs({
             {tab.label}
             {count > 0 ? (
               <span
-                className="rounded-full px-1.5 text-[10px]"
+                role="status"
+                aria-label={`${count} open ${tab.badgeKey}`}
+                className="rounded-full px-1.5 text-[10px] font-medium"
                 style={{
                   backgroundColor:
                     tab.badgeKey === 'conflicts' ? '#fbe9e8' : 'var(--color-accent-soft)',

@@ -391,28 +391,27 @@ export async function getConflictingEvidence(
 > {
   try {
     const conflicts = await listConflicts(q, patientId, 'open');
-    const detailed = await Promise.all(
-      conflicts.map(async (c) => {
-        const detail = await getConflict(q, patientId, c.id);
-        return {
-          id: c.id,
-          factType: c.factType,
-          members: (detail?.members ?? []).map((m) => ({
-            valueText: m.valueText,
-            documentId: m.documentId,
-            documentName: m.documentName,
-            pageNumber: m.pageNumber,
-            state: m.state,
-            evidenceFactId: m.factId,
-            verbatimQuote: m.verbatimQuote,
-            confidenceBand: m.confidenceBand,
-            extractorKind: m.extractorKind,
-            extractorName: m.extractorName,
-            reviewerName: m.reviewerName,
-          })),
-        };
-      }),
-    );
+    const detailed = [];
+    for (const c of conflicts) {
+      const detail = await getConflict(q, patientId, c.id);
+      detailed.push({
+        id: c.id,
+        factType: c.factType,
+        members: (detail?.members ?? []).map((m) => ({
+          valueText: m.valueText,
+          documentId: m.documentId,
+          documentName: m.documentName,
+          pageNumber: m.pageNumber,
+          state: m.state,
+          evidenceFactId: m.factId,
+          verbatimQuote: m.verbatimQuote,
+          confidenceBand: m.confidenceBand,
+          extractorKind: m.extractorKind,
+          extractorName: m.extractorName,
+          reviewerName: m.reviewerName,
+        })),
+      });
+    }
     return { success: true, data: { conflicts: detailed } };
   } catch (error) {
     return { success: false, error: error instanceof Error ? error.message : 'Failed to get conflicting evidence' };

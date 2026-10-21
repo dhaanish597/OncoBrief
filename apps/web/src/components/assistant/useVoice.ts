@@ -78,6 +78,7 @@ export function useVoice({ languageCode, onTranscript }: UseVoiceOptions): UseVo
   const [state, setState] = useState<VoiceState>('idle');
   const [error, setError] = useState<string | null>(null);
   const [isSpeaking, setIsSpeaking] = useState(false);
+  const [sarvamAvailable, setSarvamAvailable] = useState<boolean | null>(null);
 
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const chunksRef = useRef<Blob[]>([]);
@@ -87,7 +88,20 @@ export function useVoice({ languageCode, onTranscript }: UseVoiceOptions): UseVo
   transcriptHandler.current = onTranscript;
 
   useEffect(() => {
+    let active = true;
+    fetch('/api/v1/assistant/voice/stt')
+      .then((res) => (res.ok ? res.json() : null))
+      .then((data) => {
+        if (active && data && typeof data.configured === 'boolean') {
+          setSarvamAvailable(data.configured);
+        }
+      })
+      .catch(() => {
+        if (active) setSarvamAvailable(false);
+      });
+
     return () => {
+      active = false;
       mediaRecorderRef.current?.stream.getTracks().forEach((t) => t.stop());
       recognitionRef.current?.abort();
       audioRef.current?.pause();
@@ -100,93 +114,216 @@ export function useVoice({ languageCode, onTranscript }: UseVoiceOptions): UseVo
   const startBrowserRecognition = useCallback(() => {
     const Ctor = getBrowserRecognition();
     if (!Ctor) {
-      setError('Speech recognition is not supported in this browser.');
+      setError('Speech recognition is not supported in this browser. Please use Chrome, Safari, or Edge.');
       setState('error');
       return false;
     }
-    const recognition = new Ctor();
-    recognition.lang = languageCode;
-    recognition.continuous = false;
-    recognition.interimResults = false;
-    recognition.onresult = (event) => {
-      let text = '';
-      for (let i = 0; i < event.results.length; i++) {
-        text += event.results[i]![0]!.transcript;
+
+    try {
+      if (recognitionRef.current) {
+        try {
+          recognitionRef.current.abort();
+        } catch {
+          // ignore abort error
+        }
+        recognitionRef.current = null;
       }
-      transcriptHandler.current(text);
-      setState('idle');
-    };
-    recognition.onerror = (event) => {
-      setError(event.error === 'not-allowed' ? 'Microphone permission was denied.' : `Speech error: ${event.error}`);
+
+      const recognition = new Ctor();
+      recognition.lang = languageCode;
+      recognition.continuous = false;
+      recognition.interimResults = false;
+
+      recognition.onresult = (event) => {
+        let text = '';
+        for (let i = 0; i < event.results.length; i++) {
+          const item = event.results[i];
+          if (item && item[0]) {
+            text += item[0].transcript;
+          }
+        }
+        const trimmed = text.trim();
+        if (trimmed) {
+          transcriptHandler.current(trimmed);
+        }
+        setState('idle');
+      };
+
+      recognition.onerror = (event) => {
+        if (event.error === 'no-speech' || event.error === 'aborted') {
+          setState('idle');
+          return;
+        }
+        if (event.error === 'not-allowed') {
+          setError('Microphone permission was denied. Please allow microphone access in your browser settings.');
+        } else {
+          setError(`Speech error: ${event.error}`);
+        }
+        setState('error');
+      };
+
+      recognition.onend = () => {
+        setState((s) => (s === 'listening' ? 'idle' : s));
+      };
+
+      recognitionRef.current = recognition;
+      recognition.start();
+      setState('listening');
+      return true;
+    } catch (err) {
+      setError(`Failed to start speech recognition: ${err instanceof Error ? err.message : 'unknown'}`);
       setState('error');
-    };
-    recognition.onend = () => {
-      setState((s) => (s === 'listening' ? 'idle' : s));
-    };
-    recognitionRef.current = recognition;
-    recognition.start();
-    setState('listening');
-    return true;
+      return false;
+    }
   }, [languageCode]);
 
-  const transcribeWithSarvam = useCallback(async (blob: Blob) => {
-    setState('transcribing');
-    const form = new FormData();
-    form.append('audio', blob, 'audio.webm');
-    form.append('languageCode', languageCode);
-    const response = await fetch('/api/v1/assistant/voice/stt', { method: 'POST', body: form });
-    if (!response.ok) throw new Error('sarvam_stt_failed');
-    const data = await response.json();
-    if (typeof data.transcript === 'string' && data.transcript.trim()) {
-      transcriptHandler.current(data.transcript);
+  const transcribeWithSarvam = useCallback(
+    async (blob: Blob) => {
+      setState('transcribing');
+      const form = new FormData();
+      const ext = blob.type.includes('mp4') ? 'mp4' : blob.type.includes('wav') ? 'wav' : 'webm';
+      form.append('audio', blob, `audio.${ext}`);
+      form.append('languageCode', languageCode);
+      const response = await fetch('/api/v1/assistant/voice/stt', { method: 'POST', body: form });
+      if (!response.ok) {
+        const body = await response.json().catch(() => null);
+        throw new Error(body?.error?.message || 'sarvam_stt_failed');
+      }
+      const data = await response.json();
+      if (typeof data.transcript === 'string' && data.transcript.trim()) {
+        transcriptHandler.current(data.transcript.trim());
+        setError(null);
+        setState('idle');
+        return true;
+      }
+      setError('No speech was detected. Please try speaking again.');
       setState('idle');
-      return true;
-    }
-    throw new Error('empty_transcript');
-  }, [languageCode]);
+      return false;
+    },
+    [languageCode],
+  );
 
   const startListening = useCallback(async () => {
     setError(null);
-    if (mediaRecorderRef.current) return;
+    if (state === 'listening') return;
 
-    if (typeof navigator === 'undefined' || !navigator.mediaDevices?.getUserMedia) {
-      startBrowserRecognition();
-      return;
-    }
-
-    try {
-      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-      const recorder = new MediaRecorder(stream);
-      chunksRef.current = [];
-      recorder.ondataavailable = (e) => {
-        if (e.data.size > 0) chunksRef.current.push(e.data);
-      };
-      recorder.onstop = async () => {
-        stream.getTracks().forEach((t) => t.stop());
-        mediaRecorderRef.current = null;
-        const blob = new Blob(chunksRef.current, { type: recorder.mimeType || 'audio/webm' });
-        try {
-          await transcribeWithSarvam(blob);
-        } catch {
-          // Sarvam failed or returned nothing — fall back to the browser.
-          setState('idle');
-          startBrowserRecognition();
+    // Resolve Sarvam configuration if not loaded yet
+    let isSarvam = sarvamAvailable;
+    if (isSarvam === null) {
+      try {
+        const res = await fetch('/api/v1/assistant/voice/stt');
+        if (res.ok) {
+          const d = await res.json();
+          isSarvam = Boolean(d.configured);
+          setSarvamAvailable(isSarvam);
         }
-      };
-      mediaRecorderRef.current = recorder;
-      recorder.start();
-      setState('listening');
-    } catch {
-      // getUserMedia denied or unavailable — try the browser recognizer.
-      startBrowserRecognition();
+      } catch {
+        isSarvam = false;
+      }
     }
-  }, [startBrowserRecognition, transcribeWithSarvam]);
+
+    // Primary path: Sarvam STT via MediaRecorder (accurate Indic & Indian English STT)
+    if (isSarvam === true && typeof navigator !== 'undefined' && navigator.mediaDevices?.getUserMedia) {
+      try {
+        const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+        const mimeType = [
+          'audio/webm;codecs=opus',
+          'audio/webm',
+          'audio/mp4',
+          'audio/ogg',
+        ].find((m) => typeof MediaRecorder !== 'undefined' && MediaRecorder.isTypeSupported(m));
+
+        const recorder = mimeType ? new MediaRecorder(stream, { mimeType }) : new MediaRecorder(stream);
+        chunksRef.current = [];
+        recorder.ondataavailable = (e) => {
+          if (e.data && e.data.size > 0) chunksRef.current.push(e.data);
+        };
+        recorder.onstop = async () => {
+          stream.getTracks().forEach((t) => t.stop());
+          mediaRecorderRef.current = null;
+          if (chunksRef.current.length === 0) {
+            setState('idle');
+            return;
+          }
+          const rawMime = recorder.mimeType || 'audio/webm';
+          const cleanMime = rawMime.split(';')[0]?.trim() || 'audio/webm';
+          const blob = new Blob(chunksRef.current, { type: cleanMime });
+          if (blob.size < 100) {
+            setState('idle');
+            return;
+          }
+          try {
+            await transcribeWithSarvam(blob);
+          } catch (err) {
+            console.error('[Voice] Sarvam transcription failed:', err);
+            const msg = err instanceof Error ? err.message : 'Transcription failed';
+            setError(`Voice transcription failed: ${msg}`);
+            setState('error');
+          }
+        };
+        mediaRecorderRef.current = recorder;
+        recorder.start(250);
+        setState('listening');
+        return;
+      } catch (err) {
+        console.error('[Voice] MediaRecorder init error:', err);
+        setError('Microphone permission was denied or microphone is unavailable.');
+        setState('error');
+        return;
+      }
+    }
+
+    // Fallback path: Browser Web Speech API (real-time, zero-credential)
+    const browserStarted = startBrowserRecognition();
+    if (!browserStarted && typeof navigator !== 'undefined' && navigator.mediaDevices?.getUserMedia) {
+      // If Web Speech API is not supported (e.g. Firefox), attempt Sarvam recording as a last resort
+      try {
+        const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+        const recorder = new MediaRecorder(stream);
+        chunksRef.current = [];
+        recorder.ondataavailable = (e) => {
+          if (e.data && e.data.size > 0) chunksRef.current.push(e.data);
+        };
+        recorder.onstop = async () => {
+          stream.getTracks().forEach((t) => t.stop());
+          mediaRecorderRef.current = null;
+          if (chunksRef.current.length === 0) {
+            setState('idle');
+            return;
+          }
+          const rawMime = recorder.mimeType || 'audio/webm';
+          const cleanMime = rawMime.split(';')[0]?.trim() || 'audio/webm';
+          const blob = new Blob(chunksRef.current, { type: cleanMime });
+          try {
+            await transcribeWithSarvam(blob);
+          } catch (err) {
+            console.error('[Voice] Sarvam transcription failed:', err);
+            const msg = err instanceof Error ? err.message : 'Transcription failed';
+            setError(`Voice transcription failed: ${msg}`);
+            setState('error');
+          }
+        };
+        mediaRecorderRef.current = recorder;
+        recorder.start(250);
+        setState('listening');
+      } catch {
+        setError('Speech recognition is not supported in this browser.');
+        setState('error');
+      }
+    }
+  }, [sarvamAvailable, startBrowserRecognition, state, transcribeWithSarvam]);
 
   const stopListening = useCallback(() => {
     if (mediaRecorderRef.current && mediaRecorderRef.current.state !== 'inactive') {
       mediaRecorderRef.current.stop();
     }
-    recognitionRef.current?.stop();
+    if (recognitionRef.current) {
+      try {
+        recognitionRef.current.stop();
+      } catch {
+        // ignore stop error
+      }
+    }
   }, []);
 
   const stopSpeaking = useCallback(() => {

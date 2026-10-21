@@ -1,6 +1,8 @@
 'use client';
 
+import React, { useId } from 'react';
 import Link from 'next/link';
+import { useFormStatus } from 'react-dom';
 import * as Popover from '@radix-ui/react-popover';
 import {
   ConfidenceBand,
@@ -38,16 +40,59 @@ export interface EvidenceRowData {
   version: number;
 }
 
+function ActionSubmitButton({
+  label,
+  testId,
+  variant = 'default',
+  disabled,
+}: {
+  label: string;
+  testId?: string;
+  variant?: 'default' | 'verified' | 'corrected' | 'rejected';
+  disabled?: boolean;
+}) {
+  const { pending } = useFormStatus();
+  const colors = {
+    default: 'border-[var(--color-ink)] hover:bg-[var(--color-accent-soft)] text-[var(--color-ink)]',
+    verified: 'border-[var(--color-state-verified)] text-[var(--color-state-verified)] hover:bg-[#e8f3ea]',
+    corrected: 'border-[var(--color-state-corrected)] text-[var(--color-state-corrected)] hover:bg-[#e8eefb]',
+    rejected: 'border-[var(--color-state-rejected)] text-[var(--color-state-rejected)] hover:bg-neutral-100',
+  }[variant];
+
+  return (
+    <button
+      type="submit"
+      data-testid={testId}
+      disabled={disabled || pending}
+      aria-busy={pending}
+      className={`mono border px-2.5 py-1 text-[11px] uppercase tracking-wider transition-colors disabled:cursor-not-allowed disabled:opacity-50 ${colors}`}
+    >
+      {pending ? (
+        <span className="flex items-center justify-center gap-1.5">
+          <span className="inline-block animate-spin" aria-hidden="true">⟳</span>
+          <span>Saving…</span>
+        </span>
+      ) : (
+        label
+      )}
+    </button>
+  );
+}
+
 export function EvidenceRow({ row }: { row: EvidenceRowData }) {
   const fmtDate = (iso: string | null) =>
     iso ? new Date(iso).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }) : '—';
+
+  const isHistorical = row.state === 'superseded' || row.state === 'corrected';
 
   return (
     <li
       data-testid="evidence-row"
       data-fact-id={row.evidenceFactId}
       data-state={row.state}
-      className="grid gap-x-4 gap-y-2 border-b border-[var(--color-rule)] px-3 py-3 md:grid-cols-[7.5rem_1fr_auto]"
+      className={`grid gap-x-4 gap-y-2 border-b border-[var(--color-rule)] px-3 py-3 md:grid-cols-[7.5rem_1fr_auto] transition-colors ${
+        isHistorical ? 'bg-[#faf8f4] opacity-85 border-dashed' : ''
+      }`}
     >
       <div className="mono pt-0.5 text-xs text-[var(--color-ink-soft)]">
         {fmtDate(row.displayDate)}
@@ -63,15 +108,25 @@ export function EvidenceRow({ row }: { row: EvidenceRowData }) {
           {row.version > 1 ? (
             <span className="mono text-[11px] text-[var(--color-ink-soft)]">v{row.version}</span>
           ) : null}
+          {isHistorical ? (
+            <span className="mono border border-[var(--color-rule-strong)] bg-neutral-100 px-1.5 py-0.2 text-[10px] uppercase text-[var(--color-ink-soft)]">
+              historical · retained for audit
+            </span>
+          ) : null}
         </div>
 
-        <p className="mono mt-1.5 truncate text-[15px]" title={row.valueText}>
-          {row.valueText}
-        </p>
+        <div className="mono mt-1.5 text-[15px]" title={row.valueText}>
+          {row.state === 'superseded' ? (
+            <span className="line-through text-[var(--color-ink-soft)]">{row.valueText}</span>
+          ) : (
+            <span className="truncate block font-medium text-[var(--color-ink)]">{row.valueText}</span>
+          )}
+        </div>
 
         <div className="mt-1.5 flex flex-wrap items-center gap-x-3 gap-y-1">
           <Link
             href={`/patients/${row.patientId}/sources/${row.documentId}?fact=${row.evidenceFactId}${row.pageNumber ? `&page=${row.pageNumber}` : ''}`}
+            aria-label={`View ${row.documentName} page ${row.pageNumber ?? 1} in Source Inspector`}
             className="mono text-[11px] text-[var(--color-accent)] underline decoration-dotted underline-offset-2 hover:decoration-solid"
           >
             {row.documentName}
@@ -82,8 +137,8 @@ export function EvidenceRow({ row }: { row: EvidenceRowData }) {
             <Popover.Trigger asChild>
               <button
                 type="button"
-                aria-label="Show provenance"
-                className="mono text-[11px] uppercase tracking-wider text-[var(--color-ink-soft)] underline decoration-dotted underline-offset-2 hover:text-[var(--color-ink)]"
+                aria-label={`Show provenance for ${row.valueText}`}
+                className="mono text-[11px] uppercase tracking-wider text-[var(--color-ink-soft)] underline decoration-dotted underline-offset-2 hover:text-[var(--color-ink)] focus-visible:outline-2 focus-visible:outline-offset-1"
               >
                 why?
               </button>
@@ -94,7 +149,7 @@ export function EvidenceRow({ row }: { row: EvidenceRowData }) {
                 collisionPadding={12}
                 className="z-50 w-[26rem] max-w-[92vw] border border-[var(--color-rule-strong)] bg-[var(--color-paper-raised)] p-4 text-sm shadow-[6px_6px_0_rgba(27,26,23,0.08)]"
               >
-                <p className="doc-text border-l-2 border-[var(--color-accent)] pl-3 text-[15px] italic leading-relaxed">
+                <p className="doc-text border-l-2 border-[var(--color-accent)] pl-3 text-[15px] italic leading-relaxed text-[var(--color-ink)]">
                   “{row.verbatimQuote}”
                 </p>
                 <dl className="mono mt-3 grid grid-cols-[7rem_1fr] gap-y-1 text-[11px] text-[var(--color-ink-soft)]">
@@ -137,19 +192,17 @@ export function EvidenceRow({ row }: { row: EvidenceRowData }) {
         </div>
       </div>
 
-      <div className="flex items-start justify-start gap-2 md:justify-end">
+      <div className="flex flex-wrap items-start justify-start gap-2 md:justify-end">
         {row.state === 'extracted' ? (
           <>
             <form action={verifyEvidenceAction}>
               <input type="hidden" name="factId" value={row.evidenceFactId} />
               <input type="hidden" name="patientId" value={row.patientId} />
-              <button
-                type="submit"
-                data-testid="verify-evidence"
-                className="mono border border-[var(--color-state-verified)] px-2.5 py-1 text-[11px] uppercase tracking-wider text-[var(--color-state-verified)] hover:bg-[#e8f3ea]"
-              >
-                verify
-              </button>
+              <ActionSubmitButton
+                label="verify"
+                testId="verify-evidence"
+                variant="verified"
+              />
             </form>
             <CorrectForm row={row} />
             <SupersedeForm row={row} />
@@ -159,7 +212,7 @@ export function EvidenceRow({ row }: { row: EvidenceRowData }) {
 
         {row.state === 'verified' ? (
           <>
-            <span className="mono text-[11px] text-[var(--color-ink-soft)]">confirmed against source</span>
+            <span className="mono pt-1 text-[11px] text-[var(--color-ink-soft)]">confirmed against source</span>
             <CorrectForm row={row} />
             <SupersedeForm row={row} />
             <RejectForm row={row} />
@@ -169,31 +222,30 @@ export function EvidenceRow({ row }: { row: EvidenceRowData }) {
         {row.state === 'conflicting' ? (
           <Link
             href={`/patients/${row.patientId}/conflicts`}
-            className="mono border border-[var(--color-state-conflicting)] bg-[#fff5f5] px-2 py-1 text-[11px] text-[var(--color-state-conflicting)] hover:underline"
+            className="mono border border-[var(--color-state-conflicting)] bg-[#fff5f5] px-2.5 py-1 text-[11px] text-[var(--color-state-conflicting)] hover:underline focus-visible:outline-2"
           >
             open the reconciliation room →
           </Link>
         ) : null}
 
         {row.state === 'rejected' ? (
-          <form action={reinstateEvidenceAction} className="flex items-center gap-1">
+          <form action={reinstateEvidenceAction} className="flex flex-wrap items-center gap-1.5">
             <input type="hidden" name="factId" value={row.evidenceFactId} />
             <input type="hidden" name="patientId" value={row.patientId} />
             <input
               name="reason"
               required
               minLength={3}
-              placeholder="reason"
-              className="w-40 border border-[var(--color-rule-strong)] bg-white px-2 py-1 text-[11px]"
+              placeholder="justification to reinstate…"
+              aria-label="Reinstatement justification"
+              className="w-44 border border-[var(--color-rule-strong)] bg-white px-2 py-1 text-[11px] text-[var(--color-ink)]"
             />
-            <button type="submit" className="mono border border-[var(--color-ink-soft)] px-2.5 py-1 text-[11px] uppercase">
-              reinstate
-            </button>
+            <ActionSubmitButton label="reinstate" />
           </form>
         ) : null}
 
         {row.state === 'corrected' || row.state === 'superseded' ? (
-          <span className="mono text-[11px] text-[var(--color-ink-soft)]">retained for audit</span>
+          <span className="mono pt-1 text-[11px] text-[var(--color-ink-soft)]">retained for audit</span>
         ) : null}
       </div>
     </li>
@@ -201,120 +253,199 @@ export function EvidenceRow({ row }: { row: EvidenceRowData }) {
 }
 
 function RejectForm({ row }: { row: EvidenceRowData }) {
+  const reasonId = useId();
+  const confirmId = useId();
+
   return (
     <details className="relative">
-      <summary className="mono cursor-pointer list-none border border-[var(--color-rule-strong)] px-2.5 py-1 text-[11px] uppercase tracking-wider text-[var(--color-ink-soft)] hover:text-[var(--color-ink)]">
+      <summary
+        className="mono cursor-pointer list-none border border-[var(--color-rule-strong)] px-2.5 py-1 text-[11px] uppercase tracking-wider text-[var(--color-ink-soft)] hover:text-[var(--color-ink)] focus-visible:outline-2 focus-visible:outline-offset-1"
+        aria-label={`Reject extraction: ${row.valueText}`}
+      >
         reject
       </summary>
-      <form
-        action={rejectEvidenceAction}
-        className="absolute right-0 z-40 mt-1 w-72 border border-[var(--color-rule-strong)] bg-[var(--color-paper-raised)] p-3 shadow-[6px_6px_0_rgba(27,26,23,0.08)]"
-      >
-        <input type="hidden" name="factId" value={row.evidenceFactId} />
-        <input type="hidden" name="patientId" value={row.patientId} />
-        <label className="mono block text-[11px] uppercase tracking-wider text-[var(--color-ink-soft)]">
-          Reason (required)
-        </label>
-        <textarea
-          name="reason"
-          required
-          minLength={3}
-          rows={2}
-          className="mt-1 w-full border border-[var(--color-rule-strong)] bg-white px-2 py-1 text-xs"
-        />
-        <button
-          type="submit"
-          data-testid="reject-evidence"
-          className="mono mt-2 w-full border border-[var(--color-state-rejected)] px-2.5 py-1 text-[11px] uppercase tracking-wider"
-        >
-          reject extraction
-        </button>
-      </form>
+      <div className="fixed inset-x-4 bottom-4 z-50 max-h-[85vh] overflow-y-auto border border-[var(--color-rule-strong)] bg-[var(--color-paper-raised)] p-4 shadow-xl sm:absolute sm:inset-x-auto sm:bottom-auto sm:right-0 sm:mt-1 sm:w-80 sm:shadow-[6px_6px_0_rgba(27,26,23,0.08)]">
+        <form action={rejectEvidenceAction}>
+          <input type="hidden" name="factId" value={row.evidenceFactId} />
+          <input type="hidden" name="patientId" value={row.patientId} />
+          <h4 className="mono text-[11px] font-semibold uppercase tracking-wider text-[var(--color-ink)]">
+            Reject this extraction
+          </h4>
+          <p className="mono mt-1 text-[10px] text-[var(--color-ink-soft)]">
+            Removes this fact from active record readiness. Retained in ledger for audit.
+          </p>
+
+          <label
+            htmlFor={reasonId}
+            className="mono mt-2.5 block text-[11px] uppercase tracking-wider text-[var(--color-ink-soft)]"
+          >
+            Reason for rejection <span className="text-[var(--color-accent)]">*</span>
+          </label>
+          <textarea
+            id={reasonId}
+            name="reason"
+            required
+            minLength={3}
+            rows={2}
+            placeholder="e.g. Scanned OCR artefact, not valid medical metadata…"
+            className="mono mt-1 w-full border border-[var(--color-rule-strong)] bg-white px-2 py-1 text-xs text-[var(--color-ink)] focus:border-[var(--color-accent)] focus:outline-hidden"
+          />
+
+          <label
+            htmlFor={confirmId}
+            className="mono mt-2 flex items-start gap-2 text-[10px] text-[var(--color-ink-soft)]"
+          >
+            <input
+              id={confirmId}
+              type="checkbox"
+              required
+              className="mt-0.5 h-3.5 w-3.5 rounded border-[var(--color-rule-strong)]"
+            />
+            <span>I confirm this fact should be removed from active records</span>
+          </label>
+
+          <div className="mt-3">
+            <ActionSubmitButton
+              label="reject extraction"
+              testId="reject-evidence"
+              variant="rejected"
+            />
+          </div>
+        </form>
+      </div>
     </details>
   );
 }
 
 function CorrectForm({ row }: { row: EvidenceRowData }) {
+  const valueId = useId();
+  const reasonId = useId();
+
   return (
     <details className="relative">
-      <summary className="mono cursor-pointer list-none border border-[var(--color-state-corrected)] px-2.5 py-1 text-[11px] uppercase tracking-wider text-[var(--color-state-corrected)] hover:bg-[#e8eefb]">
+      <summary
+        className="mono cursor-pointer list-none border border-[var(--color-state-corrected)] px-2.5 py-1 text-[11px] uppercase tracking-wider text-[var(--color-state-corrected)] hover:bg-[#e8eefb] focus-visible:outline-2 focus-visible:outline-offset-1"
+        aria-label={`Correct fact: ${row.valueText}`}
+      >
         correct
       </summary>
-      <form
-        action={correctEvidenceAction}
-        className="absolute right-0 z-40 mt-1 w-96 border border-[var(--color-rule-strong)] bg-[var(--color-paper-raised)] p-3 shadow-[6px_6px_0_rgba(27,26,23,0.08)]"
-      >
-        <input type="hidden" name="factId" value={row.evidenceFactId} />
-        <input type="hidden" name="patientId" value={row.patientId} />
-        <input type="hidden" name="verbatimQuote" value={row.verbatimQuote} />
-        <label className="mono block text-[11px] uppercase tracking-wider text-[var(--color-ink-soft)]">
-          Corrected value
-        </label>
-        <input
-          name="valueText"
-          required
-          defaultValue={row.valueText}
-          className="mono mt-1 w-full border border-[var(--color-rule-strong)] bg-white px-2 py-1 text-xs"
-        />
-        <p className="mono mt-2 text-[11px] text-[var(--color-ink-soft)]">
-          The original extracted value is preserved and shown as “corrected from”.
-        </p>
-        <label className="mono mt-2 block text-[11px] uppercase tracking-wider text-[var(--color-ink-soft)]">
-          Reason (required)
-        </label>
-        <textarea
-          name="reason"
-          required
-          minLength={3}
-          rows={2}
-          className="mt-1 w-full border border-[var(--color-rule-strong)] bg-white px-2 py-1 text-xs"
-        />
-        <button
-          type="submit"
-          data-testid="correct-evidence"
-          className="mono mt-2 w-full border border-[var(--color-state-corrected)] px-2.5 py-1 text-[11px] uppercase tracking-wider"
-        >
-          record correction
-        </button>
-      </form>
+      <div className="fixed inset-x-4 bottom-4 z-50 max-h-[85vh] overflow-y-auto border border-[var(--color-rule-strong)] bg-[var(--color-paper-raised)] p-4 shadow-xl sm:absolute sm:inset-x-auto sm:bottom-auto sm:right-0 sm:mt-1 sm:w-96 sm:shadow-[6px_6px_0_rgba(27,26,23,0.08)]">
+        <form action={correctEvidenceAction}>
+          <input type="hidden" name="factId" value={row.evidenceFactId} />
+          <input type="hidden" name="patientId" value={row.patientId} />
+          <input type="hidden" name="verbatimQuote" value={row.verbatimQuote} />
+
+          <h4 className="mono text-[11px] font-semibold uppercase tracking-wider text-[var(--color-ink)]">
+            Author human correction
+          </h4>
+
+          <label
+            htmlFor={valueId}
+            className="mono mt-2 block text-[11px] uppercase tracking-wider text-[var(--color-ink-soft)]"
+          >
+            Corrected value <span className="text-[var(--color-accent)]">*</span>
+          </label>
+          <input
+            id={valueId}
+            name="valueText"
+            required
+            defaultValue={row.valueText}
+            className="mono mt-1 w-full border border-[var(--color-rule-strong)] bg-white px-2 py-1 text-xs text-[var(--color-ink)] focus:border-[var(--color-accent)] focus:outline-hidden"
+          />
+          <p className="mono mt-1 text-[10px] text-[var(--color-ink-soft)]">
+            Original extracted value is preserved and displayed as “corrected from”.
+          </p>
+
+          <label
+            htmlFor={reasonId}
+            className="mono mt-2.5 block text-[11px] uppercase tracking-wider text-[var(--color-ink-soft)]"
+          >
+            Reason for correction <span className="text-[var(--color-accent)]">*</span>
+          </label>
+          <textarea
+            id={reasonId}
+            name="reason"
+            required
+            minLength={3}
+            rows={2}
+            placeholder="Clinical justification for replacement value…"
+            className="mono mt-1 w-full border border-[var(--color-rule-strong)] bg-white px-2 py-1 text-xs text-[var(--color-ink)] focus:border-[var(--color-accent)] focus:outline-hidden"
+          />
+
+          <div className="mt-3">
+            <ActionSubmitButton
+              label="record correction"
+              testId="correct-evidence"
+              variant="corrected"
+            />
+          </div>
+        </form>
+      </div>
     </details>
   );
 }
 
 function SupersedeForm({ row }: { row: EvidenceRowData }) {
+  const reasonId = useId();
+  const confirmId = useId();
+
   return (
     <details className="relative">
-      <summary className="mono cursor-pointer list-none border border-[var(--color-rule-strong)] px-2.5 py-1 text-[11px] uppercase tracking-wider text-[var(--color-ink-soft)] hover:text-[var(--color-ink)]">
+      <summary
+        className="mono cursor-pointer list-none border border-[var(--color-rule-strong)] px-2.5 py-1 text-[11px] uppercase tracking-wider text-[var(--color-ink-soft)] hover:text-[var(--color-ink)] focus-visible:outline-2 focus-visible:outline-offset-1"
+        aria-label={`Mark fact superseded: ${row.valueText}`}
+      >
         supersede
       </summary>
-      <form
-        action={supersedeEvidenceAction}
-        className="absolute right-0 z-40 mt-1 w-80 border border-[var(--color-rule-strong)] bg-[var(--color-paper-raised)] p-3 shadow-[6px_6px_0_rgba(27,26,23,0.08)]"
-      >
-        <input type="hidden" name="factId" value={row.evidenceFactId} />
-        <input type="hidden" name="patientId" value={row.patientId} />
-        <p className="mono text-[11px] text-[var(--color-ink-soft)]">
-          Mark this fact as superseded by newer or replacement evidence. It is retained for audit and will no longer be treated as an active fact.
-        </p>
-        <label className="mono mt-2 block text-[11px] uppercase tracking-wider text-[var(--color-ink-soft)]">
-          Reason (required)
-        </label>
-        <textarea
-          name="reason"
-          required
-          minLength={3}
-          rows={2}
-          placeholder="e.g. Superseded by newer repeat biopsy..."
-          className="mt-1 w-full border border-[var(--color-rule-strong)] bg-white px-2 py-1 text-xs"
-        />
-        <button
-          type="submit"
-          data-testid="supersede-evidence"
-          className="mono mt-2 w-full border border-[var(--color-ink)] px-2.5 py-1 text-[11px] uppercase tracking-wider hover:bg-[var(--color-accent-soft)]"
-        >
-          mark superseded
-        </button>
-      </form>
+      <div className="fixed inset-x-4 bottom-4 z-50 max-h-[85vh] overflow-y-auto border border-[var(--color-rule-strong)] bg-[var(--color-paper-raised)] p-4 shadow-xl sm:absolute sm:inset-x-auto sm:bottom-auto sm:right-0 sm:mt-1 sm:w-80 sm:shadow-[6px_6px_0_rgba(27,26,23,0.08)]">
+        <form action={supersedeEvidenceAction}>
+          <input type="hidden" name="factId" value={row.evidenceFactId} />
+          <input type="hidden" name="patientId" value={row.patientId} />
+
+          <h4 className="mono text-[11px] font-semibold uppercase tracking-wider text-[var(--color-ink)]">
+            Mark as superseded
+          </h4>
+          <p className="mono mt-1 text-[10px] text-[var(--color-ink-soft)]">
+            Marks this fact as superseded by newer or repeat evidence. Retained for audit; removed from active calculations.
+          </p>
+
+          <label
+            htmlFor={reasonId}
+            className="mono mt-2.5 block text-[11px] uppercase tracking-wider text-[var(--color-ink-soft)]"
+          >
+            Reason for superseding <span className="text-[var(--color-accent)]">*</span>
+          </label>
+          <textarea
+            id={reasonId}
+            name="reason"
+            required
+            minLength={3}
+            rows={2}
+            placeholder="e.g. Superseded by newer repeat biopsy or revised consultation…"
+            className="mono mt-1 w-full border border-[var(--color-rule-strong)] bg-white px-2 py-1 text-xs text-[var(--color-ink)] focus:border-[var(--color-accent)] focus:outline-hidden"
+          />
+
+          <label
+            htmlFor={confirmId}
+            className="mono mt-2 flex items-start gap-2 text-[10px] text-[var(--color-ink-soft)]"
+          >
+            <input
+              id={confirmId}
+              type="checkbox"
+              required
+              className="mt-0.5 h-3.5 w-3.5 rounded border-[var(--color-rule-strong)]"
+            />
+            <span>I confirm this fact is superseded by newer clinical evidence</span>
+          </label>
+
+          <div className="mt-3">
+            <ActionSubmitButton
+              label="mark superseded"
+              testId="supersede-evidence"
+            />
+          </div>
+        </form>
+      </div>
     </details>
   );
 }

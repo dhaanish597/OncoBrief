@@ -1,6 +1,7 @@
 import Link from 'next/link';
+import { can } from '@oncobrief/domain';
 import { listMessageTemplates, listMessages, listMessageVariables, listVerifiedAppointments } from '@oncobrief/db';
-import { withSession } from '@/lib/session';
+import { requireSession, withSession } from '@/lib/session';
 import { EmptyFinding, SectionHeading, StateBadge } from '@/components/evidence';
 import { approveMessageAction, composeMessageAction, deliverMessageAction } from '@/lib/actions';
 
@@ -14,13 +15,14 @@ import { approveMessageAction, composeMessageAction, deliverMessageAction } from
  */
 export default async function ContinuityPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
+  const session = await requireSession();
+  const canCompose = can(session.role, 'message:compose');
+  const canApprove = can(session.role, 'message:approve');
 
   const data = await withSession(async (q) => {
-    const [templates, messages, appointments] = await Promise.all([
-      listMessageTemplates(q),
-      listMessages(q, id),
-      listVerifiedAppointments(q, id),
-    ]);
+    const templates = await listMessageTemplates(q);
+    const messages = await listMessages(q, id);
+    const appointments = await listVerifiedAppointments(q, id);
     const variablesFor = new Map<string, Awaited<ReturnType<typeof listMessageVariables>>>();
     for (const m of messages) variablesFor.set(m.id, await listMessageVariables(q, m.id));
     return { templates, messages, appointments, variablesFor };
@@ -48,7 +50,11 @@ export default async function ContinuityPage({ params }: { params: Promise<{ id:
           Compose an administrative reminder
         </h3>
 
-        {appointments.length === 0 ? (
+        {!canCompose ? (
+          <p className="mono border border-[var(--color-rule)] bg-[var(--color-paper-raised)] px-3 py-2 text-xs text-[var(--color-ink-soft)]">
+            Message composition requires coordinator or records officer authority (<code>message:compose</code>).
+          </p>
+        ) : appointments.length === 0 ? (
           <EmptyFinding>
             No verified appointment fact on this record yet. A message cannot be approved without
             one.
@@ -100,7 +106,7 @@ export default async function ContinuityPage({ params }: { params: Promise<{ id:
               <button
                 type="submit"
                 data-testid="compose-message"
-                className="mono w-full border border-[var(--color-ink)] px-3 py-1.5 text-[11px] uppercase tracking-wider"
+                className="mono w-full border border-[var(--color-ink)] px-3 py-1.5 text-[11px] uppercase tracking-wider hover:bg-[var(--color-accent-soft)]"
               >
                 compose draft
               </button>
@@ -174,17 +180,23 @@ export default async function ContinuityPage({ params }: { params: Promise<{ id:
 
               <footer className="flex flex-wrap items-center gap-3 border-t border-[var(--color-rule)] px-4 py-2">
                 {m.status === 'draft' ? (
-                  <form action={approveMessageAction}>
-                    <input type="hidden" name="patientId" value={id} />
-                    <input type="hidden" name="messageId" value={m.id} />
-                    <button
-                      type="submit"
-                      data-testid="approve-message"
-                      className="mono border border-[var(--color-state-verified)] px-3 py-1 text-[11px] uppercase text-[var(--color-state-verified)]"
-                    >
-                      clinician approve
-                    </button>
-                  </form>
+                  canApprove ? (
+                    <form action={approveMessageAction}>
+                      <input type="hidden" name="patientId" value={id} />
+                      <input type="hidden" name="messageId" value={m.id} />
+                      <button
+                        type="submit"
+                        data-testid="approve-message"
+                        className="mono border border-[var(--color-state-verified)] px-3 py-1 text-[11px] uppercase text-[var(--color-state-verified)] hover:bg-[#e8f3ea]"
+                      >
+                        clinician approve
+                      </button>
+                    </form>
+                  ) : (
+                    <span className="mono border border-[var(--color-rule)] px-2 py-1 text-[10px] text-[var(--color-ink-soft)]">
+                      approval requires clinician authority
+                    </span>
+                  )
                 ) : null}
                 {m.status === 'approved' ? (
                   <form action={deliverMessageAction}>

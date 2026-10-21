@@ -24,10 +24,8 @@ export default async function AuditPage({ params }: { params: Promise<{ id: stri
     const patient = await getPatient(q, id);
     if (!patient) notFound();
 
-    const [events, chain] = await Promise.all([
-      listPatientAudit(q, id),
-      verifyLedgerChain(q, s.orgId),
-    ]);
+    const events = await listPatientAudit(q, id);
+    const chain = await verifyLedgerChain(q, s.orgId);
     return { events, chain };
   });
 

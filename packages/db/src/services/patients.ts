@@ -90,6 +90,8 @@ export interface TimelineRow {
   correctsFactId: string | null;
   replacedByFactId: string | null;
   version: number;
+  issuingFacility?: string | null;
+  recordOrigin?: string | null;
 }
 
 export async function getTimeline(q: Querier, patientId: string): Promise<TimelineRow[]> {
@@ -100,11 +102,12 @@ export async function getTimeline(q: Querier, patientId: string): Promise<Timeli
     confidence_band: string; extractor_kind: string; extractor_name: string; extractor_version: string;
     verbatim_quote: string; reviewer_name: string | null; reviewed_at: Date | null;
     corrects_fact_id: string | null; replaced_by_fact_id: string | null; version: string;
+    issuing_facility: string | null; record_origin: string | null;
   }>(
     `SELECT te.id, te.evidence_fact_id, te.fact_type, te.value_text,
             te.display_date::text AS display_date, ef.observed_on::text AS observed_on,
             coalesce(es.state, te.state, 'extracted') AS state,
-            te.document_id, d.original_filename,
+            te.document_id, d.original_filename, d.issuing_facility, d.record_origin,
             ef.confidence_band, ef.extractor_kind, ef.extractor_name, ef.extractor_version,
             ef.verbatim_quote, ef.corrects_fact_id,
             u.display_name AS reviewer_name, es.last_changed_at AS reviewed_at,
@@ -146,6 +149,8 @@ export async function getTimeline(q: Querier, patientId: string): Promise<Timeli
     correctsFactId: r.corrects_fact_id,
     replacedByFactId: r.replaced_by_fact_id,
     version: Number(r.version),
+    issuingFacility: r.issuing_facility,
+    recordOrigin: r.record_origin,
   }));
 }
 
@@ -454,11 +459,12 @@ export async function getDocument(q: Querier, patientId: string, documentId: str
     type_confirmed_by: string | null; document_date: string | null; issuing_facility: string | null;
     record_origin: string; ingest_status: string; ingest_error: string | null; page_count: number | null;
     doc_version: number; duplicate_of_document_id: string | null; is_demo_fixture: boolean;
-    content_sha256: Buffer;
+    content_sha256: Buffer; storage_key: string;
   }>(
     `SELECT id, original_filename, mime_type, document_type, type_confirmed_by,
             document_date::text AS document_date, issuing_facility, record_origin, ingest_status,
-            ingest_error, page_count, doc_version, duplicate_of_document_id, is_demo_fixture, content_sha256
+            ingest_error, page_count, doc_version, duplicate_of_document_id, is_demo_fixture,
+            content_sha256, storage_key
        FROM document WHERE id = $1 AND patient_id = $2`,
     [documentId, patientId],
   );
@@ -480,6 +486,7 @@ export async function getDocument(q: Querier, patientId: string, documentId: str
     duplicateOf: r.duplicate_of_document_id,
     isDemoFixture: r.is_demo_fixture,
     contentSha256: r.content_sha256 ? r.content_sha256.toString('hex') : '',
+    storageKey: r.storage_key,
   };
 }
 
@@ -500,9 +507,9 @@ export async function getPageSpans(
   q: Querier,
   documentId: string,
   pageNumber: number,
-): Promise<{ plainText: string; pageId: string; spans: PageSpanRow[] } | null> {
-  const page = await q.query<{ id: string; plain_text: string }>(
-    'SELECT id, plain_text FROM document_page WHERE document_id = $1 AND page_number = $2',
+): Promise<{ plainText: string; pageId: string; widthPx: number | null; heightPx: number | null; spans: PageSpanRow[] } | null> {
+  const page = await q.query<{ id: string; plain_text: string; width_px: number | null; height_px: number | null }>(
+    'SELECT id, plain_text, width_px, height_px FROM document_page WHERE document_id = $1 AND page_number = $2',
     [documentId, pageNumber],
   );
   const p = page.rows[0];
@@ -522,6 +529,8 @@ export async function getPageSpans(
   return {
     plainText: p.plain_text,
     pageId: p.id,
+    widthPx: p.width_px,
+    heightPx: p.height_px,
     spans: spans.rows.map((s) => ({
       id: s.id,
       text: s.text,

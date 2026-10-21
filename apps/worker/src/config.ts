@@ -43,6 +43,8 @@ export interface WorkerConfig {
   s3Bucket: string;
   textractNotificationTopicArn?: string;
   textractNotificationRoleArn?: string;
+  ocrDriver: 'auto' | 'sarvam' | 'textract' | 'local-pdf' | 'fixture';
+  sarvamApiKey?: string;
   extractionDriver: 'rule' | 'bedrock';
   bedrockModelId: string;
   pollWaitSeconds: number;
@@ -83,6 +85,8 @@ export function loadConfig(): WorkerConfig {
     documentQueue: process.env['SQS_DOCUMENT_QUEUE'] ?? 'oncobrief-document-ingest',
     ocrResultQueue: process.env['SQS_OCR_RESULT_QUEUE'] ?? 'oncobrief-ocr-result',
     s3Bucket: process.env['S3_DOCUMENTS_BUCKET'] ?? 'oncobrief-documents',
+    ocrDriver: (process.env['OCR_DRIVER'] ?? 'auto') as 'auto' | 'sarvam' | 'textract' | 'local-pdf' | 'fixture',
+    ...(process.env['SARVAM_API_KEY'] ? { sarvamApiKey: process.env['SARVAM_API_KEY'] } : {}),
     extractionDriver: (process.env['EXTRACTION_DRIVER'] ?? 'rule') as 'rule' | 'bedrock',
     bedrockModelId: process.env['BEDROCK_MODEL_ID'] ?? '',
     pollWaitSeconds: int('WORKER_POLL_WAIT_SECONDS', 20),

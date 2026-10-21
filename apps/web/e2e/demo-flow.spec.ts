@@ -64,7 +64,7 @@ test.describe('OncoBrief — evidence-first demo flow', () => {
     await page.getByTestId('tab-conflicts').click();
 
     await page.getByRole('link', { name: /open reconciliation room/i }).first().click();
-    await expect(page.getByText(/Reconciliation room/i)).toBeVisible();
+    await expect(page.getByText('Reconciliation room', { exact: true })).toBeVisible();
 
     // Both sources are shown, side by side.
     await expect(page.getByTestId('source-pane')).toHaveCount(2);

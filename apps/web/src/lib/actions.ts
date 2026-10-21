@@ -71,21 +71,27 @@ function patientPath(fd: FormData, sub: string): string {
 // --- evidence --------------------------------------------------------------
 
 export async function verifyEvidenceAction(fd: FormData): Promise<void> {
-  const factId = str(fd, 'factId');
+  const factId = str(fd, 'factId') || str(fd, 'evidenceFactId');
+  if (!factId || factId.trim().length === 0) {
+    throw new Error('fact_id_required');
+  }
   await withSession(async (q, s) => {
     requirePermission(s.role, 'evidence:verify');
-    await verifyEvidence(q, { factId, actor: { kind: 'human', userId: s.userId, role: s.role } });
+    await verifyEvidence(q, { factId: factId.trim(), actor: { kind: 'human', userId: s.userId, role: s.role } });
   });
   revalidatePath(patientPath(fd, 'evidence'));
 }
 
 export async function correctEvidenceAction(fd: FormData): Promise<void> {
-  const factId = str(fd, 'factId');
+  const factId = str(fd, 'factId') || str(fd, 'evidenceFactId');
   const patientId = str(fd, 'patientId');
   const reason = str(fd, 'reason');
   const valueText = str(fd, 'valueText');
   const verbatimQuote = str(fd, 'verbatimQuote');
 
+  if (!factId || factId.trim().length === 0) {
+    throw new Error('fact_id_required');
+  }
   if (!reason || reason.trim().length < 3) {
     throw new Error('reason_required');
   }
@@ -128,11 +134,14 @@ export async function correctEvidenceAction(fd: FormData): Promise<void> {
 }
 
 export async function supersedeEvidenceAction(fd: FormData): Promise<void> {
-  const factId = str(fd, 'factId');
+  const factId = str(fd, 'factId') || str(fd, 'evidenceFactId');
   const patientId = str(fd, 'patientId');
   const reason = str(fd, 'reason');
   const supersedingFactId = optionalStr(fd, 'supersedingFactId');
 
+  if (!factId || factId.trim().length === 0) {
+    throw new Error('fact_id_required');
+  }
   if (!reason || reason.trim().length < 3) {
     throw new Error('reason_required');
   }
@@ -162,8 +171,11 @@ export async function supersedeEvidenceAction(fd: FormData): Promise<void> {
 }
 
 export async function rejectEvidenceAction(fd: FormData): Promise<void> {
-  const factId = str(fd, 'factId');
+  const factId = str(fd, 'factId') || str(fd, 'evidenceFactId');
   const reason = str(fd, 'reason');
+  if (!factId || factId.trim().length === 0) {
+    throw new Error('fact_id_required');
+  }
   await withSession(async (q, s) => {
     requirePermission(s.role, 'evidence:reject');
     await rejectEvidence(q, { factId, reason, actor: { kind: 'human', userId: s.userId, role: s.role } });
@@ -172,8 +184,11 @@ export async function rejectEvidenceAction(fd: FormData): Promise<void> {
 }
 
 export async function reinstateEvidenceAction(fd: FormData): Promise<void> {
-  const factId = str(fd, 'factId');
+  const factId = str(fd, 'factId') || str(fd, 'evidenceFactId');
   const reason = str(fd, 'reason');
+  if (!factId || factId.trim().length === 0) {
+    throw new Error('fact_id_required');
+  }
   await withSession(async (q, s) => {
     requirePermission(s.role, 'evidence:reject');
     await reinstateEvidence(q, { factId, reason, actor: { kind: 'human', userId: s.userId, role: s.role } });
@@ -380,15 +395,46 @@ export async function confirmDocumentTypeAction(fd: FormData): Promise<void> {
   revalidatePath(`/patients/${patientId}/sources`);
 }
 
+export async function readBoundedUploadFile(
+  file: File,
+  maxBytes = 25 * 1024 * 1024,
+): Promise<Buffer> {
+  if (file.size > maxBytes) {
+    throw new Error('UPLOAD_TOO_LARGE');
+  }
+
+  const reader = file.stream().getReader();
+  const chunks: Uint8Array[] = [];
+  let totalBytes = 0;
+
+  try {
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      if (value) {
+        totalBytes += value.byteLength;
+        if (totalBytes > maxBytes) {
+          await reader.cancel();
+          throw new Error('UPLOAD_TOO_LARGE');
+        }
+        chunks.push(value);
+      }
+    }
+  } finally {
+    reader.releaseLock();
+  }
+
+  return Buffer.concat(chunks);
+}
+
 export async function uploadDocumentAction(fd: FormData): Promise<void> {
   const patientId = str(fd, 'patientId');
   const file = fd.get('file');
   await withSession(async (q, s) => {
     requirePermission(s.role, 'document:upload');
-    const MAX_UPLOAD_SIZE = 20 * 1024 * 1024; // 20 MB
+    const MAX_UPLOAD_SIZE = 25 * 1024 * 1024; // 25 MB
     if (!(file instanceof File) || file.size === 0) throw new Error('no_file');
-    if (file.size > MAX_UPLOAD_SIZE) throw new Error('file_too_large');
-    const bytes = Buffer.from(await file.arrayBuffer());
+    const bytes = await readBoundedUploadFile(file, MAX_UPLOAD_SIZE);
     const { createDocument, ingestDocument } = await import('@oncobrief/db');
     const { documentId } = await createDocument(q, getStorage(), {
       orgId: s.orgId,
@@ -408,8 +454,8 @@ export async function uploadDocumentAction(fd: FormData): Promise<void> {
 }
 
 async function ocrPort() {
-  const { FixtureOcrAdapter } = await import('@oncobrief/adapters');
-  return new FixtureOcrAdapter();
+  const { LocalMultimodalOcrAdapter } = await import('@oncobrief/adapters');
+  return new LocalMultimodalOcrAdapter();
 }
 async function extractorPort() {
   const { RuleBasedExtractor } = await import('@oncobrief/adapters');

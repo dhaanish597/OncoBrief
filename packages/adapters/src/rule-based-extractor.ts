@@ -73,7 +73,8 @@ const PROCEDURES = [
   'Mammography', 'Ultrasound', 'Ultrasonography',
 ];
 
-const FACILITY_RE = /\b([A-Z][A-Za-z.'&-]*(?:\s+[A-Z][A-Za-z.'&-]*){0,4}\s+(?:Hospital|Institute|Centre|Center|Clinic|Laboratory|Labs|Diagnostics))\b/;
+const FACILITY_RE =
+  /\b([A-Z][A-Za-z.'&-]*(?:\s+[A-Z][A-Za-z.'&-]*){0,4}\s+(?:Hospital|Institute|Centre|Center|Clinic|Laboratory|Labs|Diagnostics|HOSPITAL|INSTITUTE|CENTRE|CENTER|CLINIC|LABORATORY|LABS|DIAGNOSTICS))\b/;
 
 function slug(input: string): string {
   return input.trim().toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
@@ -241,11 +242,16 @@ export class RuleBasedExtractor implements ExtractionPort {
         });
       }
 
-      // --- lab result as written -------------------------------------------
-      const lab = /\b([A-Z][A-Za-z0-9 /-]{2,28}?)\s*[:=]\s*([<>]?\d+(?:\.\d+)?)\s*([A-Za-z/%\u00B5]{0,6})\b/.exec(
+      // --- lab result as written (key-value or tabular) --------------------
+      let lab = /\b([A-Z][A-Za-z0-9 /()-]{2,35}?)\s*[:=]\s*([<>]?[\d,]+(?:\.\d+)?)\s*([A-Za-z/%\u00B5]{0,10})\b/.exec(
         text,
       );
-      if (lab && !/^(Date|MRN|ABHA|Age|Phone|Contact)$/i.test(lab[1]!.trim())) {
+      if (!lab) {
+        lab = /\b([A-Z][A-Za-z0-9 /()-]{2,35}?)\s{2,}([<>]?[\d,]+(?:\.\d+)?)\s+([A-Za-z/%\u00B5]{1,10})\b/.exec(
+          text,
+        );
+      }
+      if (lab && !/^(Date|MRN|ABHA|Age|Phone|Contact|TEST NAME|Specimen|Specimen Date)$/i.test(lab[1]!.trim())) {
         const unit = lab[3]?.trim();
         const value: FactValue = {
           kind: 'lab',

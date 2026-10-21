@@ -1,5 +1,6 @@
 'use client';
 
+import Link from 'next/link';
 import { ConfidenceBand, MachineBadge, StateBadge, factTypeLabel } from '@/components/evidence';
 
 export interface SourceCardData {
@@ -70,12 +71,13 @@ export function SourceCard({ source }: { source: SourceCardData }) {
         )}
 
         {source.href ? (
-          <a
+          <Link
             href={source.href}
-            className="mono mt-2 inline-block border border-[var(--color-rule-strong)] px-2 py-1 text-[10px] uppercase tracking-wider hover:bg-[var(--color-accent-soft)]"
+            aria-label={`View source in ${source.documentName} for ${source.valueText}`}
+            className="mono mt-2 inline-block border border-[var(--color-rule-strong)] px-2.5 py-1 text-[10px] uppercase tracking-wider hover:bg-[var(--color-accent-soft)] focus-visible:outline-2"
           >
-            View source
-          </a>
+            View source →
+          </Link>
         ) : null}
       </div>
     </article>

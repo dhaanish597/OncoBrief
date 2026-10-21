@@ -3,6 +3,24 @@ import { mkdir, readFile, rm, writeFile } from 'node:fs/promises';
 import { dirname, join, normalize, resolve } from 'node:path';
 import type { StoragePort } from '@oncobrief/ports';
 
+/** Verify an HMAC token minted by presignGet. Returns the key or null. */
+export function verifyPresign(
+  secret: string,
+  key: string,
+  expires: string,
+  sig: string,
+): { key: string } | null {
+  const exp = Number(expires);
+  if (!Number.isFinite(exp) || exp * 1000 < Date.now()) return null;
+  const expected = createHmac('sha256', secret)
+    .update(`${key}\n${exp}`)
+    .digest('base64url');
+  const a = Buffer.from(expected);
+  const b = Buffer.from(sig);
+  if (a.length !== b.length || !timingSafeEqual(a, b)) return null;
+  return { key };
+}
+
 /**
  * Local filesystem storage adapter (ADR 0013).
  *
@@ -46,15 +64,7 @@ export class LocalFsStorageAdapter implements StoragePort {
 
   /** Verify an HMAC token minted by presignGet. Returns the key or null. */
   verifyPresign(key: string, expires: string, sig: string): { key: string } | null {
-    const exp = Number(expires);
-    if (!Number.isFinite(exp) || exp * 1000 < Date.now()) return null;
-    const expected = createHmac('sha256', this.secret)
-      .update(`${key}\n${exp}`)
-      .digest('base64url');
-    const a = Buffer.from(expected);
-    const b = Buffer.from(sig);
-    if (a.length !== b.length || !timingSafeEqual(a, b)) return null;
-    return { key };
+    return verifyPresign(this.secret, key, expires, sig);
   }
 
   async delete(key: string): Promise<void> {

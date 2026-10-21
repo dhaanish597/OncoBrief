@@ -23,11 +23,9 @@ export default async function PatientLayout({
   const data = await withSession(async (q) => {
     const patient = await getPatient(q, id);
     if (!patient) return null;
-    const [recordMap, conflicts, tasks] = await Promise.all([
-      listRecordMap(q, id),
-      listConflicts(q, id, 'open'),
-      listTasks(q, id),
-    ]);
+    const recordMap = await listRecordMap(q, id);
+    const conflicts = await listConflicts(q, id, 'open');
+    const tasks = await listTasks(q, id);
     return { patient, recordMap, openConflicts: conflicts.length, tasks };
   });
 
@@ -40,7 +38,7 @@ export default async function PatientLayout({
     : null;
 
   return (
-    <div className="mx-auto max-w-[1500px] px-6 py-6">
+    <div className="mx-auto max-w-[1500px] px-4 py-5 sm:px-6 sm:py-6">
       <div className="flex flex-wrap items-start justify-between gap-4">
         <div>
           <div className="flex items-center gap-3">

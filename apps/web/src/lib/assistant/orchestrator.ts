@@ -1,7 +1,7 @@
 import { randomUUID } from 'node:crypto';
 import type { Querier } from '@oncobrief/db';
 import { getPatient, getTimeline } from '@oncobrief/db';
-import { chatCompletionWithRetry, NvidiaLlmError } from '@oncobrief/adapters';
+import { chatCompletionWithRetry, NvidiaLlmError, isLlmConfigured } from '@oncobrief/adapters';
 import { classifyIntent, type Intent } from './classify';
 import {
   searchEvidence,
@@ -55,7 +55,8 @@ export function sanitizeUserFacingProse(text: string): string {
   cleaned = cleaned.replace(UUID_REGEX, '[record]');
 
   return cleaned
-    .replace(/\s{2,}/g, ' ')
+    .replace(/[^\S\r\n]{2,}/g, ' ')
+    .replace(/\n{3,}/g, '\n\n')
     .replace(/\(\s*\)/g, '')
     .trim();
 }
@@ -93,6 +94,80 @@ export interface AssistantInput {
 
 const NO_EVIDENCE_ANSWER =
   "I couldn't find that information in the selected record set.";
+
+/**
+ * Deterministic evidence synthesis for when external LLM providers are
+ * unconfigured or disabled. Adheres strictly to the Evidence Ledger:
+ * quotes recorded values, attaches [E1], [E2] citations, never fabricates
+ * or infers clinical facts.
+ */
+export function synthesizeDeterministicGroundedAnswer(
+  intent: Intent,
+  evidence: PromptEvidence[],
+  message: string,
+  conflict: boolean,
+): string {
+  const allItems = evidence.flatMap((e) => e.items);
+  if (allItems.length === 0) {
+    return `${NO_EVIDENCE_ANSWER}\n\nYou can check Evidence Journey \u2192 Sources, or Evidence Journey \u2192 Record Map.`;
+  }
+
+  if (intent === 'missing_documents_question') {
+    const lines = [
+      'Based on the authorized record checklist, the following requirements are currently outstanding:',
+    ];
+    allItems.forEach((item, idx) => {
+      const label = item.documentName.replace(/^Record Checklist:\s*/i, '');
+      const stateDesc = item.state === 'partial' ? 'in-flight / pending confirmation' : 'missing';
+      const rationale = item.verbatimQuote ? ` (${item.verbatimQuote})` : '';
+      lines.push(`- [E${idx + 1}] ${label}: ${stateDesc}${rationale}`);
+    });
+    lines.push('\nYou can review requirements and link documents in Evidence Journey \u2192 Record Map.');
+    return lines.join('\n');
+  }
+
+  if (intent === 'continuity_question') {
+    const lines = [
+      'Based on the authorized record, here are the outstanding continuity and administrative tasks:',
+    ];
+    allItems.forEach((item, idx) => {
+      const due = item.displayDate ? ` (due ${item.displayDate})` : '';
+      lines.push(`- [E${idx + 1}] ${item.valueText}${due}`);
+    });
+    lines.push('\nYou can review tasks in Evidence Journey \u2192 Continuity.');
+    return lines.join('\n');
+  }
+
+  const isConflictQuery =
+    conflict ||
+    /conflict|disagree|reconcil/i.test(message) ||
+    allItems.some((i) => i.state === 'conflicting' || i.factType === 'conflict.member');
+
+  if (isConflictQuery) {
+    const lines = ['Conflicting evidence identified in the authorized record:'];
+    allItems.forEach((item, idx) => {
+      const page = item.pageNumber ? ` page ${item.pageNumber}` : '';
+      lines.push(
+        `- [E${idx + 1}] ${item.documentName}${page}: recorded "${item.valueText}" (${item.verbatimQuote})`,
+      );
+    });
+    lines.push(
+      '\nNeither source has been chosen over the other. You can review and reconcile these records in Evidence Journey \u2192 Reconciliation.',
+    );
+    return lines.join('\n');
+  }
+
+  // General evidence question
+  const lines = ['Based on the authorized evidence for this patient:'];
+  allItems.slice(0, 8).forEach((item, idx) => {
+    const page = item.pageNumber ? ` page ${item.pageNumber}` : '';
+    const date = item.displayDate ? ` recorded on ${item.displayDate}` : '';
+    const reviewer = item.reviewerName ? `, verified by ${item.reviewerName}` : '';
+    lines.push(`- [E${idx + 1}] ${item.documentName}${page}: ${item.valueText}${date}${reviewer}`);
+  });
+  lines.push('\nYou can inspect the underlying document pages and provenance in Evidence Journey \u2192 Sources.');
+  return lines.join('\n');
+}
 
 function toSourceCard(item: EvidenceSearchResult): SourceCard {
   return {
@@ -447,43 +522,51 @@ export async function runAssistant(
     languageCode: context.languageCode,
   });
 
+  const shouldUseLlm = typeof isLlmConfigured === 'function' ? isLlmConfigured() : true;
+
   let answer: string;
-  let providerModel = 'unknown';
-  try {
-    const completion = await chatCompletionWithRetry({
-      messages: [
-        { role: 'system', content: ASSISTANT_SYSTEM_PROMPT },
-        { role: 'user', content: userPrompt },
-      ],
-      temperature: 0.1,
-      maxTokens: 1024,
-    });
-    answer = completion.content.trim();
-    providerModel = process.env.NVIDIA_MODEL ?? 'configured-model';
-  } catch (error) {
-    const message2 =
-      error instanceof NvidiaLlmError
-        ? 'I couldn\u2019t reach the language service right now. Please try again.'
-        : 'I couldn\u2019t complete that request right now. Please try again.';
-    logAssistant({
-      requestId,
-      intent,
-      latencyMs: Date.now() - startedAt,
-      provider: 'nvidia',
-      model: providerModel,
-      toolUsed: intent,
-      success: false,
-    });
-    return {
-      answer: message2,
-      intent,
-      grounded: false,
-      sources: [],
-      navigation: null,
-      conflict,
-      suggestedQuestions: suggestionsFor(context.route, intent),
-      requestId,
-    };
+  let providerModel = 'deterministic';
+
+  if (shouldUseLlm) {
+    try {
+      const completion = await chatCompletionWithRetry({
+        messages: [
+          { role: 'system', content: ASSISTANT_SYSTEM_PROMPT },
+          { role: 'user', content: userPrompt },
+        ],
+        temperature: 0.1,
+        maxTokens: 1024,
+      });
+      answer = completion.content.trim();
+      providerModel = process.env.NVIDIA_MODEL ?? 'configured-model';
+    } catch (error) {
+      const message2 =
+        error instanceof NvidiaLlmError
+          ? 'I couldn\u2019t reach the language service right now. Please try again.'
+          : 'I couldn\u2019t complete that request right now. Please try again.';
+      logAssistant({
+        requestId,
+        intent,
+        latencyMs: Date.now() - startedAt,
+        provider: 'nvidia',
+        model: providerModel,
+        toolUsed: intent,
+        success: false,
+      });
+      return {
+        answer: message2,
+        intent,
+        grounded: false,
+        sources: [],
+        navigation: null,
+        conflict,
+        suggestedQuestions: suggestionsFor(context.route, intent),
+        requestId,
+      };
+    }
+  } else {
+    answer = synthesizeDeterministicGroundedAnswer(intent, evidence, message, conflict);
+    providerModel = 'deterministic-rules';
   }
 
   const grounding = isEvidenceAnswerGrounded(answer, evidence);
@@ -553,7 +636,7 @@ export async function runAssistant(
     requestId,
     intent,
     latencyMs: Date.now() - startedAt,
-    provider: 'nvidia',
+    provider: shouldUseLlm ? 'nvidia' : 'deterministic',
     model: providerModel,
     toolUsed: intent,
     success: true,

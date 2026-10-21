@@ -1,5 +1,6 @@
+import { can } from '@oncobrief/domain';
 import { getPacket, listPackets } from '@oncobrief/db';
-import { withSession } from '@/lib/session';
+import { requireSession, withSession } from '@/lib/session';
 import { EmptyFinding, SectionHeading, StateBadge } from '@/components/evidence';
 import {
   approvePacketAction,
@@ -17,6 +18,10 @@ import {
  */
 export default async function PacketPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
+  const session = await requireSession();
+  const canDraft = can(session.role, 'packet:draft');
+  const canApprove = can(session.role, 'packet:approve');
+  const canExport = can(session.role, 'packet:export');
 
   const data = await withSession(async (q, s) => {
     const packets = await listPackets(q, id);
@@ -30,18 +35,31 @@ export default async function PacketPage({ params }: { params: Promise<{ id: str
     <div>
       <div className="flex flex-wrap items-end justify-between gap-4">
         <SectionHeading title="Consultation packet" count={packets.length} />
-        <form action={createPacketAction} className="flex items-end gap-2">
-          <input type="hidden" name="patientId" value={id} />
-          <input
-            name="encounterLabel"
-            placeholder="encounter label"
-            defaultValue="Surgical oncology OPD"
-            className="mono border border-[var(--color-rule-strong)] bg-white px-2 py-1 text-xs"
-          />
-          <button type="submit" className="mono border border-[var(--color-ink)] px-3 py-1.5 text-[11px] uppercase">
-            assemble draft
-          </button>
-        </form>
+        {canDraft ? (
+          <form action={createPacketAction} className="flex flex-wrap items-end gap-2">
+            <input type="hidden" name="patientId" value={id} />
+            <label className="block">
+              <span className="sr-only">Encounter label</span>
+              <input
+                name="encounterLabel"
+                placeholder="encounter label"
+                defaultValue="Surgical oncology OPD"
+                aria-label="Encounter label"
+                className="mono border border-[var(--color-rule-strong)] bg-white px-2.5 py-1.5 text-xs text-[var(--color-ink)]"
+              />
+            </label>
+            <button
+              type="submit"
+              className="mono border border-[var(--color-ink)] px-3 py-1.5 text-[11px] uppercase tracking-wider hover:bg-[var(--color-accent-soft)]"
+            >
+              assemble draft
+            </button>
+          </form>
+        ) : (
+          <span className="mono text-[11px] text-[var(--color-ink-soft)] border border-[var(--color-rule)] px-2.5 py-1">
+            Drafting requires clinician or coordinator role
+          </span>
+        )}
       </div>
 
       {!latest ? (
@@ -74,30 +92,42 @@ export default async function PacketPage({ params }: { params: Promise<{ id: str
                   </form>
                 ) : null}
                 {latest.status === 'draft' || latest.status === 'pending_approval' ? (
-                  <form action={approvePacketAction} className="flex items-center gap-2">
-                    <input type="hidden" name="patientId" value={id} />
-                    <input type="hidden" name="packetId" value={latest.id} />
-                    <input
-                      name="approvalNote"
-                      placeholder="approval note"
-                      className="mono border border-[var(--color-rule-strong)] bg-white px-2 py-1 text-xs"
-                    />
-                    <button
-                      type="submit"
-                      data-testid="approve-packet"
-                      className="mono border border-[var(--color-state-verified)] px-3 py-1 text-[11px] uppercase text-[var(--color-state-verified)]"
-                    >
-                      approve packet
-                    </button>
-                  </form>
+                  canApprove ? (
+                    <form action={approvePacketAction} className="flex items-center gap-2">
+                      <input type="hidden" name="patientId" value={id} />
+                      <input type="hidden" name="packetId" value={latest.id} />
+                      <label className="block">
+                        <span className="sr-only">Approval note</span>
+                        <input
+                          name="approvalNote"
+                          placeholder="approval note"
+                          aria-label="Approval note"
+                          className="mono border border-[var(--color-rule-strong)] bg-white px-2 py-1 text-xs"
+                        />
+                      </label>
+                      <button
+                        type="submit"
+                        data-testid="approve-packet"
+                        className="mono border border-[var(--color-state-verified)] px-3 py-1 text-[11px] uppercase text-[var(--color-state-verified)] hover:bg-[#e8f3ea]"
+                      >
+                        approve packet
+                      </button>
+                    </form>
+                  ) : (
+                    <span className="mono border border-[var(--color-rule)] px-2 py-1 text-[10px] text-[var(--color-ink-soft)]">
+                      approval requires clinician authority
+                    </span>
+                  )
                 ) : null}
-                <a
-                  href={`/api/v1/packets/${latest.id}/export`}
-                  className="mono border border-[var(--color-rule-strong)] px-3 py-1 text-[11px] uppercase"
-                  data-testid="export-packet"
-                >
-                  export json
-                </a>
+                {canExport ? (
+                  <a
+                    href={`/api/v1/packets/${latest.id}/export`}
+                    className="mono border border-[var(--color-rule-strong)] px-3 py-1 text-[11px] uppercase hover:bg-[var(--color-accent-soft)]"
+                    data-testid="export-packet"
+                  >
+                    export json
+                  </a>
+                ) : null}
               </span>
             </div>
 

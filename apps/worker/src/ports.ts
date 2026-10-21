@@ -3,8 +3,10 @@ import {
   BedrockLlmProvider,
   LlmExtractionAdapter,
   LocalFsStorageAdapter,
+  LocalMultimodalOcrAdapter,
   RuleBasedExtractor,
   S3StorageAdapter,
+  SarvamVisionOcrAdapter,
   SqsQueueAdapter,
   TextractOcrAdapter,
 } from '@oncobrief/adapters';
@@ -48,17 +50,30 @@ export function buildStorage(config: WorkerConfig): StoragePort {
 }
 
 export function buildAsyncOcr(config: WorkerConfig): AsyncOcrPort {
-  return new TextractOcrAdapter({
-    region: config.region,
-    credentials: config.credentials,
-    ...(config.endpoint ? { endpoint: config.endpoint } : {}),
-    ...(config.textractNotificationTopicArn
-      ? { notificationTopicArn: config.textractNotificationTopicArn }
-      : {}),
-    ...(config.textractNotificationRoleArn
-      ? { notificationRoleArn: config.textractNotificationRoleArn }
-      : {}),
-  });
+  if (config.ocrDriver === 'sarvam' || (config.ocrDriver === 'auto' && config.sarvamApiKey)) {
+    return new SarvamVisionOcrAdapter({ apiKey: config.sarvamApiKey });
+  }
+
+  if (
+    config.ocrDriver === 'textract' ||
+    (config.ocrDriver === 'auto' &&
+      config.credentials.accessKeyId &&
+      config.credentials.accessKeyId !== 'test')
+  ) {
+    return new TextractOcrAdapter({
+      region: config.region,
+      credentials: config.credentials,
+      ...(config.endpoint ? { endpoint: config.endpoint } : {}),
+      ...(config.textractNotificationTopicArn
+        ? { notificationTopicArn: config.textractNotificationTopicArn }
+        : {}),
+      ...(config.textractNotificationRoleArn
+        ? { notificationRoleArn: config.textractNotificationRoleArn }
+        : {}),
+    });
+  }
+
+  return new LocalMultimodalOcrAdapter();
 }
 
 export function buildExtractor(config: WorkerConfig): { extractor: ExtractionPort; kind: 'rule' | 'llm' } {
@@ -77,4 +92,20 @@ export function buildExtractor(config: WorkerConfig): { extractor: ExtractionPor
     return { extractor: new LlmExtractionAdapter(provider), kind: 'llm' };
   }
   return { extractor: new RuleBasedExtractor(), kind: 'rule' };
+}
+
+export interface WorkerPorts {
+  queue: QueuePort;
+  storage: StoragePort;
+  ocr: AsyncOcrPort;
+  extractor: ExtractionPort;
+  extractorKind: 'rule' | 'llm';
+}
+
+export function createPorts(config: WorkerConfig): WorkerPorts {
+  const queue = buildQueue(config);
+  const storage = buildStorage(config);
+  const ocr = buildAsyncOcr(config);
+  const { extractor, kind: extractorKind } = buildExtractor(config);
+  return { queue, storage, ocr, extractor, extractorKind };
 }

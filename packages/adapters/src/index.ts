@@ -19,6 +19,9 @@ export class FixedClock implements ClockPort {
 
 export * from './local-fs-storage';
 export * from './fixture-ocr';
+export * from './dicom-header-parser';
+export * from './local-multimodal-ocr';
+export * from './sarvam-vision-ocr';
 export * from './rule-based-extractor';
 export * from './simulated-delivery';
 export * from './nvidia-llm';

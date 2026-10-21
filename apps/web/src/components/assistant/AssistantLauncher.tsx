@@ -21,9 +21,11 @@ export function AssistantLauncher() {
       <button
         type="button"
         data-testid="assistant-launcher"
-        aria-label="Ask OncoBrief"
+        aria-label="Ask OncoBrief assistant"
+        aria-expanded={open}
+        aria-haspopup="dialog"
         onClick={() => setOpen((o) => !o)}
-        className="no-print fixed bottom-5 right-5 z-40 flex items-center gap-2 border border-[var(--color-accent)] bg-[var(--color-accent)] px-4 py-3 text-sm font-medium text-white shadow-[0_6px_20px_rgba(27,26,23,0.24)] transition-transform hover:translate-y-[-1px]"
+        className="no-print fixed bottom-5 right-5 z-40 flex items-center gap-2 border border-[var(--color-accent)] bg-[var(--color-accent)] px-4 py-3 text-sm font-medium text-white shadow-[0_6px_20px_rgba(27,26,23,0.24)] transition-transform hover:translate-y-[-1px] focus-visible:outline-2 focus-visible:outline-offset-2"
       >
         <span aria-hidden>&#128172;</span>
         <span className="mono text-[11px] uppercase tracking-wider">Ask OncoBrief</span>
