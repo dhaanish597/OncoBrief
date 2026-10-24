@@ -7,14 +7,19 @@
  * glyph and a label.
  */
 @theme {
-  --color-paper: #f7f4ee;
-  --color-paper-raised: #fffdf9;
-  --color-ink: #1b1a17;
-  --color-ink-soft: #4a463f;
+  --color-paper: #F7F3EC;
+  --color-paper-raised: #FFFEFA;
+  --color-ink: #183B56;
+  --color-ink-body: #292D32;
+  --color-ink-soft: #6B625A;
   --color-rule: #dcd5c8;
   --color-rule-strong: #b9b0a0;
-  --color-accent: #7a2e2e;
+  --color-accent: #7B3038;
   --color-accent-soft: #f0e2dd;
+  --color-ref-green: #24734D;
+  --color-ref-green-band-start: rgba(36, 115, 77, 0.22);
+  --color-ref-green-band-end: rgba(36, 115, 77, 0.08);
+  --color-abnormal: #B4232F;
 
   --color-state-extracted: #9a6b12;
   --color-state-verified: #2f6b3c;
@@ -219,4 +224,88 @@ html:has(.landing) {
     animation-iteration-count: 1 !important;
     transition-duration: 0.001ms !important;
   }
+}
+
+
+/* ---------------------------------------------------------------------------
+ * Clinical Context Scoped Typography (Times New Roman)
+ *
+ * Scoped strictly to `.clinical-context-scope` and associated chart overlays.
+ * Never alters global typography or public landing surfaces.
+ * ------------------------------------------------------------------------- */
+
+.clinical-context-scope {
+  font-family: 'Times New Roman', Times, serif;
+  color: var(--color-ink-body);
+}
+
+/* Body text defaults to charcoal in clinical scope */
+.clinical-context-scope p,
+.clinical-context-scope td,
+.clinical-context-scope dd,
+.clinical-context-scope li {
+  color: var(--color-ink-body);
+}
+
+.clinical-context-scope h1,
+.clinical-context-scope .cc-main-heading {
+  font-family: 'Times New Roman', Times, serif;
+  font-size: 1.875rem; /* 30px, within 28-32px */
+  line-height: 1.25;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+}
+
+.clinical-context-scope h2,
+.clinical-context-scope .cc-section-heading {
+  font-family: 'Times New Roman', Times, serif;
+  font-size: 1.375rem; /* 22px, within 20-24px */
+  line-height: 1.3;
+  font-weight: 600;
+  letter-spacing: -0.005em;
+}
+
+.clinical-context-scope h3,
+.clinical-context-scope .cc-card-title {
+  font-family: 'Times New Roman', Times, serif;
+  font-size: 1.125rem; /* 18px, within 17-19px */
+  line-height: 1.35;
+  font-weight: 600;
+}
+
+.clinical-context-scope h4,
+.clinical-context-scope .cc-sub-title {
+  font-family: 'Times New Roman', Times, serif;
+  font-size: 1rem; /* 16px */
+  line-height: 1.4;
+  font-weight: 600;
+}
+
+.clinical-context-scope p,
+.clinical-context-scope .cc-body {
+  font-family: 'Times New Roman', Times, serif;
+  font-size: 0.9375rem; /* 15px, within 15-16px */
+  line-height: 1.55;
+}
+
+.clinical-context-scope .cc-chart-label,
+.clinical-context-scope .cc-legend {
+  font-family: 'Times New Roman', Times, serif;
+  font-size: 0.8125rem; /* 13px, within 12-14px */
+  line-height: 1.4;
+}
+
+.clinical-context-scope .cc-tooltip,
+.clinical-context-scope .cc-metadata,
+.clinical-tooltip {
+  font-family: 'Times New Roman', Times, serif;
+  font-size: 0.84375rem; /* 13.5px, within 13-14px */
+  line-height: 1.45;
+}
+
+/* Monospace font is preserved for tabular numbers, dates, units, and badges */
+.clinical-context-scope .mono,
+.clinical-tooltip .mono {
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
 }

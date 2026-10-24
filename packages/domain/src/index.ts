@@ -48,3 +48,7 @@ export * from './tasks/task-machine';
 // policy
 export * from './policy/rbac';
 export * from './policy/clinical-boundary';
+
+// clinical & observations
+export * from './clinical/derived-metrics';
+export * from './clinical/observation-types';

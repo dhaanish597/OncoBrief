@@ -1,4 +1,6 @@
 import { createHash } from 'node:crypto';
+import * as zlib from 'zlib';
+import { lineSpans } from '../fixtures';
 import { DOCUMENT_TYPES, isDocumentType, type DocumentType, type ExtractorKind } from '@oncobrief/domain';
 import type { ExtractionPort, OcrPort, OcrSpanDraft, StoragePort } from '@oncobrief/ports';
 import type { Querier } from '../client';
@@ -449,6 +451,127 @@ export async function ingestNormalizedPages(
  * fixtures. A real upload with no text layer and no OCR adapter available is
  * quarantined with `manual_transcription_required` rather than guessed at.
  */
+
+export function extractTextFromDocBytes(bytes: Buffer): string[] {
+  if (bytes.length >= 5 && bytes.subarray(0, 5).toString('latin1') === '%PDF-') {
+    const pdfText = extractTextFromPdf(bytes);
+    if (pdfText.length > 0) return pdfText;
+  }
+
+  const utf8 = bytes.toString('utf8');
+  const printableCount = (utf8.match(/[\x20-\x7E\r\n\t]/g) || []).length;
+  if (printableCount > utf8.length * 0.7 && utf8.trim().length > 0) {
+    const pages = utf8.split(/\f/);
+    return pages.map((p) => p.trim()).filter((p) => p.length > 0);
+  }
+
+  return [];
+}
+
+function extractTextFromPdf(bytes: Buffer): string[] {
+  const str = bytes.toString('latin1');
+
+  const cmap = new Map<string, string>();
+  const bfcBlocks = str.matchAll(/beginbfchar([\s\S]*?)endbfchar/g);
+  for (const bfc of bfcBlocks) {
+    const blockContent = bfc[1] ?? '';
+    for (const m of blockContent.matchAll(/<([0-9A-Fa-f]{4})>\s*<([0-9A-Fa-f]{4})>/g)) {
+      if (m[1] && m[2]) {
+        cmap.set(m[1].toLowerCase(), String.fromCharCode(parseInt(m[2], 16)));
+      }
+    }
+  }
+
+  const bfrBlocks = str.matchAll(/beginbfrange([\s\S]*?)endbfrange/g);
+  for (const bfr of bfrBlocks) {
+    const blockContent = bfr[1] ?? '';
+    for (const m of blockContent.matchAll(/<([0-9A-Fa-f]{4})>\s*<([0-9A-Fa-f]{4})>\s*<([0-9A-Fa-f]{4})>/g)) {
+      if (m[1] && m[2] && m[3]) {
+        const start = parseInt(m[1], 16);
+        const end = parseInt(m[2], 16);
+        let target = parseInt(m[3], 16);
+        for (let c = start; c <= end; c++) {
+          const code = c.toString(16).padStart(4, '0').toLowerCase();
+          cmap.set(code, String.fromCharCode(target++));
+        }
+      }
+    }
+  }
+
+  const re = /stream\r?\n([\s\S]*?)\r?\nendstream/g;
+  let m: RegExpExecArray | null;
+  const pageLines: string[] = [];
+
+  while ((m = re.exec(str)) !== null) {
+    const streamContent = m[1] ?? '';
+    let decompressed: string | null = null;
+    const raw = Buffer.from(streamContent, 'latin1');
+    try {
+      decompressed = zlib.inflateSync(raw).toString('latin1');
+    } catch {
+      try {
+        decompressed = zlib.inflateRawSync(raw).toString('latin1');
+      } catch {
+        if (streamContent.includes('BT') || streamContent.includes('Tj') || streamContent.includes('TJ')) {
+          decompressed = streamContent;
+        }
+      }
+    }
+
+    if (!decompressed) continue;
+
+    const tjRe = /\[(.*?)\]\s*TJ/gi;
+    let tm: RegExpExecArray | null;
+    while ((tm = tjRe.exec(decompressed)) !== null) {
+      let line = '';
+      const arrayBody = tm[1] ?? '';
+
+      if (arrayBody.includes('<')) {
+        const hexMatches = arrayBody.matchAll(/<([0-9A-Fa-f]+)>/g);
+        for (const hm of hexMatches) {
+          const hex = hm[1] ?? '';
+          for (let i = 0; i < hex.length; i += 4) {
+            const code = hex.slice(i, i + 4).toLowerCase();
+            line += cmap.get(code) || (code.length === 2 ? String.fromCharCode(parseInt(code, 16)) : '');
+          }
+        }
+      } else {
+        const litMatches = arrayBody.matchAll(/\((.*?)\)/g);
+        for (const lm of litMatches) {
+          line += lm[1] ?? '';
+        }
+      }
+
+      const trimmed = line.trim();
+      if (trimmed) pageLines.push(trimmed);
+    }
+
+    const singleTjRe = /(?:\((.*?)\)|<([0-9A-Fa-f]+)>)\s*Tj/gi;
+    let sm: RegExpExecArray | null;
+    while ((sm = singleTjRe.exec(decompressed)) !== null) {
+      if (sm[1]) {
+        const trimmed = sm[1].trim();
+        if (trimmed) pageLines.push(trimmed);
+      } else if (sm[2]) {
+        let line = '';
+        const hex = sm[2];
+        for (let i = 0; i < hex.length; i += 4) {
+          const code = hex.slice(i, i + 4).toLowerCase();
+          line += cmap.get(code) || '';
+        }
+        const trimmed = line.trim();
+        if (trimmed) pageLines.push(trimmed);
+      }
+    }
+  }
+
+  if (pageLines.length > 0) {
+    return [pageLines.join('\n')];
+  }
+
+  return [];
+}
+
 export async function ingestDocument(
   q: Querier,
   deps: IngestionDeps,
@@ -457,7 +580,34 @@ export async function ingestDocument(
 ): Promise<IngestionResult> {
   await q.query(`UPDATE document SET ingest_status = 'rendering' WHERE id = $1`, [documentId]);
 
-  const pages = fixturePages ?? [];
+  let pages = fixturePages ?? [];
+  if (pages.length === 0) {
+    const docRes = await q.query<{ storage_key: string }>(
+      'SELECT storage_key FROM document WHERE id = $1',
+      [documentId],
+    );
+    const storageKey = docRes.rows[0]?.storage_key;
+    if (storageKey) {
+      try {
+        const bytes = await deps.storage.get(storageKey);
+        if (bytes && bytes.length > 0) {
+          const textPages = extractTextFromDocBytes(bytes);
+          if (textPages.length > 0) {
+            pages = textPages.map((text, idx) => ({
+              pageNumber: idx + 1,
+              widthPx: 800,
+              heightPx: 1100,
+              plainText: text,
+              spans: lineSpans(text),
+            }));
+          }
+        }
+      } catch (err) {
+        console.error(`Failed to read document bytes for ${documentId}:`, err);
+      }
+    }
+  }
+
   if (pages.length === 0) {
     await q.query(
       `UPDATE document SET ingest_status = 'quarantined', ingest_error = 'manual_transcription_required' WHERE id = $1`,
@@ -570,3 +720,28 @@ export async function detectNearDuplicates(
 }
 
 export const DOCUMENT_TYPE_VOCABULARY = DOCUMENT_TYPES;
+
+export async function ensurePatientDocumentsIngested(
+  q: Querier,
+  deps: IngestionDeps,
+  patientId: string,
+): Promise<void> {
+  const uningested = await q.query<{ id: string }>(
+    `SELECT d.id FROM document d
+      WHERE d.patient_id = $1
+        AND (
+          d.ingest_status IN ('received', 'quarantined', 'rendering')
+          OR (SELECT count(*) FROM evidence_fact ef WHERE ef.document_id = d.id) = 0
+        )
+      ORDER BY d.uploaded_at`,
+    [patientId],
+  );
+
+  for (const row of uningested.rows) {
+    try {
+      await ingestDocument(q, deps, row.id);
+    } catch (err) {
+      console.error(`Failed to auto-ingest document ${row.id}:`, err);
+    }
+  }
+}

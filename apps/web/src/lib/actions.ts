@@ -377,7 +377,11 @@ export async function confirmDocumentTypeAction(fd: FormData): Promise<void> {
     await confirmDocumentType(q, { documentId: str(fd, 'documentId'), documentType, userId: s.userId });
     await computeAndPersistReadiness(q, { orgId: s.orgId, patientId, computedBy: s.userId });
   });
+  revalidatePath(`/patients/${patientId}`);
   revalidatePath(`/patients/${patientId}/sources`);
+  revalidatePath(`/patients/${patientId}/evidence`);
+  revalidatePath(`/patients/${patientId}/clinical-context`);
+  revalidatePath(`/patients/${patientId}/conflicts`);
 }
 
 export async function uploadDocumentAction(fd: FormData): Promise<void> {
@@ -404,7 +408,11 @@ export async function uploadDocumentAction(fd: FormData): Promise<void> {
     // rather than being guessed at (architecture §16.2).
     await ingestDocument(q, { storage: getStorage(), ocr: await ocrPort(), extractor: await extractorPort() }, documentId);
   });
+  revalidatePath(`/patients/${patientId}`);
   revalidatePath(`/patients/${patientId}/sources`);
+  revalidatePath(`/patients/${patientId}/evidence`);
+  revalidatePath(`/patients/${patientId}/clinical-context`);
+  revalidatePath(`/patients/${patientId}/conflicts`);
 }
 
 async function ocrPort() {

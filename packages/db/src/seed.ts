@@ -268,6 +268,23 @@ export async function seed(log: (m: string) => void = () => {}): Promise<SeedSum
       }
     }
 
+    // DEMO-001: verify pathology and biomarker facts so the Pathology card displays verified findings on initial load
+    const p1PathologyFacts = await client.query<{ id: string }>(
+      `SELECT ef.id FROM evidence_fact ef
+         JOIN document d ON d.id = ef.document_id
+        WHERE ef.patient_id = $1
+          AND (ef.fact_type IN ('diagnosis_text.as_written', 'stage_text.as_written') OR ef.fact_type = 'lab_result.as_written')
+          AND d.original_filename LIKE '%Histopathology%'`,
+      [p1],
+    );
+    for (const f of p1PathologyFacts.rows) {
+      await verifyEvidence(client, {
+        factId: f.id,
+        actor: { kind: 'human', userId: userId['dr.rao@rci.demo']!, role: 'clinician' },
+      });
+    }
+    log(`DEMO-001: verified ${p1PathologyFacts.rows.length} pathology and biomarker facts`);
+
     // DEMO-003: verify every fact so the record is genuinely ready.
     const readyFacts = await client.query<{ id: string }>(
       `SELECT ef.id FROM evidence_fact ef

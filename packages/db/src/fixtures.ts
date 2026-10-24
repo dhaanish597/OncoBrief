@@ -89,7 +89,7 @@ Records office contact: +91 00000 00000`,
     ],
   },
   {
-    filename: 'histopathology-report.pdf',
+    filename: '08_Histopathology_and_IHC_Receptor_Profile_DEMO.pdf',
     mimeType: 'application/pdf',
     recordOrigin: 'diagnostic_lab',
     issuingFacility: 'Meridian Diagnostics Laboratory',
@@ -97,14 +97,19 @@ Records office contact: +91 00000 00000`,
     sourceKind: 'upload',
     pages: [
       `Meridian Diagnostics Laboratory
-Histopathology Report
+Histopathology & IHC Receptor Profile Report
+Accession: HP-2026-9041
 Date: 16 June 2025
 MRN: SUN-448120
 ABHA: 12-3456-7890-1234
-Specimen: Left breast
+Specimen: Left Breast UOQ, Core Needle Biopsy
 Modified radical mastectomy performed on 12 June 2025
-Diagnosis: Invasive ductal carcinoma, grade 2
-Stage as documented: pT2N1M0
+Diagnosis: Invasive Ductal Carcinoma, NOS, Grade II (Nottingham 6/9), Left Breast UOQ
+Documented Stage: pT2N1M0
+ER: Positive (Allred 7/8, 80%)
+PR: Positive (Allred 6/8, 60%)
+HER2/neu: Negative (IHC 1+)
+Ki-67: 22%
 The specimen was received in formalin on 13 June 2025.
 Tamoxifen 20 mg daily advised to be started after review.`,
     ],

@@ -5,6 +5,7 @@ import { usePathname } from 'next/navigation';
 
 const TABS: { segment: string; label: string; badgeKey?: 'conflicts' | 'gaps' | 'tasks' }[] = [
   { segment: 'evidence', label: 'Evidence journey' },
+  { segment: 'clinical-context', label: 'Clinical context' },
   { segment: 'sources', label: 'Sources' },
   { segment: 'conflicts', label: 'Reconciliation', badgeKey: 'conflicts' },
   { segment: 'record-map', label: 'Record map' },
