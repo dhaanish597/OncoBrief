@@ -64,3 +64,6 @@ export * from './flow/slot-optimizer';
 
 // clinician productivity studio
 export * from './studio/draft-generator';
+// clinical & observations
+export * from './clinical/derived-metrics';
+export * from './clinical/observation-types';

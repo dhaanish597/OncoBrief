@@ -146,3 +146,25 @@ storage adapter; source metadata remains quarantined. The source inspector and
 evidence API deny further access. Request/artifact states track REVOKED or EXPIRED.
 This does not erase immutable ledger content, previously approved packet snapshots,
 backups or versioned object history; see ADR 0018 for the retention boundary.
+
+## Clinical Context projection
+
+Clinical Context requires an authenticated session with `patient:read` and uses
+`withSession` tenant context and the restricted runtime role. Its summary and
+observation queries are read-only views of existing evidence; opening the page
+must not ingest, retry quarantined documents, verify evidence, or dispatch an
+external request. Existing consent-withdrawal RLS applies to these queries.
+
+Rejected, superseded and replaced originals are excluded from current summaries;
+original facts and their correction history remain in the evidence ledger.
+Conflicting observations retain their individual values and verification states
+and require human reconciliation. Source links carry document, fact and page IDs.
+
+Charts plot exact numeric values with actual source dates; qualified/compound
+values remain verbatim in the observation history. Point flags are copied from
+source metadata rather than inferred from reference intervals. A shared interval
+band appears only when the plotted sources report matching boundaries. Derived
+BMI/BSA are labeled calculations, require explicit recognized units and finite
+inputs, and are withheld for conflicting inputs. They do not establish diagnosis,
+risk, treatment response, dose, or a clinical requirement. The summary does not
+write to the ledger or replace verification, reconciliation or packet approval.

@@ -16,7 +16,17 @@ export type FactValue =
   | { kind: 'procedure'; name: string; code?: string }
   | { kind: 'appointment'; date: string; detailText?: string }
   // Shared verbatim measurement shape for labs and labelled vital signs.
-  | { kind: 'lab'; name: string; valueText: string; unitText?: string }
+  | {
+      kind: 'lab';
+      name: string;
+      valueText: string;
+      unitText?: string;
+      numericValue?: number;
+      referenceRange?: { low?: number; high?: number; text: string };
+      flag?: 'H' | 'L' | 'NORMAL' | 'CRITICAL';
+      collectionDate?: string;
+      reportDate?: string;
+    }
   | { kind: 'cycle'; label: string };
 
 export type FactValueKind = FactValue['kind'];

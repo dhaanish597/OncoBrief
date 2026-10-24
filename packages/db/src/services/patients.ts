@@ -1,4 +1,15 @@
 import type { Querier } from '../client';
+import {
+  calculateBMI,
+  calculateBSADuBois,
+  canonicalizeAnalyte,
+  parseSourceFlag,
+  type DerivedMetricResult,
+  type StructuredObservation,
+  type ObservationSourceFlag,
+  type SourceReferenceRange,
+  type FactValue,
+} from '@oncobrief/domain';
 
 /**
  * Read models. Everything here is either a projection of the ledger or a
@@ -1179,3 +1190,486 @@ export async function upsertAbdmPatientLink(
   );
 }
 
+
+// ---------------------------------------------------------------------------
+// Clinical Context and Universal Observation Engine
+// ---------------------------------------------------------------------------
+
+export interface ClinicalSummary {
+  patient: {
+    id: string;
+    displayName: string;
+    demoCode: string | null;
+    isDemoFixture: boolean;
+  };
+  overview: {
+    age?: { value: string; observedOn: string | null; state: string; sourceDocumentId: string; sourceDocumentName: string; sourcePageNumber: number | null; factId: string };
+    sex?: { value: string; observedOn: string | null; state: string; sourceDocumentId: string; sourceDocumentName: string; sourcePageNumber: number | null; factId: string };
+    height?: { value: number; unit: string; formatted: string; observedOn: string | null; state: string; sourceDocumentId: string; sourceDocumentName: string; sourcePageNumber: number | null; factId: string };
+    weight?: { value: number; unit: string; formatted: string; observedOn: string | null; state: string; sourceDocumentId: string; sourceDocumentName: string; sourcePageNumber: number | null; factId: string };
+    bloodGroup?: { value: string; observedOn: string | null; state: string; sourceDocumentId: string; sourceDocumentName: string; sourcePageNumber: number | null; factId: string };
+    allergies?: { value: string; observedOn: string | null; state: string; sourceDocumentId: string; sourceDocumentName: string; sourcePageNumber: number | null; factId: string };
+    ecog?: { value: string; observedOn: string | null; state: string; sourceDocumentId: string; sourceDocumentName: string; sourcePageNumber: number | null; factId: string };
+    comorbidities?: { value: string; observedOn: string | null; state: string; sourceDocumentId: string; sourceDocumentName: string; sourcePageNumber: number | null; factId: string };
+    activeMedications: { name: string; doseText?: string; observedOn: string | null; state: string; sourceDocumentId: string; sourceDocumentName: string; sourcePageNumber: number | null; factId: string }[];
+    derivedBMI: DerivedMetricResult;
+    derivedBSA: DerivedMetricResult;
+  };
+  cards: {
+    baseline: {
+      items: { label: string; value: string; observedOn: string | null; state: string; sourceDocumentId: string; sourceDocumentName: string; sourcePageNumber: number | null; factId: string }[];
+    };
+    pathology: {
+      diagnosis: { text: string; observedOn: string | null; state: string; sourceDocumentId: string; sourceDocumentName: string; sourcePageNumber: number | null; factId: string }[];
+      staging: { text: string; observedOn: string | null; state: string; sourceDocumentId: string; sourceDocumentName: string; sourcePageNumber: number | null; factId: string }[];
+      biomarkers: StructuredObservation[];
+    };
+    treatment: {
+      procedures: { name: string; code?: string; observedOn: string | null; state: string; sourceDocumentId: string; sourceDocumentName: string; sourcePageNumber: number | null; factId: string }[];
+      cycles: { label: string; observedOn: string | null; state: string; sourceDocumentId: string; sourceDocumentName: string; sourcePageNumber: number | null; factId: string }[];
+      appointments: { date: string; detail?: string; state: string; sourceDocumentId: string; sourceDocumentName: string; sourcePageNumber: number | null; factId: string }[];
+      followups: { date: string; state: string; sourceDocumentId: string; sourceDocumentName: string; sourcePageNumber: number | null; factId: string }[];
+    };
+    recentLabs: StructuredObservation[];
+    quickInsights: {
+      totalDocuments: number;
+      totalOrigins: number;
+      totalFacts: number;
+      verifiedFacts: number;
+      unverifiedFacts: number;
+      conflictingFacts: number;
+      correctedFacts: number;
+      insights: { id: string; kind: 'report' | 'observation' | 'trend' | 'conflict' | 'verification'; title: string; detail: string; date?: string; link?: string }[];
+    };
+  };
+  allObservations: StructuredObservation[];
+  analyteGroups: {
+    canonicalKey: string;
+    canonicalLabel: string;
+    category: string;
+    isNumeric: boolean;
+    observations: StructuredObservation[];
+    latestObservation: StructuredObservation;
+    hasMultipleDates: boolean;
+  }[];
+}
+
+export async function listPatientObservations(q: Querier, patientId: string): Promise<StructuredObservation[]> {
+  const res = await q.query<{
+    id: string;
+    patient_id: string;
+    document_id: string;
+    original_filename: string;
+    page_number: number | null;
+    observed_on: string | null;
+    document_date: string | null;
+    fact_type: string;
+    value_json: unknown;
+    value_normalized: string;
+    verbatim_quote: string;
+    confidence_band: string;
+    extractor_name: string;
+    state: string;
+    reviewer_name: string | null;
+    reviewed_at: Date | null;
+    created_at: Date;
+  }>(
+    `SELECT ef.id, ef.patient_id, ef.document_id, d.original_filename,
+            d.document_date::text AS document_date, ef.observed_on::text AS observed_on,
+            ef.fact_type, ef.value_json, ef.value_normalized, ef.verbatim_quote,
+            ef.confidence_band, ef.extractor_name, ef.created_at,
+            coalesce(es.state, 'extracted') AS state,
+            u.display_name AS reviewer_name, es.last_changed_at AS reviewed_at,
+            (SELECT dp.page_number
+               FROM evidence_span_link esl
+               JOIN text_span ts ON ts.id = esl.text_span_id
+               JOIN document_page dp ON dp.id = ts.page_id
+              WHERE esl.evidence_fact_id = ef.id
+              ORDER BY esl.ordinal LIMIT 1) AS page_number
+       FROM evidence_fact ef
+       JOIN document d ON d.id = ef.document_id
+       LEFT JOIN evidence_state es ON es.evidence_fact_id = ef.id
+       LEFT JOIN app_user u ON u.id = es.last_actor_id
+      WHERE ef.patient_id = $1 AND coalesce(es.state, 'extracted') NOT IN ('rejected', 'superseded')
+        AND NOT EXISTS (SELECT 1 FROM evidence_fact replacement WHERE replacement.corrects_fact_id = ef.id)
+      ORDER BY coalesce(ef.observed_on, d.document_date) DESC NULLS LAST, ef.created_at DESC`,
+    [patientId],
+  );
+
+  const observations: StructuredObservation[] = [];
+
+  for (const row of res.rows) {
+    const val = row.value_json as (FactValue & {
+      numericValue?: number;
+      referenceRange?: SourceReferenceRange;
+      flag?: ObservationSourceFlag;
+      collectionDate?: string;
+      reportDate?: string;
+    }) | null;
+    if (!val) continue;
+
+    let asWrittenName = '';
+    let valueText = '';
+    let unitText: string | undefined;
+    let numericValue: number | undefined;
+    let referenceRange: SourceReferenceRange | undefined;
+    let flag: ObservationSourceFlag | undefined;
+
+    if (val.kind === 'lab') {
+      asWrittenName = val.name;
+      valueText = val.valueText;
+      unitText = val.unitText;
+      const exactValue = val.valueText.replace(/,/g, '').trim();
+      numericValue = /^[+-]?(?:\d+(?:\.\d+)?|\.\d+)$/.test(exactValue)
+        ? Number(exactValue) : undefined;
+      if (!Number.isFinite(numericValue)) numericValue = undefined;
+      referenceRange = val.referenceRange;
+      flag = val.flag ?? parseSourceFlag(row.verbatim_quote);
+    } else if (val.kind === 'text' && row.fact_type === 'diagnosis_text.as_written') {
+      asWrittenName = 'Diagnosis';
+      valueText = val.text;
+    } else if (val.kind === 'text' && row.fact_type === 'stage_text.as_written') {
+      asWrittenName = 'Documented Stage';
+      valueText = val.text;
+    } else {
+      continue;
+    }
+
+    const canonical = canonicalizeAnalyte(asWrittenName);
+
+    observations.push({
+      id: row.id,
+      patientId: row.patient_id,
+      documentId: row.document_id,
+      documentName: row.original_filename,
+      pageNumber: row.page_number,
+      observedOn: row.observed_on ?? row.document_date,
+      documentDate: row.document_date,
+      canonicalKey: canonical.key,
+      canonicalLabel: canonical.label,
+      category: canonical.category,
+      asWrittenName,
+      verbatimQuote: row.verbatim_quote,
+      valueText,
+      numericValue,
+      unitText,
+      referenceRange,
+      flag,
+      state: row.state as StructuredObservation['state'],
+      confidenceBand: row.confidence_band,
+      extractorName: row.extractor_name,
+      reviewerName: row.reviewer_name,
+      reviewedAt: row.reviewed_at ? row.reviewed_at.toISOString() : null,
+    });
+  }
+
+  return observations;
+}
+
+export async function getPatientClinicalSummary(q: Querier, patientId: string): Promise<ClinicalSummary | null> {
+  const patient = await getPatient(q, patientId);
+  if (!patient) return null;
+
+  const [observations, timeline, docs, conflicts] = await Promise.all([
+    listPatientObservations(q, patientId),
+    getTimeline(q, patientId).then((rows) => rows.filter((row) => !['rejected', 'superseded'].includes(row.state) && !row.replacedByFactId)),
+    listDocuments(q, patientId),
+    listConflicts(q, patientId),
+  ]);
+
+  // --- Baseline Characteristics ---
+  const heightObs = observations.find((o) => o.canonicalKey === 'height' && o.numericValue);
+  const weightObs = observations.find((o) => o.canonicalKey === 'weight' && o.numericValue);
+  const bloodGroupObs = observations.find((o) => o.canonicalKey === 'blood_group');
+  const allergiesObs = observations.find((o) => o.canonicalKey === 'allergies');
+  const ecogObs = observations.find((o) => o.canonicalKey === 'ecog');
+  const comorbObs = observations.find((o) => o.canonicalKey === 'comorbidities');
+
+  // Parse age and sex if available in observations or document headers
+  const ageObs = observations.find((o) => /^age$/i.test(o.asWrittenName.trim()) && o.numericValue);
+  const sexObs = observations.find((o) => /^(?:sex|gender)$/i.test(o.asWrittenName.trim()));
+
+  const heightInput = heightObs && heightObs.state !== 'conflicting' && heightObs.numericValue
+    ? {
+        value: heightObs.numericValue,
+        unit: heightObs.unitText || '',
+        observedOn: heightObs.observedOn,
+        sourceDocumentId: heightObs.documentId,
+        sourceDocumentName: heightObs.documentName,
+        sourcePageNumber: heightObs.pageNumber,
+        state: heightObs.state,
+      }
+    : null;
+
+  const weightInput = weightObs && weightObs.state !== 'conflicting' && weightObs.numericValue
+    ? {
+        value: weightObs.numericValue,
+        unit: weightObs.unitText || '',
+        observedOn: weightObs.observedOn,
+        sourceDocumentId: weightObs.documentId,
+        sourceDocumentName: weightObs.documentName,
+        sourcePageNumber: weightObs.pageNumber,
+        state: weightObs.state,
+      }
+    : null;
+
+  const derivedBMI = calculateBMI(heightInput, weightInput);
+  const derivedBSA = calculateBSADuBois(heightInput, weightInput);
+
+  // Active medications from timeline
+  const medicationsMap = new Map<string, { name: string; doseText?: string; observedOn: string | null; state: string; sourceDocumentId: string; sourceDocumentName: string; sourcePageNumber: number | null; factId: string }>();
+  for (const t of timeline) {
+    if (t.factType === 'medication.recorded' && t.state !== 'rejected' && t.state !== 'superseded') {
+      if (!medicationsMap.has(t.valueText)) {
+        medicationsMap.set(t.valueText, {
+          name: t.valueText,
+          observedOn: t.observedOn ?? t.displayDate,
+          state: t.state,
+          sourceDocumentId: t.documentId,
+          sourceDocumentName: t.documentName,
+          sourcePageNumber: t.pageNumber,
+          factId: t.evidenceFactId,
+        });
+      }
+    }
+  }
+
+  // --- Pathology & Biomarkers ---
+  const diagnosisItems: { text: string; observedOn: string | null; state: string; sourceDocumentId: string; sourceDocumentName: string; sourcePageNumber: number | null; factId: string }[] = [];
+  const stagingItems: { text: string; observedOn: string | null; state: string; sourceDocumentId: string; sourceDocumentName: string; sourcePageNumber: number | null; factId: string }[] = [];
+  const biomarkers: StructuredObservation[] = [];
+
+  for (const t of timeline) {
+    if (t.factType === 'diagnosis_text.as_written') {
+      diagnosisItems.push({
+        text: t.valueText,
+        observedOn: t.observedOn ?? t.displayDate,
+        state: t.state,
+        sourceDocumentId: t.documentId,
+        sourceDocumentName: t.documentName,
+        sourcePageNumber: t.pageNumber,
+        factId: t.evidenceFactId,
+      });
+    } else if (t.factType === 'stage_text.as_written') {
+      stagingItems.push({
+        text: t.valueText,
+        observedOn: t.observedOn ?? t.displayDate,
+        state: t.state,
+        sourceDocumentId: t.documentId,
+        sourceDocumentName: t.documentName,
+        sourcePageNumber: t.pageNumber,
+        factId: t.evidenceFactId,
+      });
+    }
+  }
+
+  for (const o of observations) {
+    if (o.category === 'pathology_biomarker') {
+      biomarkers.push(o);
+    }
+  }
+
+  // --- Treatment and Follow-up ---
+  const procedures: { name: string; code?: string; observedOn: string | null; state: string; sourceDocumentId: string; sourceDocumentName: string; sourcePageNumber: number | null; factId: string }[] = [];
+  const cycles: { label: string; observedOn: string | null; state: string; sourceDocumentId: string; sourceDocumentName: string; sourcePageNumber: number | null; factId: string }[] = [];
+  const appointments: { date: string; detail?: string; state: string; sourceDocumentId: string; sourceDocumentName: string; sourcePageNumber: number | null; factId: string }[] = [];
+  const followups: { date: string; state: string; sourceDocumentId: string; sourceDocumentName: string; sourcePageNumber: number | null; factId: string }[] = [];
+
+  for (const t of timeline) {
+    if (t.factType === 'procedure.recorded') {
+      procedures.push({
+        name: t.valueText,
+        observedOn: t.observedOn ?? t.displayDate,
+        state: t.state,
+        sourceDocumentId: t.documentId,
+        sourceDocumentName: t.documentName,
+        sourcePageNumber: t.pageNumber,
+        factId: t.evidenceFactId,
+      });
+    } else if (t.factType === 'chemotherapy_cycle.recorded') {
+      cycles.push({
+        label: t.valueText,
+        observedOn: t.observedOn ?? t.displayDate,
+        state: t.state,
+        sourceDocumentId: t.documentId,
+        sourceDocumentName: t.documentName,
+        sourcePageNumber: t.pageNumber,
+        factId: t.evidenceFactId,
+      });
+    } else if (t.factType === 'appointment.recorded') {
+      appointments.push({
+        date: t.valueText,
+        state: t.state,
+        sourceDocumentId: t.documentId,
+        sourceDocumentName: t.documentName,
+        sourcePageNumber: t.pageNumber,
+        factId: t.evidenceFactId,
+      });
+    } else if (t.factType === 'followup.recorded') {
+      followups.push({
+        date: t.valueText,
+        state: t.state,
+        sourceDocumentId: t.documentId,
+        sourceDocumentName: t.documentName,
+        sourcePageNumber: t.pageNumber,
+        factId: t.evidenceFactId,
+      });
+    }
+  }
+
+  // --- Analyte Groups (for Universal Value Explorer) ---
+  const groupsMap = new Map<string, StructuredObservation[]>();
+  for (const o of observations) {
+    const list = groupsMap.get(o.canonicalKey) ?? [];
+    list.push(o);
+    groupsMap.set(o.canonicalKey, list);
+  }
+
+  const analyteGroups = [...groupsMap.entries()].map(([canonicalKey, list]) => {
+    // Sort chronologically ascending for charts: oldest first
+    const sortedChronological = [...list].sort((a, b) => {
+      const da = a.observedOn || a.documentDate || '';
+      const db = b.observedOn || b.documentDate || '';
+      return da.localeCompare(db);
+    });
+    // The latest observation is the most recent
+    const latest = sortedChronological[sortedChronological.length - 1]!;
+    const distinctDates = new Set(list.map((x) => x.observedOn || x.documentDate).filter(Boolean));
+
+    return {
+      canonicalKey,
+      canonicalLabel: latest.canonicalLabel,
+      category: latest.category,
+      isNumeric: latest.numericValue !== undefined,
+      observations: sortedChronological,
+      latestObservation: latest,
+      hasMultipleDates: distinctDates.size > 1,
+    };
+  });
+
+  // Recent laboratory panel (latest observation per lab/biochem/tumor/molecular test)
+  const recentLabs = analyteGroups
+    .filter((g) => ['hematology', 'biochemistry', 'tumor_marker', 'molecular', 'treatment_response'].includes(g.category))
+    .flatMap((g) => g.observations.filter((o) => o.observedOn === g.latestObservation.observedOn));
+
+  // --- Quick Insights (Operational & Evidence-Linked) ---
+  const verifiedCount = timeline.filter((t) => t.state === 'verified').length;
+  const unverifiedCount = timeline.filter((t) => t.state === 'extracted').length;
+  const conflictingCount = conflicts.filter((c) => c.status === 'open').length;
+  const correctedCount = timeline.filter((t) => t.state === 'corrected').length;
+
+  const insights: { id: string; kind: 'report' | 'observation' | 'trend' | 'conflict' | 'verification'; title: string; detail: string; date?: string; link?: string }[] = [];
+
+  // 1. New reports received insight
+  if (docs.length > 0) {
+    const latestDoc = docs[0]!;
+    insights.push({
+      id: `doc-${latestDoc.id}`,
+      kind: 'report',
+      title: `${docs.length} source document${docs.length === 1 ? '' : 's'} on record`,
+      detail: `Source report "${latestDoc.filename}" from ${latestDoc.issuingFacility || latestDoc.recordOrigin.replace('_', ' ')}.`,
+      date: latestDoc.documentDate ?? undefined,
+      link: `/patients/${patientId}/sources/${latestDoc.id}`,
+    });
+  }
+
+  // 2. Observations extracted insight
+  if (observations.length > 0) {
+    insights.push({
+      id: 'obs-summary',
+      kind: 'observation',
+      title: `${observations.length} clinical observation${observations.length === 1 ? '' : 's'} extracted`,
+      detail: `Representing ${analyteGroups.length} unique tests and clinical findings available in the Universal Value Explorer.`,
+    });
+  }
+
+  // 3. Longitudinal history insights (tests with multiple dates)
+  for (const group of analyteGroups) {
+    if (group.hasMultipleDates && group.isNumeric) {
+      const first = group.observations[0]!;
+      const last = group.observations[group.observations.length - 1]!;
+      insights.push({
+        id: `trend-${group.canonicalKey}`,
+        kind: 'trend',
+        title: `Longitudinal history: ${group.canonicalLabel}`,
+        detail: `Documented across ${group.observations.length} measurements (${first.observedOn || 'earlier'}: ${first.valueText} ${first.unitText || ''} → ${last.observedOn || 'latest'}: ${last.valueText} ${last.unitText || ''}).`,
+      });
+    }
+  }
+
+  // 4. Conflicting results insight
+  if (conflictingCount > 0) {
+    insights.push({
+      id: 'conflicts-alert',
+      kind: 'conflict',
+      title: `${conflictingCount} contradictory record finding${conflictingCount === 1 ? '' : 's'} require review`,
+      detail: `Discrepancies identified across distinct source documents. Human reconciliation required before packet finalisation.`,
+      link: `/patients/${patientId}/conflicts`,
+    });
+  }
+
+  // 5. Verification status insight
+  if (unverifiedCount > 0) {
+    insights.push({
+      id: 'unverified-alert',
+      kind: 'verification',
+      title: `${unverifiedCount} extracted fact${unverifiedCount === 1 ? '' : 's'} awaiting clinician verification`,
+      detail: `Facts are marked as advisory until confirmed against source report text.`,
+      link: `/patients/${patientId}/evidence`,
+    });
+  } else if (verifiedCount > 0 && conflictingCount === 0) {
+    insights.push({
+      id: 'all-verified',
+      kind: 'verification',
+      title: `${verifiedCount} record facts verified`,
+      detail: `${verifiedCount} facts verified against supporting source text spans.`,
+      link: `/patients/${patientId}/evidence`,
+    });
+  }
+
+  // --- Baseline items list for card ---
+  const baselineItems: { label: string; value: string; observedOn: string | null; state: string; sourceDocumentId: string; sourceDocumentName: string; sourcePageNumber: number | null; factId: string }[] = [];
+  if (ageObs) baselineItems.push({ label: 'Age', value: `${ageObs.numericValue} years`, observedOn: ageObs.observedOn, state: ageObs.state, sourceDocumentId: ageObs.documentId, sourceDocumentName: ageObs.documentName, sourcePageNumber: ageObs.pageNumber, factId: ageObs.id });
+  if (sexObs) baselineItems.push({ label: 'Sex', value: sexObs.valueText, observedOn: sexObs.observedOn, state: sexObs.state, sourceDocumentId: sexObs.documentId, sourceDocumentName: sexObs.documentName, sourcePageNumber: sexObs.pageNumber, factId: sexObs.id });
+  if (heightObs) baselineItems.push({ label: 'Height', value: `${heightObs.numericValue} ${heightObs.unitText || ''}`, observedOn: heightObs.observedOn, state: heightObs.state, sourceDocumentId: heightObs.documentId, sourceDocumentName: heightObs.documentName, sourcePageNumber: heightObs.pageNumber, factId: heightObs.id });
+  if (weightObs) baselineItems.push({ label: 'Weight', value: `${weightObs.numericValue} ${weightObs.unitText || ''}`, observedOn: weightObs.observedOn, state: weightObs.state, sourceDocumentId: weightObs.documentId, sourceDocumentName: weightObs.documentName, sourcePageNumber: weightObs.pageNumber, factId: weightObs.id });
+  if (bloodGroupObs) baselineItems.push({ label: 'Blood group and Rh', value: bloodGroupObs.valueText, observedOn: bloodGroupObs.observedOn, state: bloodGroupObs.state, sourceDocumentId: bloodGroupObs.documentId, sourceDocumentName: bloodGroupObs.documentName, sourcePageNumber: bloodGroupObs.pageNumber, factId: bloodGroupObs.id });
+  if (allergiesObs) baselineItems.push({ label: 'Documented allergies', value: allergiesObs.valueText, observedOn: allergiesObs.observedOn, state: allergiesObs.state, sourceDocumentId: allergiesObs.documentId, sourceDocumentName: allergiesObs.documentName, sourcePageNumber: allergiesObs.pageNumber, factId: allergiesObs.id });
+  if (ecogObs) baselineItems.push({ label: 'ECOG performance status', value: ecogObs.valueText, observedOn: ecogObs.observedOn, state: ecogObs.state, sourceDocumentId: ecogObs.documentId, sourceDocumentName: ecogObs.documentName, sourcePageNumber: ecogObs.pageNumber, factId: ecogObs.id });
+  if (comorbObs) baselineItems.push({ label: 'Comorbidities', value: comorbObs.valueText, observedOn: comorbObs.observedOn, state: comorbObs.state, sourceDocumentId: comorbObs.documentId, sourceDocumentName: comorbObs.documentName, sourcePageNumber: comorbObs.pageNumber, factId: comorbObs.id });
+
+  return {
+    patient,
+    overview: {
+      age: ageObs ? { value: `${ageObs.numericValue} years`, observedOn: ageObs.observedOn, state: ageObs.state, sourceDocumentId: ageObs.documentId, sourceDocumentName: ageObs.documentName, sourcePageNumber: ageObs.pageNumber, factId: ageObs.id } : undefined,
+      sex: sexObs ? { value: sexObs.valueText, observedOn: sexObs.observedOn, state: sexObs.state, sourceDocumentId: sexObs.documentId, sourceDocumentName: sexObs.documentName, sourcePageNumber: sexObs.pageNumber, factId: sexObs.id } : undefined,
+      height: heightObs ? { value: heightObs.numericValue!, unit: heightObs.unitText || '', formatted: `${heightObs.numericValue} ${heightObs.unitText || ''}`, observedOn: heightObs.observedOn, state: heightObs.state, sourceDocumentId: heightObs.documentId, sourceDocumentName: heightObs.documentName, sourcePageNumber: heightObs.pageNumber, factId: heightObs.id } : undefined,
+      weight: weightObs ? { value: weightObs.numericValue!, unit: weightObs.unitText || '', formatted: `${weightObs.numericValue} ${weightObs.unitText || ''}`, observedOn: weightObs.observedOn, state: weightObs.state, sourceDocumentId: weightObs.documentId, sourceDocumentName: weightObs.documentName, sourcePageNumber: weightObs.pageNumber, factId: weightObs.id } : undefined,
+      bloodGroup: bloodGroupObs ? { value: bloodGroupObs.valueText, observedOn: bloodGroupObs.observedOn, state: bloodGroupObs.state, sourceDocumentId: bloodGroupObs.documentId, sourceDocumentName: bloodGroupObs.documentName, sourcePageNumber: bloodGroupObs.pageNumber, factId: bloodGroupObs.id } : undefined,
+      allergies: allergiesObs ? { value: allergiesObs.valueText, observedOn: allergiesObs.observedOn, state: allergiesObs.state, sourceDocumentId: allergiesObs.documentId, sourceDocumentName: allergiesObs.documentName, sourcePageNumber: allergiesObs.pageNumber, factId: allergiesObs.id } : undefined,
+      ecog: ecogObs ? { value: ecogObs.valueText, observedOn: ecogObs.observedOn, state: ecogObs.state, sourceDocumentId: ecogObs.documentId, sourceDocumentName: ecogObs.documentName, sourcePageNumber: ecogObs.pageNumber, factId: ecogObs.id } : undefined,
+      comorbidities: comorbObs ? { value: comorbObs.valueText, observedOn: comorbObs.observedOn, state: comorbObs.state, sourceDocumentId: comorbObs.documentId, sourceDocumentName: comorbObs.documentName, sourcePageNumber: comorbObs.pageNumber, factId: comorbObs.id } : undefined,
+      activeMedications: [...medicationsMap.values()],
+      derivedBMI,
+      derivedBSA,
+    },
+    cards: {
+      baseline: { items: baselineItems },
+      pathology: { diagnosis: diagnosisItems, staging: stagingItems, biomarkers },
+      treatment: { procedures, cycles, appointments, followups },
+      recentLabs,
+      quickInsights: {
+        totalDocuments: docs.length,
+        totalOrigins: new Set(docs.map((d) => d.recordOrigin)).size,
+        totalFacts: timeline.length,
+        verifiedFacts: verifiedCount,
+        unverifiedFacts: unverifiedCount,
+        conflictingFacts: conflictingCount,
+        correctedFacts: correctedCount,
+        insights,
+      },
+    },
+    allObservations: observations,
+    analyteGroups,
+  };
+}

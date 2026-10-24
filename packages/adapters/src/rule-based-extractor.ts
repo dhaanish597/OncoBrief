@@ -1,4 +1,4 @@
-import { toIsoDate, type FactValue } from '@oncobrief/domain';
+import { toIsoDate, parseReferenceRange, parseSourceFlag, type FactValue } from '@oncobrief/domain';
 import type { CandidateDraft, ExtractionInput, ExtractionPort } from '@oncobrief/ports';
 
 /**
@@ -60,6 +60,7 @@ const MEDICATIONS = [
   'Methotrexate', 'Rituximab', 'Bevacizumab', 'Imatinib',
   'Gemcitabine', 'Vinorelbine', 'Etoposide', 'Prednisolone',
   'Dexamethasone', 'Ondansetron', 'Filgrastim',
+  'Amlodipine', 'Metformin', 'Atorvastatin',
 ];
 
 const PROCEDURES = [
@@ -106,13 +107,14 @@ export class RuleBasedExtractor implements ExtractionPort {
       dates.add(date);
       datesByPage.set(span.pageId, dates);
     }
-    for (const span of input.spans) {
+    for (let spanIdx = 0; spanIdx < input.spans.length; spanIdx++) {
+      const span = input.spans[spanIdx]!;
       const text = span.text;
       const dates = datesByPage.get(span.pageId);
       const sourceDate = dates?.size === 1 ? [...dates][0]! : input.documentDate;
 
       // --- identifiers -----------------------------------------------------
-      const mrn = /\bMRN[:#\s]*([A-Za-z0-9][A-Za-z0-9/-]{2,})\b/.exec(text);
+      const mrn = /\bMRN[:#\s]*([A-Za-z0-9][A-Za-z0-9/-]{2,})\b/i.exec(text);
       if (mrn) {
         push({
           factType: 'identifier.mrn',
@@ -128,6 +130,27 @@ export class RuleBasedExtractor implements ExtractionPort {
           extractorName: this.name,
           extractorVersion: this.version,
         });
+      } else if (/\bMRN[:#\s]*$/i.test(text.trim())) {
+        const nextSpan = input.spans[spanIdx + 1];
+        if (nextSpan) {
+          const nextMrn = /^\s*([A-Za-z0-9][A-Za-z0-9/-]{2,})\b/.exec(nextSpan.text);
+          if (nextMrn) {
+            push({
+              factType: 'identifier.mrn',
+              value: {
+                kind: 'identifier',
+                system: 'mrn',
+                value: nextMrn[1]!,
+                ...(input.issuingFacility ? { scope: slug(input.issuingFacility) } : {}),
+              },
+              verbatimQuote: nextMrn[1]!,
+              spanIds: [nextSpan.id],
+              confidenceRaw: 0.95,
+              extractorName: this.name,
+              extractorVersion: this.version,
+            });
+          }
+        }
       }
 
       const abha = /\bABHA[:#\s]*(\d{2}-\d{4}-\d{4}-\d{4})\b/.exec(text);
@@ -145,7 +168,7 @@ export class RuleBasedExtractor implements ExtractionPort {
 
       // --- document date (labelled) ---------------------------------------
       const labelledDate = new RegExp(
-        String.raw`\bDate(?:\s+of\s+[A-Za-z ]{2,24})?[:\s]+(${DATE_PATTERN_SRC})`,
+        String.raw`\b(?:Date|Specimen\s*Date|Report\s*Date|Collection\s*Date|Date\s*of\s*Presentation)(?:\s+of\s+[A-Za-z ]{2,24})?[:\s]+(${DATE_PATTERN_SRC})`,
         'i',
       ).exec(text);
       if (labelledDate) {
@@ -273,33 +296,331 @@ export class RuleBasedExtractor implements ExtractionPort {
         });
       }
 
-      // --- lab result as written (key-value or tabular) --------------------
-      let lab = /\b([A-Z][A-Za-z0-9 /()-]{2,35}?)\s*[:=]\s*([<>]?[\d,]+(?:\.\d+)?(?:\/\d+(?:\.\d+)?)?)\s*([A-Za-z/%\u00B5]{0,10})\b/.exec(
-        text,
-      );
-      if (!lab) {
-        lab = /\b([A-Z][A-Za-z0-9 /()-]{2,35}?)\s{2,}([<>]?[\d,]+(?:\.\d+)?(?:\/\d+(?:\.\d+)?)?)\s+([A-Za-z/%\u00B5]{1,10})\b/.exec(
-          text,
-        );
-      }
-      if (lab && !/^(Date|MRN|ABHA|Age|Phone|Contact|TEST NAME|Specimen|Specimen Date|Total Entries|Resource ID)$/i.test(lab[1]!.trim())) {
-        const unit = lab[3]?.trim();
-        const value: FactValue = {
-          kind: 'lab',
-          name: lab[1]!.trim(),
-          valueText: lab[2]!,
-          ...(unit ? { unitText: unit } : {}),
-        };
+      // --- patient baseline demographics (Age, Sex, Height, Weight) --------
+      const ageSex = /\b(\d{1,3})\s*(?:Y(?:ears?)?|yrs?)?\s*[/|]\s*(Female|Male|F|M)\b/i.exec(text);
+      if (ageSex) {
+        const ageNum = parseInt(ageSex[1]!, 10);
+        const sexStr = ageSex[2]!;
+        if (Number.isFinite(ageNum) && ageNum > 0 && ageNum < 125) {
+          push({
+            factType: 'lab_result.as_written',
+            value: { kind: 'lab', name: 'Age', valueText: String(ageNum), numericValue: ageNum, unitText: 'Years' },
+            verbatimQuote: ageSex[1]!,
+            spanIds: [span.id],
+            confidenceRaw: 0.92,
+            extractorName: this.name,
+            extractorVersion: this.version,
+            observedOn: sourceDate ?? null,
+          });
+        }
         push({
-          factType: /^(?:weight|height|blood pressure|pulse|heart rate|temperature|oxygen saturation|SpO2)$/i.test(lab[1]!.trim()) ? 'vital_sign.as_written' : 'lab_result.as_written',
-          value,
-          verbatimQuote: lab[0]!,
+          factType: 'lab_result.as_written',
+          value: { kind: 'lab', name: 'Sex', valueText: sexStr },
+          verbatimQuote: ageSex[2]!,
           spanIds: [span.id],
-          confidenceRaw: 0.72,
+          confidenceRaw: 0.92,
           extractorName: this.name,
           extractorVersion: this.version,
           observedOn: sourceDate,
         });
+      }
+
+      const explicitSex = /\b(?:Sex|Gender)\s*[:=]\s*(Female|Male|Other)\b/i.exec(text);
+      if (explicitSex) {
+        push({
+          factType: 'lab_result.as_written',
+          value: { kind: 'lab', name: 'Sex', valueText: explicitSex[1]!.trim() },
+          verbatimQuote: explicitSex[0]!,
+          spanIds: [span.id],
+          confidenceRaw: 0.95,
+          extractorName: this.name,
+          extractorVersion: this.version,
+          observedOn: sourceDate ?? null,
+        });
+      }
+
+      const explicitAge = /\bAge\s*[:=]\s*(\d{1,3})(?:\s*(?:Years?|yrs?|Y))?\b/i.exec(text);
+      if (explicitAge) {
+        const ageNum = parseInt(explicitAge[1]!, 10);
+        if (Number.isFinite(ageNum) && ageNum > 0 && ageNum < 125) {
+          push({
+            factType: 'lab_result.as_written',
+            value: { kind: 'lab', name: 'Age', valueText: String(ageNum), numericValue: ageNum, unitText: 'Years' },
+            verbatimQuote: explicitAge[0]!,
+            spanIds: [span.id],
+            confidenceRaw: 0.95,
+            extractorName: this.name,
+            extractorVersion: this.version,
+            observedOn: sourceDate ?? null,
+          });
+        }
+      }
+
+      const htMatch = /\b(?:Height|Ht)\s*[:=]\s*(\d+(?:\.\d+)?)\s*(cm|m|in)?\b/i.exec(text);
+      if (htMatch) {
+        const val = parseFloat(htMatch[1]!);
+        const unit = htMatch[2];
+        push({
+          factType: 'vital_sign.as_written',
+          value: { kind: 'lab', name: 'Height', valueText: htMatch[1]!, numericValue: val, ...(unit ? { unitText: unit } : {}) },
+          verbatimQuote: htMatch[0]!,
+          spanIds: [span.id],
+          confidenceRaw: 0.95,
+          extractorName: this.name,
+          extractorVersion: this.version,
+          observedOn: sourceDate ?? null,
+        });
+      }
+
+      const wtMatch = /\b(?:Weight|Wt)\s*[:=]\s*(\d+(?:\.\d+)?)\s*(kg|lbs?)?\b/i.exec(text);
+      if (wtMatch) {
+        const val = parseFloat(wtMatch[1]!);
+        const unit = wtMatch[2];
+        push({
+          factType: 'vital_sign.as_written',
+          value: { kind: 'lab', name: 'Weight', valueText: wtMatch[1]!, numericValue: val, ...(unit ? { unitText: unit } : {}) },
+          verbatimQuote: wtMatch[0]!,
+          spanIds: [span.id],
+          confidenceRaw: 0.95,
+          extractorName: this.name,
+          extractorVersion: this.version,
+          observedOn: sourceDate ?? null,
+        });
+      }
+
+      // --- categorical observations (blood group, allergies, ecog, biomarkers) ----
+      const bloodGroup = /\b(?:Blood\s*(?:Group|Type)(?:\s*(?:and|&)\s*Rh)?)\s*[:=]\s*([ABOab0][\s+-]?(?:Rh\s*)?(?:Positive|Negative|\+ve|-ve|\+|-|[A-Za-z()+\s]+?))\s*(?:\||$)/i.exec(
+        text,
+      );
+      if (bloodGroup) {
+        push({
+          factType: 'lab_result.as_written',
+          value: { kind: 'lab', name: 'Blood Group and Rh', valueText: bloodGroup[1]!.trim() },
+          verbatimQuote: bloodGroup[0]!.replace(/\s*\|$/, '').trim(),
+          spanIds: [span.id],
+          confidenceRaw: 0.95,
+          extractorName: this.name,
+          extractorVersion: this.version,
+          observedOn: sourceDate ?? null,
+        });
+      }
+
+      const ecog = /\bECOG(?:\s*(?:Performance\s*Status|PS))?\s*[:=]\s*(?:ECOG\s*(?:PS\s*)?)?([0-4])\b/i.exec(text);
+      if (ecog) {
+        const num = parseInt(ecog[1]!, 10);
+        push({
+          factType: 'lab_result.as_written',
+          value: {
+            kind: 'lab',
+            name: 'ECOG Performance Status',
+            valueText: ecog[1]!.trim(),
+            numericValue: Number.isFinite(num) ? num : undefined,
+          },
+          verbatimQuote: ecog[0]!,
+          spanIds: [span.id],
+          confidenceRaw: 0.95,
+          extractorName: this.name,
+          extractorVersion: this.version,
+          observedOn: sourceDate ?? null,
+        });
+      }
+
+      const allergy = /\b(?:Allerg(?:ies|y))\s*[:=]\s*([A-Za-z0-9 ,/()+-]+?)\s*(?:\||$)/i.exec(text);
+      if (allergy) {
+        push({
+          factType: 'lab_result.as_written',
+          value: { kind: 'lab', name: 'Documented Allergies', valueText: allergy[1]!.trim() },
+          verbatimQuote: allergy[0]!.replace(/\s*\|$/, '').trim(),
+          spanIds: [span.id],
+          confidenceRaw: 0.95,
+          extractorName: this.name,
+          extractorVersion: this.version,
+          observedOn: sourceDate ?? null,
+        });
+      }
+
+      const nkda = /\b(?:No\s+known\s+drug\s+allergies|NKDA)\b/i.exec(text);
+      if (nkda && !allergy) {
+        push({
+          factType: 'lab_result.as_written',
+          value: { kind: 'lab', name: 'Documented Allergies', valueText: nkda[0]!.trim() },
+          verbatimQuote: nkda[0]!,
+          spanIds: [span.id],
+          confidenceRaw: 0.9,
+          extractorName: this.name,
+          extractorVersion: this.version,
+          observedOn: sourceDate ?? null,
+        });
+      }
+
+      const comorb = /\b(?:Relevant\s+)?(?:Comorbidit(?:ies|y)|Past\s+medical\s+history)\s*[:=]\s*([A-Za-z0-9 ,/()+-]+?)\s*(?:\||$)/i.exec(text);
+      if (comorb) {
+        push({
+          factType: 'lab_result.as_written',
+          value: { kind: 'lab', name: 'Relevant Comorbidities', valueText: comorb[1]!.trim() },
+          verbatimQuote: comorb[0]!.replace(/\s*\|$/, '').trim(),
+          spanIds: [span.id],
+          confidenceRaw: 0.95,
+          extractorName: this.name,
+          extractorVersion: this.version,
+          observedOn: sourceDate ?? null,
+        });
+      }
+
+      // --- pathology diagnosis and staging text -------------------------
+      const diagMatch = /^\s*(?:Diagnosis|Histological\s*Diagnosis|Histopathology\s*Diagnosis|Impression)\s*[:=]\s*(.+)$/i.exec(text);
+      if (diagMatch && !/^(?:Stage|See|Refer|Tamoxifen|Please)/i.test(diagMatch[1]!.trim())) {
+        push({
+          factType: 'diagnosis_text.as_written',
+          value: { kind: 'text', text: diagMatch[1]!.trim() },
+          verbatimQuote: diagMatch[0]!,
+          spanIds: [span.id],
+          confidenceRaw: 0.92,
+          extractorName: this.name,
+          extractorVersion: this.version,
+          observedOn: sourceDate ?? null,
+        });
+      }
+
+      const stageMatch = /^\s*(?:Stage(?:\s*as\s*documented)?|Documented\s*Stage|Pathological\s*Stage)\s*[:=]\s*(.+)$/i.exec(text);
+      if (stageMatch) {
+        push({
+          factType: 'stage_text.as_written',
+          value: { kind: 'text', text: stageMatch[1]!.trim() },
+          verbatimQuote: stageMatch[0]!,
+          spanIds: [span.id],
+          confidenceRaw: 0.92,
+          extractorName: this.name,
+          extractorVersion: this.version,
+          observedOn: sourceDate ?? null,
+        });
+      }
+
+      const erBiomarker = /\b(?:Estrogen\s+receptor(?:\s*\([^)]*\))?|ER)\s*[:=]\s*(Positive|Negative|Equivocal|Weakly\s+Positive|[\d.%]+)(?:\s*\([^)]*\))?/i.exec(text);
+      if (erBiomarker) {
+        const valText = erBiomarker[0]!.split(/[:=]/).slice(1).join(':').trim();
+        push({
+          factType: 'lab_result.as_written',
+          value: { kind: 'lab', name: 'Estrogen Receptor (ER)', valueText: valText },
+          verbatimQuote: erBiomarker[0]!,
+          spanIds: [span.id],
+          confidenceRaw: 0.9,
+          extractorName: this.name,
+          extractorVersion: this.version,
+          observedOn: sourceDate ?? null,
+        });
+      }
+
+      const prBiomarker = /\b(?:Progesterone\s+receptor(?:\s*\([^)]*\))?|PR)\s*[:=]\s*(Positive|Negative|Equivocal|Weakly\s+Positive|[\d.%]+)(?:\s*\([^)]*\))?/i.exec(text);
+      if (prBiomarker) {
+        const valText = prBiomarker[0]!.split(/[:=]/).slice(1).join(':').trim();
+        push({
+          factType: 'lab_result.as_written',
+          value: { kind: 'lab', name: 'Progesterone Receptor (PR)', valueText: valText },
+          verbatimQuote: prBiomarker[0]!,
+          spanIds: [span.id],
+          confidenceRaw: 0.9,
+          extractorName: this.name,
+          extractorVersion: this.version,
+          observedOn: sourceDate ?? null,
+        });
+      }
+
+      const her2Biomarker = /\b(?:HER2(?:\/neu)?)\s*[:=]\s*(Positive|Negative|Equivocal)(?:\s*\([^)]*\))?/i.exec(text);
+      if (her2Biomarker) {
+        const valText = her2Biomarker[0]!.split(/[:=]/).slice(1).join(':').trim();
+        push({
+          factType: 'lab_result.as_written',
+          value: { kind: 'lab', name: 'HER2 / neu Receptor', valueText: valText },
+          verbatimQuote: her2Biomarker[0]!,
+          spanIds: [span.id],
+          confidenceRaw: 0.9,
+          extractorName: this.name,
+          extractorVersion: this.version,
+          observedOn: sourceDate ?? null,
+        });
+      }
+
+      const ki67Biomarker = /\b(?:Ki[\s-]?67(?:\s*index|\s*labeling\s*index|\s*proliferation\s*index)?)\s*[:=]\s*([<>]?\s*\d+(?:\.\d+)?\s*%?(?:\s*\([^)]*\))?)/i.exec(text);
+      if (ki67Biomarker) {
+        const valText = ki67Biomarker[0]!.split(/[:=]/).slice(1).join(':').trim();
+        const numMatch = /(\d+(?:\.\d+)?)/.exec(valText);
+        const numericValue = numMatch ? parseFloat(numMatch[1]!) : undefined;
+        push({
+          factType: 'lab_result.as_written',
+          value: { kind: 'lab', name: 'Ki-67 Proliferation Index', valueText: valText, numericValue, unitText: '%' },
+          verbatimQuote: ki67Biomarker[0]!,
+          spanIds: [span.id],
+          confidenceRaw: 0.9,
+          extractorName: this.name,
+          extractorVersion: this.version,
+          observedOn: sourceDate ?? null,
+        });
+      }
+
+      // --- lab results and quantitative observations (with units, reference ranges, and flags) ---
+      const isHeaderRow =
+        /\b(?:TEST(?:\s+NAME)?|INVESTIGATION|PARAMETER)\b/i.test(text) &&
+        /\b(?:RESULT|VALUE|OBSERVED)\b/i.test(text);
+
+      if (!isHeaderRow && !htMatch && !wtMatch && !ecog && !ki67Biomarker) {
+        // Try colon/equal separated first: Name: Value Unit (Ref) Flag
+        let labMatch = /^\s*([A-Za-z0-9][A-Za-z0-9 /()+-]{1,45}?)\s*[:=]\s*([<>]?\s*[\d,]+(?:\.\d+)?(?:\/\d+(?:\.\d+)?)?)\s*([A-Za-z/%\u00B5^0-9]{0,12})?(?:\s*([([][^)\r\n]+[)\]]|[\d,]+(?:\.\d+)?\s*(?:-|to)\s*[\d,]+(?:\.\d+)?|<[\d,.]+|>[\d,.]+))?(?:\s+([A-Za-z*[\]]{1,10}))?/i.exec(
+          text,
+        );
+
+        // Try tabular match (2 or more spaces separating columns)
+        if (!labMatch) {
+          labMatch = /^\s*([A-Za-z0-9][A-Za-z0-9 /()+-]{1,45}?)\s{2,}([<>]?\s*[\d,]+(?:\.\d+)?)\s+([A-Za-z/%\u00B5^0-9]{1,12})?(?:\s+([([][^)\r\n]+[)\]]|[\d,]+(?:\.\d+)?\s*(?:-|to)\s*[\d,]+(?:\.\d+)?|<[\d,.]+|>[\d,.]+))?(?:\s+([A-Za-z*[\]]{1,10}))?/i.exec(
+            text,
+          );
+        }
+
+        // Also fallback to inline regex for lines where test name is preceded by something or simple format
+        if (!labMatch) {
+          labMatch = /\b([A-Z][A-Za-z0-9 /()+-]{1,32}?)\s*[:=]\s*([<>]?\s*[\d,]+(?:\.\d+)?(?:\/\d+(?:\.\d+)?)?)\s*([A-Za-z/%\u00B5^0-9]{0,10})(?:\s*([([][^)\r\n]+[)\]]))?(?:\s*([A-Za-z*]{1,8}))?\b/.exec(
+            text,
+          );
+        }
+
+        if (
+          labMatch &&
+          !/^(Date|Specimen\s*Date|Report\s*Date|Collection\s*Date|Date\s*of\s*Presentation|Admission\s*Date|Discharge\s*Date|MRN|ABHA|Phone|Contact|Ref|Reference|Age|Sex|Gender|Patient|Doctor|Dr|Time|Sample|Page|Test\s*Name|Total Entries|Resource ID)$/i.test(
+            labMatch[1]!.trim(),
+          )
+        ) {
+          const rawName = labMatch[1]!.trim();
+          const rawVal = labMatch[2]!.trim();
+          const rawUnit = labMatch[3]?.trim();
+          const rawRef = labMatch[4]?.trim();
+          const rawFlag = labMatch[5]?.trim();
+
+          const numVal = parseFloat(rawVal.replace(/,/g, '').replace(/[<>]/g, ''));
+          const refRange = parseReferenceRange(rawRef);
+          const flag = parseSourceFlag(rawFlag);
+
+          const value: FactValue = {
+            kind: 'lab',
+            name: rawName,
+            valueText: rawVal,
+            ...(rawUnit ? { unitText: rawUnit } : {}),
+            ...(Number.isFinite(numVal) ? { numericValue: numVal } : {}),
+            ...(refRange ? { referenceRange: refRange } : {}),
+            ...(flag ? { flag } : {}),
+            ...(sourceDate ? { reportDate: sourceDate } : {}),
+          };
+
+          push({
+            factType: /^(?:weight|height|blood pressure|pulse|heart rate|temperature|oxygen saturation|SpO2)$/i.test(rawName) ? 'vital_sign.as_written' : 'lab_result.as_written',
+            value,
+            verbatimQuote: labMatch[0]!,
+            spanIds: [span.id],
+            confidenceRaw: 0.85,
+            extractorName: this.name,
+            extractorVersion: this.version,
+            observedOn: sourceDate ?? null,
+          });
+        }
       }
     }
 
