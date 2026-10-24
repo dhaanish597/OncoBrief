@@ -9,6 +9,7 @@ export interface ChatCompletionOptions {
   maxTokens?: number;
   model?: string;
   responseFormat?: { type: 'json_object' } | { type: 'text' };
+  timeoutMs?: number;
 }
 
 export interface ChatCompletionResponse {
@@ -77,7 +78,7 @@ export async function chatCompletion(
   };
 
   const controller = new AbortController();
-  const timeoutId = setTimeout(() => controller.abort(), 60000);
+  const timeoutId = setTimeout(() => controller.abort(), options.timeoutMs ?? 15000);
 
   try {
     const response = await fetch(`${baseUrl}/chat/completions`, {

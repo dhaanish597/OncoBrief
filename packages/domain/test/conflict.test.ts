@@ -73,6 +73,38 @@ describe('comparators', () => {
     expect(compareFacts(a, b)).toBe('agree');
   });
 
+  it('treats serial lab results across different dates as non-conflicting chronological points', () => {
+    const labJan = fact(
+      'l1',
+      'lab_result.as_written',
+      { kind: 'lab', name: 'Hemoglobin', valueText: '13.2', unitText: 'g/dL' },
+      '2026-01-15',
+    );
+    const labMar = fact(
+      'l2',
+      'lab_result.as_written',
+      { kind: 'lab', name: 'Hemoglobin', valueText: '11.8', unitText: 'g/dL' },
+      '2026-03-20',
+    );
+    expect(compareFacts(labJan, labMar)).toBe('agree');
+  });
+
+  it('detects genuine conflict when lab results for the same date disagree on value', () => {
+    const labA = fact(
+      'l1',
+      'lab_result.as_written',
+      { kind: 'lab', name: 'Hemoglobin', valueText: '13.2', unitText: 'g/dL' },
+      '2026-01-15',
+    );
+    const labB = fact(
+      'l2',
+      'lab_result.as_written',
+      { kind: 'lab', name: 'Hemoglobin', valueText: '10.5', unitText: 'g/dL' },
+      '2026-01-15',
+    );
+    expect(compareFacts(labA, labB)).toBe('disagree');
+  });
+
   it('returns incomparable for mismatched value shapes', () => {
     const a = fact('a', 'document.issuing_facility', { kind: 'facility', name: 'Hospital A' });
     const b = fact('b', 'document.issuing_facility', { kind: 'text', text: 'Hospital B' });

@@ -4,15 +4,12 @@ import React, { useEffect, useState } from 'react';
 import Link from 'next/link';
 import {
   CheckCircle2,
-  Clock,
   FileText,
   Loader2,
   X,
-  AlertCircle,
   ExternalLink,
   Cpu,
   Layers,
-  Sparkles,
 } from 'lucide-react';
 
 export type PipelineStepStatus = 'completed' | 'processing' | 'pending' | 'failed';
@@ -270,7 +267,6 @@ export function ProcessingStatusCard({
           {steps.map((step) => {
             const isCompleted = step.status === 'completed';
             const isRunning = step.status === 'processing';
-            const isPending = step.status === 'pending';
 
             return (
               <div

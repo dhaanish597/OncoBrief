@@ -104,8 +104,10 @@ test.describe('OncoBrief — evidence-first demo flow', () => {
     await page.getByTestId('tab-packet').click();
     // The mandatory sections render even when empty.
     await expect(page.getByText(/Open source conflicts/i)).toBeVisible();
-    await expect(page.getByText(/Missing documents/i)).toBeVisible();
+    await expect(page.getByRole('heading', { name: /Missing documents/i })).toBeVisible();
 
+    // Each run exercises a new approval, even if another spec approved the previous packet.
+    await page.getByRole('button', { name: 'assemble draft', exact: true }).click();
     await page.getByTestId('approve-packet').click();
     await expect(page.getByText(/ledger seq/i)).toBeVisible();
     await expect(page.getByTestId('export-packet')).toBeVisible();

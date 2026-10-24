@@ -1,9 +1,14 @@
 import Link from 'next/link';
 import { DOCUMENT_TYPES, DOCUMENT_TYPE_LABEL } from '@oncobrief/domain';
-import { getPresignPut, listDocuments } from '@oncobrief/db';
+import { getAbdmGateway, getPresignPut, listDocuments, listPatientAbdmConsents } from '@oncobrief/db';
 import { withSession } from '@/lib/session';
 import { DemoBadge, EmptyFinding, OriginBadge, SectionHeading } from '@/components/evidence';
-import { confirmDocumentTypeAction, uploadDocumentAction } from '@/lib/actions';
+import {
+  confirmDocumentTypeAction,
+  uploadDocumentAction,
+  revokeAbdmConsentAction,
+} from '@/lib/actions';
+import { AbdmPullControl } from '@/components/AbdmPullControl';
 import { DocumentUploadForm } from '@/components/DocumentUploadForm';
 
 /**
@@ -13,7 +18,11 @@ import { DocumentUploadForm } from '@/components/DocumentUploadForm';
  */
 export default async function SourcesPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
-  const docs = await withSession(async (q) => listDocuments(q, id));
+  const { docs, abdmConsents } = await withSession(async (q) => {
+    const d = await listDocuments(q, id);
+    const c = await listPatientAbdmConsents(q, id);
+    return { docs: d, abdmConsents: c };
+  });
 
   // With S3-backed storage the browser uploads straight to the bucket (the
   // cloud pipeline); with the filesystem driver the in-process action is used.
@@ -43,9 +52,69 @@ export default async function SourcesPage({ params }: { params: Promise<{ id: st
 
       <DocumentUploadForm
         patientId={id}
+        abdmDriver={getAbdmGateway().driver}
         fallbackAction={uploadDocumentAction}
         directUploadAvailable={directUploadAvailable}
       />
+
+      <section className="mt-6 border border-slate-200 p-4" aria-label="ABDM exchange status">
+        <h3 className="mono text-sm">ABDM consent requests and transfers</h3>
+        <p className="text-xs mt-2">{process.env.ABDM_DRIVER === 'sandbox' ? 'ABDM sandbox' : 'SIMULATED — synthetic records only; patient grant is simulated.'}</p>
+        {abdmConsents.requests.map(request => (
+          <p key={request.id} data-testid="abdm-request" className="mono mt-2 text-xs">
+            Consent request {request.id}: {request.status}
+          </p>
+        ))}
+        {abdmConsents.transfers.map(transfer => (
+          <p key={transfer.id} data-testid="abdm-transfer" className="mono mt-2 text-xs">
+            Transfer {transfer.id}: {transfer.status} · {transfer.receivedPages}/{transfer.pageCount} pages · {transfer.documentCount} imported documents
+            {transfer.errorMessage ? ` · ${transfer.errorMessage}` : ''}
+          </p>
+        ))}
+      </section>
+      {abdmConsents.artifacts.length > 0 && (
+        <section className="mt-6 border border-slate-200 bg-slate-50/50 p-4 rounded-lg">
+          <h4 className="mono text-xs font-semibold uppercase tracking-wider text-slate-800">
+            ABDM Consent Artifacts & Retention Deadlines
+          </h4>
+          <ul className="mt-3 divide-y divide-slate-200">
+            {abdmConsents.artifacts.map((art) => (
+              <li data-testid="abdm-artifact" key={art.id} className="py-2.5 flex flex-wrap items-center justify-between gap-3 text-xs">
+                <div>
+                  <span className="font-mono font-medium text-slate-800">{art.abdmConsentId}</span>
+                  <span className="ml-2 text-slate-500">
+                    Types: {art.hiTypes.join(', ')} · Erase at: {art.dataEraseAt.split('T')[0]}
+                  </span>
+                  <span
+                    className={`ml-2 px-1.5 py-0.5 rounded text-[10px] uppercase font-mono ${
+                      art.status === 'GRANTED' ? 'bg-emerald-100 text-emerald-800' : 'bg-red-100 text-red-800'
+                    }`}
+                  >
+                    {art.status}
+                  </span>
+                </div>
+                <div className="flex items-center gap-2">
+                  {art.status === 'GRANTED' ? (
+                    <>
+                      <AbdmPullControl patientId={id} consentId={art.abdmConsentId} />
+                      <form action={revokeAbdmConsentAction}>
+                        <input type="hidden" name="patientId" value={id} />
+                        <input type="hidden" name="consentId" value={art.abdmConsentId} />
+                        <button
+                          type="submit"
+                          className="mono border border-red-600 bg-red-50 px-2 py-1 text-[11px] text-red-700 hover:bg-red-100 uppercase"
+                        >
+                          revoke access & remove raw source
+                        </button>
+                      </form>
+                    </>
+                  ) : null}
+                </div>
+              </li>
+            ))}
+          </ul>
+        </section>
+      )}
 
       {docs.length === 0 ? (
         <div className="mt-6">
@@ -67,12 +136,14 @@ export default async function SourcesPage({ params }: { params: Promise<{ id: st
               >
                 <div className="min-w-0">
                   <div className="flex flex-wrap items-center gap-2">
-                    <Link
+                    {d.ingestError === 'consent_revoked_or_expired' ? (
+                      <span className="mono text-sm">{d.filename} · access withdrawn</span>
+                    ) : <Link
                       href={`/patients/${id}/sources/${d.id}`}
                       className="mono truncate text-sm text-[var(--color-accent)] underline decoration-dotted underline-offset-2"
                     >
                       {d.filename}
-                    </Link>
+                    </Link>}
                     {d.isDemoFixture ? <DemoBadge /> : null}
                     {d.duplicateOf ? (
                       <span className="mono border border-[var(--color-state-extracted)] px-1.5 py-0.5 text-[11px] uppercase text-[var(--color-state-extracted)]">

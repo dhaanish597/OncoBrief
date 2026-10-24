@@ -33,6 +33,7 @@ const { mockDb, getSessionState, setSessionState, mockNav } = vi.hoisted(() => {
       listPatientAudit: vi.fn(),
       verifyLedgerChain: vi.fn(),
       getPacket: vi.fn(),
+      assertPacketSourcesAccessible: vi.fn(async () => {}),
       appendAuditEvent: vi.fn(),
       packetExportJson: vi.fn(() => JSON.stringify({ packet_id: 'test', facts: [] })),
       withTenant: vi.fn(async (_ctx: unknown, fn: (q: Querier) => Promise<unknown>) => fn({} as Querier)),
@@ -54,6 +55,7 @@ const { mockDb, getSessionState, setSessionState, mockNav } = vi.hoisted(() => {
       composeMessage: vi.fn(),
       approveMessage: vi.fn(),
       deliverMessage: vi.fn(),
+      updateCaregiverPreferences: vi.fn(),
       getDelivery: vi.fn(),
       getStorage: vi.fn(),
     },
@@ -111,6 +113,7 @@ import {
   approvePacketAction,
   approveMessageAction,
   verifyEvidenceAction,
+  updateCaregiverPreferencesAction,
 } from './actions';
 
 function makeSession(role: Role, orgId = 'org-1'): ValidatedSession {
@@ -265,6 +268,19 @@ describe('Phase 1 Security Regression Suite', () => {
       const json = await res.json();
       expect(json.error.code).toBe('packet_not_approved');
       expect(mockDb.appendAuditEvent).not.toHaveBeenCalled();
+    });
+
+    it('returns 409 and audits denial when a frozen packet source is hidden by RLS', async () => {
+      setSessionState(makeSession('clinician', 'org-1'));
+      mockDb.getPacket.mockResolvedValueOnce({ id: 'pkt-1', status: 'approved' });
+      mockDb.assertPacketSourcesAccessible.mockRejectedValueOnce(new Error('packet_source_withdrawn'));
+      const response = await packetExportRoute(new Request('http://localhost/api/v1/packets/pkt-1/export'), {
+        params: Promise.resolve({ packetId: 'pkt-1' }),
+      });
+      expect(response.status).toBe(409);
+      expect((await response.json()).error.code).toBe('packet_source_withdrawn');
+      expect(mockDb.appendAuditEvent).toHaveBeenCalledWith(expect.anything(), expect.objectContaining({ outcome: 'denied' }));
+      expect(mockDb.packetExportJson).not.toHaveBeenCalled();
     });
 
     it('allows clinician to export an approved packet and writes audit log', async () => {
@@ -619,4 +635,14 @@ describe('Phase 1 Security Regression Suite', () => {
       expect(mockDb.verifyEvidence).toHaveBeenCalledTimes(3);
     });
   });
+});
+
+
+it('persists an unchecked caregiver sync checkbox as disabled', async () => {
+  setSessionState(makeSession('coordinator'));
+  const form = new FormData();
+  form.set('patientId', 'p');
+  form.set('caregiverId', 'cg');
+  await updateCaregiverPreferencesAction(form);
+  expect(mockDb.updateCaregiverPreferences).toHaveBeenCalledWith(expect.anything(), expect.objectContaining({ caregiverId: 'cg', syncReminders: false }));
 });

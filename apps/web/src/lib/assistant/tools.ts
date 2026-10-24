@@ -8,6 +8,7 @@ import {
   listRecordMap,
   getPageSpans,
   listDocuments,
+  searchGuidelineSpans,
 } from '@oncobrief/db';
 
 export interface ToolResult<T> {
@@ -345,6 +346,8 @@ export async function getCaseContext(
     const timeline = await getTimeline(q, patientId);
     const recordMap = await listRecordMap(q, patientId);
     const allDocs = await listDocuments(q, patientId);
+    const tasks = await listTasks(q, patientId);
+    const openTasks = tasks.filter((t) => !['done', 'cancelled'].includes(t.status)).length;
 
     return {
       success: true,
@@ -355,7 +358,7 @@ export async function getCaseContext(
         missingRequiredCount: recordMap.gaps.filter(
           (g) => g.status === 'missing' && g.requirementKind === 'required',
         ).length,
-        openTasksCount: timeline.filter((t) => t.state === 'extracted').length,
+        openTasksCount: openTasks,
         documentCount: allDocs.length,
         readinessBand: recordMap.readiness?.band ?? null,
       },
@@ -458,5 +461,59 @@ export async function getLatestEvidenceByType(
     };
   } catch (error) {
     return { success: false, error: error instanceof Error ? error.message : 'Failed to get latest evidence' };
+  }
+}
+
+export interface GuidelineSearchResult {
+  spanId: string;
+  guidelineDocumentId: string;
+  guidelineCode: string;
+  guidelineTitle: string;
+  issuingBody: string;
+  versionLabel: string;
+  publicationDate: string;
+  pageNumber: number;
+  sectionHeading: string;
+  spanIndex: number;
+  verbatimText: string;
+  bbox: {
+    x: number;
+    y: number;
+    w: number;
+    h: number;
+  };
+  keywords: string[];
+}
+
+export async function searchGuidelines(
+  q: Querier,
+  orgId: string,
+  query: string,
+): Promise<ToolResult<GuidelineSearchResult[]>> {
+  try {
+    const spans = await searchGuidelineSpans(q, orgId, query);
+    return {
+      success: true,
+      data: spans.map((s) => ({
+        spanId: s.spanId,
+        guidelineDocumentId: s.guidelineDocumentId,
+        guidelineCode: s.guidelineCode,
+        guidelineTitle: s.guidelineTitle,
+        issuingBody: s.issuingBody,
+        versionLabel: s.versionLabel,
+        publicationDate: s.publicationDate,
+        pageNumber: s.pageNumber,
+        sectionHeading: s.sectionHeading,
+        spanIndex: s.spanIndex,
+        verbatimText: s.verbatimText,
+        bbox: s.bbox,
+        keywords: s.keywords,
+      })),
+    };
+  } catch (error) {
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : 'Failed to search guidelines',
+    };
   }
 }

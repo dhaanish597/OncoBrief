@@ -1,6 +1,19 @@
 import Link from 'next/link';
-import { TASK_KIND_LABEL, taskStatusesFrom, type TaskKind, type TaskStatus } from '@oncobrief/domain';
-import { listTasks } from '@oncobrief/db';
+import { can } from '@oncobrief/domain';
+import { TaskOwnershipControl, InstructionTaskControl } from '@/components/TaskOwnershipControls';
+import {
+  TASK_KINDS,
+  TASK_KIND_LABEL,
+  taskStatusesFrom,
+  type TaskKind,
+  type TaskStatus,
+} from '@oncobrief/domain';
+import {
+  listTasks,
+  listTaskOwnership,
+  listPermittedTaskAssignees,
+  listVerifiedInstructions,
+} from '@oncobrief/db';
 import { withSession } from '@/lib/session';
 import { EmptyFinding, SectionHeading } from '@/components/evidence';
 import { taskStatusAction, commentTaskAction } from '@/lib/actions';
@@ -12,7 +25,16 @@ import { taskStatusAction, commentTaskAction } from '@/lib/actions';
  */
 export default async function TasksPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
-  const tasks = await withSession(async (q) => listTasks(q, id));
+  const { tasks, ownership, members, instructions, canAssign, canCreate } = await withSession(
+    async (q, s) => ({
+      tasks: await listTasks(q, id),
+      ownership: await listTaskOwnership(q, id),
+      members: can(s.role, 'task:assign') ? await listPermittedTaskAssignees(q) : [],
+      instructions: await listVerifiedInstructions(q, id),
+      canAssign: can(s.role, 'task:assign'),
+      canCreate: can(s.role, 'task:create'),
+    }),
+  );
 
   const open = tasks.filter((t) => !['done', 'cancelled'].includes(t.status));
   const closed = tasks.filter((t) => ['done', 'cancelled'].includes(t.status));
@@ -39,7 +61,11 @@ export default async function TasksPage({ params }: { params: Promise<{ id: stri
       ) : (
         <ul className="mt-6 space-y-3">
           {open.map((t) => (
-            <li key={t.id} data-testid="task-row" className="border border-[var(--color-rule-strong)] bg-[var(--color-paper-raised)] p-4">
+            <li
+              key={t.id}
+              data-testid="task-row"
+              className="border border-[var(--color-rule-strong)] bg-[var(--color-paper-raised)] p-4"
+            >
               <div className="flex flex-wrap items-center gap-3">
                 <span className="mono border border-[var(--color-rule-strong)] px-1.5 py-0.5 text-[11px] uppercase tracking-wide">
                   {TASK_KIND_LABEL[t.taskKind as TaskKind] ?? t.taskKind}
@@ -48,7 +74,9 @@ export default async function TasksPage({ params }: { params: Promise<{ id: stri
                   {t.status.replaceAll('_', ' ')}
                 </span>
                 {t.dueOn ? (
-                  <span className="mono text-[11px] text-[var(--color-ink-soft)]">due {t.dueOn}</span>
+                  <span className="mono text-[11px] text-[var(--color-ink-soft)]">
+                    due {t.dueOn}
+                  </span>
                 ) : null}
                 <span className="mono ml-auto text-[11px] text-[var(--color-ink-soft)]">
                   {t.assigneeName ? `assigned to ${t.assigneeName}` : 'unassigned'}
@@ -56,7 +84,41 @@ export default async function TasksPage({ params }: { params: Promise<{ id: stri
               </div>
 
               <h3 className="mt-2 text-sm font-medium">{t.title}</h3>
-              {t.detail ? <p className="mt-1 text-xs text-[var(--color-ink-soft)]">{t.detail}</p> : null}
+              <p className="mono mt-1 text-[11px] text-[var(--color-ink-soft)]">
+                Role:{' '}
+                {ownership.find((o) => o.id === t.id)?.role?.replaceAll('_', ' ') ?? 'unassigned'} ·
+                Last update:{' '}
+                {ownership
+                  .find((o) => o.id === t.id)
+                  ?.updatedAt.slice(0, 16)
+                  .replace('T', ' ')}{' '}
+                UTC
+              </p>
+              {ownership.find((o) => o.id === t.id)?.quote ? (
+                <blockquote className="mt-2 border-l-2 border-[var(--color-rule)] pl-3 text-xs">
+                  “{ownership.find((o) => o.id === t.id)?.quote}”
+                </blockquote>
+              ) : null}
+              {ownership.find((o) => o.id === t.id)?.documentId ? (
+                <Link
+                  className="text-xs underline"
+                  href={`/patients/${id}/sources/${ownership.find((o) => o.id === t.id)?.documentId}`}
+                >
+                  Inspect exact source
+                </Link>
+              ) : null}
+              {canAssign ? (
+                <TaskOwnershipControl
+                  patientId={id}
+                  taskId={t.id}
+                  assignedTo={ownership.find((o) => o.id === t.id)?.assignedTo ?? null}
+                  dueOn={t.dueOn}
+                  members={members}
+                />
+              ) : null}
+              {t.detail ? (
+                <p className="mt-1 text-xs text-[var(--color-ink-soft)]">{t.detail}</p>
+              ) : null}
 
               <div className="mt-2 flex flex-wrap items-center gap-4">
                 <OriginLink patientId={id} origin={t.origin} originKind={t.originKind} />
@@ -92,7 +154,10 @@ export default async function TasksPage({ params }: { params: Promise<{ id: stri
                     placeholder="note (optional)"
                     className="mono border border-[var(--color-rule-strong)] bg-white px-2 py-1 text-xs"
                   />
-                  <button type="submit" className="mono border border-[var(--color-ink)] px-3 py-1.5 text-[11px] uppercase">
+                  <button
+                    type="submit"
+                    className="mono border border-[var(--color-ink)] px-3 py-1.5 text-[11px] uppercase"
+                  >
                     update
                   </button>
                 </form>
@@ -106,7 +171,10 @@ export default async function TasksPage({ params }: { params: Promise<{ id: stri
                     placeholder="add a comment"
                     className="mono border border-[var(--color-rule-strong)] bg-white px-2 py-1 text-xs"
                   />
-                  <button type="submit" className="mono border border-[var(--color-rule-strong)] px-3 py-1.5 text-[11px] uppercase">
+                  <button
+                    type="submit"
+                    className="mono border border-[var(--color-rule-strong)] px-3 py-1.5 text-[11px] uppercase"
+                  >
                     comment
                   </button>
                 </form>
@@ -116,6 +184,33 @@ export default async function TasksPage({ params }: { params: Promise<{ id: stri
         </ul>
       )}
 
+      {canCreate && instructions.length > 0 ? (
+        <section className="mt-8">
+          <SectionHeading title="Verified documented instructions" />
+          <p className="mt-2 text-xs">
+            Confirm an administrative action from the exact source. No medical requirement is
+            inferred.
+          </p>
+          <ul>
+            {instructions.map((i) => (
+              <li key={i.id} className="mt-3 border border-[var(--color-rule)] p-3">
+                <blockquote className="text-sm">“{i.verbatim_quote}”</blockquote>
+                <Link
+                  className="text-xs underline"
+                  href={`/patients/${id}/sources/${i.document_id}`}
+                >
+                  Inspect source
+                </Link>
+                <InstructionTaskControl
+                  patientId={id}
+                  factId={i.id}
+                  taskKinds={TASK_KINDS.map((value) => ({ value, label: TASK_KIND_LABEL[value] }))}
+                />
+              </li>
+            ))}
+          </ul>
+        </section>
+      ) : null}
       {closed.length > 0 ? (
         <section className="mt-10">
           <h3 className="mono mb-2 text-[11px] uppercase tracking-[0.2em] text-[var(--color-ink-soft)]">
@@ -123,8 +218,25 @@ export default async function TasksPage({ params }: { params: Promise<{ id: stri
           </h3>
           <ul className="mono border-t border-[var(--color-rule-strong)] text-xs">
             {closed.map((t) => (
-              <li key={t.id} className="flex items-center gap-3 border-b border-[var(--color-rule)] px-3 py-2">
+              <li
+                key={t.id}
+                className="flex items-center gap-3 border-b border-[var(--color-rule)] px-3 py-2"
+              >
                 <span>{t.title}</span>
+                <OriginLink patientId={id} origin={t.origin} originKind={t.originKind} />
+                <span className="text-[var(--color-ink-soft)]">
+                  {t.assigneeName ?? 'unassigned'} ·{' '}
+                  {ownership.find((o) => o.id === t.id)?.role?.replaceAll('_', ' ') ??
+                    'no assigned role'}
+                </span>
+                <span className="text-[var(--color-ink-soft)]">
+                  updated{' '}
+                  {ownership
+                    .find((o) => o.id === t.id)
+                    ?.updatedAt.slice(0, 16)
+                    .replace('T', ' ')}{' '}
+                  UTC
+                </span>
                 <span className="ml-auto text-[var(--color-ink-soft)]">{t.status}</span>
               </li>
             ))}
@@ -141,7 +253,12 @@ function OriginLink({
   originKind,
 }: {
   patientId: string;
-  origin: { evidenceFactId: string | null; recordGapId: string | null; conflictSetId: string | null; documentId: string | null };
+  origin: {
+    evidenceFactId: string | null;
+    recordGapId: string | null;
+    conflictSetId: string | null;
+    documentId: string | null;
+  };
   originKind: string;
 }) {
   if (originKind === 'evidence' && origin.evidenceFactId) {
@@ -184,5 +301,7 @@ function OriginLink({
       </Link>
     );
   }
-  return <span className="mono text-[11px] text-[var(--color-state-conflicting)]">origin missing</span>;
+  return (
+    <span className="mono text-[11px] text-[var(--color-state-conflicting)]">origin missing</span>
+  );
 }

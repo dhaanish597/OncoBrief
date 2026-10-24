@@ -13,6 +13,10 @@ import type { Querier } from '../client';
  */
 
 export const AUDIT_ACTIONS = [
+  'opd.status_changed',
+  'opd.offered',
+  'opd.priority_selected',
+  'opd.walk_in',
   'auth.login',
   'auth.login_denied',
   'auth.logout',
@@ -30,6 +34,7 @@ export const AUDIT_ACTIONS = [
   'ingestion.retry',
   'extraction.completed',
   'evidence.verified',
+  'evidence.batch_verified',
   'evidence.corrected',
   'evidence.rejected',
   'evidence.reinstated',
@@ -53,6 +58,27 @@ export const AUDIT_ACTIONS = [
   'extension.session_granted',
   'authz.denied',
   'ledger.verification_run',
+  'abdm.hip.care_context_linked',
+  'abdm.hip.patient_discovered',
+  'abdm.hip.patient_discovery_failed',
+  'abdm.hip.user_link_initiated',
+  'abdm.hip.user_link_confirmed',
+  'abdm.hip.consent_notified',
+  'abdm.hip.health_info_transferred',
+  'abdm.hip.transfer_rejected',
+  'abdm.hiu.consent_requested',
+  'abdm.hiu.consent_notified',
+  'abdm.hiu.health_info_requested',
+  'abdm.hiu.health_info_received',
+  'abdm.hiu.health_info_purged',
+  'studio.draft_created',
+  'studio.draft_updated',
+  'studio.approved',
+  'studio.exported',
+  'caregiver.registered',
+  'caregiver.updated',
+  'caregiver.revoked',
+  'message.attendance_recorded',
 ] as const;
 export type AuditAction = (typeof AUDIT_ACTIONS)[number];
 
@@ -76,17 +102,52 @@ export interface AuditRequestMeta {
  * text, a verbatim quote or a patient name is dropped or hashed.
  */
 const REDACT_KEYS = new Set([
+  'text',
+  'note',
+  'notes',
+  'error',
+  'error_message',
+  'errorMessage',
+  'contact_number',
+  'query',
+  'prompt',
+  'audio',
   'verbatim_quote',
   'verbatimQuote',
   'quote',
   'body',
   'body_rendered',
+  'markdownBody',
+  'markdown_body',
   'pageText',
   'plainText',
   'patientName',
   'display_name',
   'displayName',
+  'patientAbha',
+  'abhaAddress',
+  'abha_address',
+  'abhaNumber',
+  'abha_number',
+  'aadhaarName',
+  'aadhaar_name',
   'email',
+  'phone',
+  'phoneNumber',
+  'phone_number',
+  'contact',
+  'reason',
+  'operational_reason',
+  'filename',
+  'fileName',
+  'caregiver_name',
+  'caregiverName',
+  'transcript',
+  'audioBase64',
+  'audio_base64',
+  'audioData',
+  'attendance_note',
+  'attendanceNote',
 ]);
 
 export function redactMetadata(input: Record<string, unknown>): Record<string, unknown> {
@@ -100,7 +161,13 @@ export function redactMetadata(input: Record<string, unknown>): Record<string, u
       out[k] = `<${v.length} chars>`;
       continue;
     }
-    if (v && typeof v === 'object' && !Array.isArray(v)) {
+    if (Array.isArray(v)) {
+      out[k] = v.map((item) => item && typeof item === 'object'
+        ? (Array.isArray(item) ? redactMetadata({ items: item }).items : redactMetadata(item as Record<string, unknown>))
+        : (typeof item === 'string' ? '<redacted>' : item));
+      continue;
+    }
+    if (v && typeof v === 'object') {
       out[k] = redactMetadata(v as Record<string, unknown>);
       continue;
     }

@@ -1,6 +1,6 @@
 import { createHash } from 'node:crypto';
 import { sniffContentType } from '@oncobrief/db/worker';
-import type { AsyncOcrPort, ExtractionPort, QueuePort, StoragePort } from '@oncobrief/ports';
+import type { AsyncOcrPort, OcrPort, ExtractionPort, QueuePort, StoragePort } from '@oncobrief/ports';
 import type { DocumentIngestMessage } from '../messages';
 import type { Logger } from '../logger';
 import type { IngestionStore } from '../store';
@@ -11,6 +11,7 @@ export interface DocumentHandlerConfig {
   ocrPollDelaySeconds: number;
   /** When false, the worker self-schedules polls instead of waiting on SNS. */
   useTextractNotifications: boolean;
+  extractorKind?: 'rule' | 'llm';
 }
 
 export interface DocumentHandlerDeps {
@@ -122,12 +123,32 @@ export async function handleDocumentIngest(
 
   await deps.store.setDocumentStatus(msg.documentId, 'ocr_running', null);
 
+  const local = deps.ocr as AsyncOcrPort & Partial<OcrPort>;
+  if (local.name === 'local-multimodal' && local.extractDocument) {
+    try {
+      const pages = await local.extractDocument({ documentId: msg.documentId, bytes, mimeType });
+      if (pages.every(page => !page.plainText.trim() && page.spans.length === 0)) {
+        await deps.store.setDocumentStatus(msg.documentId, 'quarantined', 'manual_transcription_required');
+      } else {
+        await deps.store.ingestNormalizedPages(msg.documentId, pages.map(page => ({...page,widthPx:page.widthPx??null,heightPx:page.heightPx??null})), deps.extractor, deps.config.extractorKind ?? 'rule', msg.correlationId);
+      }
+      await deps.store.setIngestionStage({ documentId: msg.documentId, stage: 'completed' });
+      await deps.store.appendAudit({action:'ocr.completed',entityKind:'document',entityId:msg.documentId,correlationId:msg.correlationId,outcome:'success',metadata:{pages:pages.length,engine:local.name}});
+    } catch {
+      await deps.store.setDocumentStatus(msg.documentId, 'failed', 'ocr_extraction_failed');
+      await deps.store.setIngestionStage({documentId:msg.documentId,stage:'failed',lastError:'ocr_extraction_failed'});
+      await deps.store.appendAudit({action:'ocr.failed',entityKind:'document',entityId:msg.documentId,correlationId:msg.correlationId,outcome:'error',metadata:{error_code:'ocr_extraction_failed'}});
+    }
+    return;
+  }
+
   const job = await deps.ocr.startDocumentAnalysis({
     documentId: msg.documentId,
     orgId: deps.orgId,
     s3Key: msg.s3Key,
     s3Bucket: msg.s3Bucket,
     correlationId: msg.correlationId,
+    bytes, mimeType,
   });
   await deps.store.setIngestionStage({
     documentId: msg.documentId,
@@ -143,7 +164,7 @@ export async function handleDocumentIngest(
     metadata: { provider_job_id: job.providerJobId },
   });
 
-  if (!deps.config.useTextractNotifications) {
+  if (!deps.config.useTextractNotifications || deps.ocr.name !== 'textract') {
     await deps.queue.send(
       deps.config.ocrResultQueue,
       {

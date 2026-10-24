@@ -149,7 +149,7 @@ export function AssistantPanel({ onClose }: { onClose: () => void }) {
         };
         setMessages((prev) => [...prev, assistantMessage]);
         if (data.navigation) setPendingNav(data.navigation);
-        if (readAloud && data.answer) void voice.speak(data.answer);
+        if (readAloud && data.answer) void voice.speak(data.answer, data.conversationId);
         void loadConversations();
       } catch {
         setMessages((prev) => [

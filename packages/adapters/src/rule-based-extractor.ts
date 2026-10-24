@@ -1,4 +1,4 @@
-import type { FactValue } from '@oncobrief/domain';
+import { toIsoDate, type FactValue } from '@oncobrief/domain';
 import type { CandidateDraft, ExtractionInput, ExtractionPort } from '@oncobrief/ports';
 
 /**
@@ -38,12 +38,12 @@ export function parseDateToken(token: string): string | null {
   if (m) {
     const month = MONTHS[m[2]!.toLowerCase()];
     if (!month) return null;
-    return `${m[3]}-${month}-${m[1]!.padStart(2, '0')}`;
+    return toIsoDate(`${m[3]}-${month}-${m[1]!.padStart(2, '0')}`);
   }
   m = DATE_SLASH.exec(token);
-  if (m) return `${m[3]}-${m[2]!.padStart(2, '0')}-${m[1]!.padStart(2, '0')}`;
+  if (m) return toIsoDate(`${m[3]}-${m[2]!.padStart(2, '0')}-${m[1]!.padStart(2, '0')}`);
   m = DATE_ISO.exec(token);
-  if (m) return `${m[1]}-${m[2]}-${m[3]}`;
+  if (m) return toIsoDate(`${m[1]}-${m[2]}-${m[3]}`);
   return null;
 }
 
@@ -70,7 +70,7 @@ const PROCEDURES = [
   'Port placement', 'Oophorectomy', 'Hysterectomy',
   'Chemotherapy', 'Radiotherapy', 'Radiation therapy',
   'Computed tomography', 'CT scan', 'MRI', 'PET-CT', 'PET scan',
-  'Mammography', 'Ultrasound', 'Ultrasonography',
+  'Mammography', 'Ultrasound', 'Ultrasonography', 'IHC', 'Histopathology',
 ];
 
 const FACILITY_RE =
@@ -82,21 +82,34 @@ function slug(input: string): string {
 
 export class RuleBasedExtractor implements ExtractionPort {
   readonly name = 'rule';
-  readonly version = 'v2';
+  readonly version = 'v3';
 
   async extract(input: ExtractionInput): Promise<CandidateDraft[]> {
     const out: CandidateDraft[] = [];
     const seen = new Set<string>();
 
     const push = (draft: CandidateDraft) => {
-      const key = `${draft.factType}\u0000${draft.verbatimQuote}`;
+      const key = `${draft.factType}\u0000${draft.verbatimQuote}\u0000${draft.observedOn ?? ''}\u0000${JSON.stringify(draft.value)}`;
       if (seen.has(key)) return;
       seen.add(key);
       out.push(draft);
     };
 
+    // Upload metadata can be undated. Use an explicit report/collection date
+    // on the same source page, never the upload time or an unrelated page.
+    const datesByPage = new Map<string, Set<string>>();
+    for (const span of input.spans) {
+      if (!/^(?:report\s+date|specimen\s+date|collection\s+date|date)\s*:/i.test(span.text.trim())) continue;
+      const date = parseDateToken(span.text);
+      if (!date) continue;
+      const dates = datesByPage.get(span.pageId) ?? new Set<string>();
+      dates.add(date);
+      datesByPage.set(span.pageId, dates);
+    }
     for (const span of input.spans) {
       const text = span.text;
+      const dates = datesByPage.get(span.pageId);
+      const sourceDate = dates?.size === 1 ? [...dates][0]! : input.documentDate;
 
       // --- identifiers -----------------------------------------------------
       const mrn = /\bMRN[:#\s]*([A-Za-z0-9][A-Za-z0-9/-]{2,})\b/.exec(text);
@@ -192,11 +205,29 @@ export class RuleBasedExtractor implements ExtractionPort {
         }
       }
 
+      // Explicit pending items and instructions are transcribed, never inferred.
+      let hasAdministrativeInstruction = false;
+      const investigation = String.raw`(?:IHC|immunohistochemistry|PET-CT|MRI|CT scan|biopsy|histopathology|tumou?r marker|ultrasound|mammography|blood investigation)(?:s)?(?:\s+report)?`;
+      const pending = new RegExp(String.raw`\b(?:(?:pending|awaiting|advised|scheduled for|to undergo)\s+${investigation}|${investigation}\s+(?:is\s+)?pending)\b`, 'gi');
+      const instruction = /\b(?:please bring|bring|return with|carry)\s+[^.;\n]{5,180}/gi;
+      for (const [pattern, factType] of [[pending, 'pending_investigation.recorded'], [instruction, 'instruction.recorded']] as const) {
+        for (const match of text.matchAll(pattern)) {
+          // Negated phrases are not affirmative instructions or pending work.
+          const prefix = text.slice(0, match.index).split(/[.;\n]/).at(-1) ?? '';
+          if (/\b(?:no|not|without|never|denies)\b/i.test(prefix)) continue;
+          const quote = match[0].trim();
+          hasAdministrativeInstruction = true;
+          push({ factType, value: { kind: 'text', text: quote }, verbatimQuote: quote,
+            spanIds: [span.id], confidenceRaw: 0.85, extractorName: this.name,
+            extractorVersion: this.version, observedOn: sourceDate });
+        }
+      }
+
       // --- procedures (keyword) -------------------------------------------
-      for (const proc of PROCEDURES) {
+      for (const proc of hasAdministrativeInstruction || /\b(?:scheduled|pending|awaiting|advised|to undergo)\b/i.test(text) ? [] : PROCEDURES) {
         const idx = text.toLowerCase().indexOf(proc.toLowerCase());
         if (idx === -1) continue;
-        const observed = parseDateToken(text) ?? input.documentDate ?? null;
+        const observed = parseDateToken(text) ?? sourceDate ?? null;
         push({
           factType: 'procedure.recorded',
           value: { kind: 'procedure', name: proc },
@@ -215,16 +246,16 @@ export class RuleBasedExtractor implements ExtractionPort {
         const idx = text.toLowerCase().indexOf(drug.toLowerCase());
         if (idx === -1) continue;
         // Capture an adjacent dose if one is written next to the name.
-        const dose = /(\d+(?:\.\d+)?\s?(?:mg|mcg|g|IU))/.exec(text.slice(idx));
+        const dose = /^\s*(\d+(?:\.\d+)?\s?(?:mg|mcg|g|IU))\b/.exec(text.slice(idx + drug.length));
         push({
           factType: 'medication.recorded',
           value: { kind: 'medication', name: drug, ...(dose ? { doseText: dose[1]! } : {}) },
-          verbatimQuote: text.slice(idx, idx + drug.length),
+          verbatimQuote: text.slice(idx, idx + drug.length + (dose?.[0].length ?? 0)),
           spanIds: [span.id],
           confidenceRaw: 0.88,
           extractorName: this.name,
           extractorVersion: this.version,
-          observedOn: input.documentDate,
+          observedOn: parseDateToken(text) ?? sourceDate,
         });
       }
 
@@ -243,15 +274,15 @@ export class RuleBasedExtractor implements ExtractionPort {
       }
 
       // --- lab result as written (key-value or tabular) --------------------
-      let lab = /\b([A-Z][A-Za-z0-9 /()-]{2,35}?)\s*[:=]\s*([<>]?[\d,]+(?:\.\d+)?)\s*([A-Za-z/%\u00B5]{0,10})\b/.exec(
+      let lab = /\b([A-Z][A-Za-z0-9 /()-]{2,35}?)\s*[:=]\s*([<>]?[\d,]+(?:\.\d+)?(?:\/\d+(?:\.\d+)?)?)\s*([A-Za-z/%\u00B5]{0,10})\b/.exec(
         text,
       );
       if (!lab) {
-        lab = /\b([A-Z][A-Za-z0-9 /()-]{2,35}?)\s{2,}([<>]?[\d,]+(?:\.\d+)?)\s+([A-Za-z/%\u00B5]{1,10})\b/.exec(
+        lab = /\b([A-Z][A-Za-z0-9 /()-]{2,35}?)\s{2,}([<>]?[\d,]+(?:\.\d+)?(?:\/\d+(?:\.\d+)?)?)\s+([A-Za-z/%\u00B5]{1,10})\b/.exec(
           text,
         );
       }
-      if (lab && !/^(Date|MRN|ABHA|Age|Phone|Contact|TEST NAME|Specimen|Specimen Date)$/i.test(lab[1]!.trim())) {
+      if (lab && !/^(Date|MRN|ABHA|Age|Phone|Contact|TEST NAME|Specimen|Specimen Date|Total Entries|Resource ID)$/i.test(lab[1]!.trim())) {
         const unit = lab[3]?.trim();
         const value: FactValue = {
           kind: 'lab',
@@ -260,14 +291,14 @@ export class RuleBasedExtractor implements ExtractionPort {
           ...(unit ? { unitText: unit } : {}),
         };
         push({
-          factType: 'lab_result.as_written',
+          factType: /^(?:weight|height|blood pressure|pulse|heart rate|temperature|oxygen saturation|SpO2)$/i.test(lab[1]!.trim()) ? 'vital_sign.as_written' : 'lab_result.as_written',
           value,
           verbatimQuote: lab[0]!,
           spanIds: [span.id],
           confidenceRaw: 0.72,
           extractorName: this.name,
           extractorVersion: this.version,
-          observedOn: input.documentDate,
+          observedOn: sourceDate,
         });
       }
     }

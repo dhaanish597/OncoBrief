@@ -16,6 +16,7 @@ import {
 } from '@oncobrief/domain';
 import type { Querier } from '../client';
 import { appendAuditEvent, type AuditActor } from './audit';
+import { computeAndPersistReadiness } from './twin';
 import { computeLedgerEntryHash, GENESIS_PREV_HASH } from '@oncobrief/domain';
 
 /**
@@ -237,7 +238,7 @@ export async function insertFact(q: Querier, input: InsertFactInput): Promise<In
     return { ok: false, reason: validation.error.code as 'span_mismatch', detail: validation.error };
   }
 
-  const slotKey = makeSlotKey(input.factType, input.value);
+  const slotKey = makeSlotKey(input.factType, input.value, input.observedOn);
   const band = confidenceBandFor(input.confidenceRaw);
 
   const factRes = await q.query<{ id: string }>(
@@ -318,9 +319,9 @@ export async function getFactState(q: Querier, factId: string): Promise<Evidence
   return res.rows[0]?.state ?? null;
 }
 
-async function getFact(q: Querier, factId: string): Promise<{ id: string; org_id: string; patient_id: string } | null> {
-  const res = await q.query<{ id: string; org_id: string; patient_id: string }>(
-    'SELECT id, org_id, patient_id FROM evidence_fact WHERE id = $1',
+async function getFact(q: Querier, factId: string): Promise<{ id: string; org_id: string; patient_id: string; fact_type: string; value_normalized: string } | null> {
+  const res = await q.query<{ id: string; org_id: string; patient_id: string; fact_type: string; value_normalized: string }>(
+    'SELECT id, org_id, patient_id, fact_type, value_normalized FROM evidence_fact WHERE id = $1',
     [factId],
   );
   return res.rows[0] ?? null;
@@ -351,6 +352,41 @@ export async function verifyEvidence(q: Querier, input: HumanActionInput): Promi
     actor: input.actor,
     reason: input.reason ?? null,
   });
+
+  // Synchronize verified patient identifiers into dedicated patient_identifier & abdm_patient_link tables
+  if (fact.fact_type === 'identifier.abha') {
+    await q.query(
+      `INSERT INTO patient_identifier (org_id, patient_id, system, value)
+       VALUES ($1, $2, 'abha', $3)
+       ON CONFLICT (org_id, system, value) DO NOTHING`,
+      [fact.org_id, fact.patient_id, fact.value_normalized],
+    );
+
+    const isAddress = fact.value_normalized.includes('@');
+    const abhaAddress = isAddress
+      ? fact.value_normalized
+      : `${fact.value_normalized.replace(/[^0-9]/g, '')}@sbx`;
+    const abhaNumber = isAddress ? null : fact.value_normalized;
+
+    await q.query(
+      `INSERT INTO abdm_patient_link (org_id, patient_id, abha_address, abha_number, verification_source, updated_at)
+       VALUES ($1, $2, $3, $4, 'LEDGER_VERIFIED', now())
+       ON CONFLICT (org_id, patient_id) DO UPDATE SET
+         abha_address = CASE WHEN $5 THEN EXCLUDED.abha_address ELSE abdm_patient_link.abha_address END,
+         abha_number = COALESCE(EXCLUDED.abha_number, abdm_patient_link.abha_number),
+         verification_source = 'LEDGER_VERIFIED',
+         updated_at = now()`,
+      [fact.org_id, fact.patient_id, abhaAddress, abhaNumber, isAddress],
+    );
+  } else if (fact.fact_type === 'identifier.mrn') {
+    await q.query(
+      `INSERT INTO patient_identifier (org_id, patient_id, system, value)
+       VALUES ($1, $2, 'mrn', $3)
+       ON CONFLICT (org_id, system, value) DO NOTHING`,
+      [fact.org_id, fact.patient_id, fact.value_normalized],
+    );
+  }
+
   await appendAuditEvent(q, {
     orgId: fact.org_id,
     actor: toAuditActor(input.actor),
@@ -359,6 +395,200 @@ export async function verifyEvidence(q: Querier, input: HumanActionInput): Promi
     entityId: input.factId,
     outcome: 'success',
   });
+}
+
+export class BatchVerificationError extends Error {
+  constructor(
+    readonly code: string,
+    message: string,
+    readonly invalidFactId?: string,
+  ) {
+    super(message);
+    this.name = 'BatchVerificationError';
+  }
+}
+
+export interface VerifyEvidenceBatchInput {
+  orgId: string;
+  patientId: string;
+  factIds: string[];
+  actor: EvidenceActor;
+  reason?: string;
+}
+
+export interface VerifyEvidenceBatchResult {
+  verifiedFactIds: string[];
+  count: number;
+}
+
+export async function verifyEvidenceBatch(
+  q: Querier,
+  input: VerifyEvidenceBatchInput,
+): Promise<VerifyEvidenceBatchResult> {
+  if (input.factIds.length === 0) {
+    return { verifiedFactIds: [], count: 0 };
+  }
+
+  const uniqueFactIds = Array.from(new Set(input.factIds));
+
+  const factsRes = await q.query<{
+    id: string;
+    org_id: string;
+    patient_id: string;
+    fact_type: FactType;
+    value_normalized: string;
+    confidence_band: string;
+    confidence_raw: number | null;
+    state: EvidenceStateValue;
+    open_conflict_id: string | null;
+    ingest_error: string | null;
+    replaced_by_fact_id: string | null;
+  }>(
+    `SELECT ef.id, ef.org_id, ef.patient_id, ef.fact_type, ef.value_normalized, ef.confidence_band,
+            ef.confidence_raw, coalesce(es.state, 'extracted') AS state,
+            cs.id AS open_conflict_id,
+            d.ingest_error,
+            replacement.id AS replaced_by_fact_id
+       FROM evidence_fact ef
+       JOIN document d ON d.id = ef.document_id
+       LEFT JOIN evidence_state es ON es.evidence_fact_id = ef.id
+       LEFT JOIN conflict_member cm ON cm.evidence_fact_id = ef.id
+       LEFT JOIN conflict_set cs ON cs.id = cm.conflict_set_id AND cs.status = 'open'
+       LEFT JOIN evidence_fact replacement ON replacement.corrects_fact_id = ef.id
+      WHERE ef.id = ANY($1::uuid[])`,
+    [uniqueFactIds],
+  );
+
+  const factsMap = new Map(factsRes.rows.map((r) => [r.id, r]));
+
+  for (const id of uniqueFactIds) {
+    const fact = factsMap.get(id);
+    if (!fact) {
+      throw new BatchVerificationError('facts_not_found', `Fact ${id} was not found or is inaccessible in tenant`, id);
+    }
+
+    if (fact.org_id !== input.orgId || fact.patient_id !== input.patientId) {
+      throw new BatchVerificationError(
+        'tenant_or_patient_mismatch',
+        `Fact ${id} does not belong to tenant ${input.orgId} and patient ${input.patientId}`,
+        id,
+      );
+    }
+
+    if (fact.state !== 'extracted') {
+      throw new BatchVerificationError(
+        'invalid_fact_state',
+        `Fact ${id} has state '${fact.state}', expected 'extracted'`,
+        id,
+      );
+    }
+
+    if (fact.replaced_by_fact_id) {
+      throw new BatchVerificationError(
+        'stale_fact',
+        `Fact ${id} has been replaced by a correction`,
+        id,
+      );
+    }
+
+    if (fact.ingest_error === 'consent_revoked_or_expired') {
+      throw new BatchVerificationError(
+        'source_withdrawn',
+        `Fact ${id} source document has been withdrawn`,
+        id,
+      );
+    }
+
+    if (fact.open_conflict_id) {
+      throw new BatchVerificationError(
+        'conflicting_fact_not_eligible',
+        `Fact ${id} is part of an unresolved conflict`,
+        id,
+      );
+    }
+
+    const isHighConf = (fact.confidence_raw !== null && fact.confidence_raw >= 0.90) || fact.confidence_band === 'high';
+    if (!isHighConf) {
+      throw new BatchVerificationError(
+        'confidence_too_low',
+        `Fact ${id} confidence (${fact.confidence_raw ?? fact.confidence_band}) is below required batch threshold (>= 0.90)`,
+        id,
+      );
+    }
+  }
+
+  for (const id of uniqueFactIds) {
+    const fact = factsMap.get(id)!;
+    await appendLedgerEntry(q, {
+      orgId: input.orgId,
+      patientId: input.patientId,
+      evidenceFactId: id,
+      action: 'fact_verified',
+      fromState: 'extracted',
+      toState: 'verified',
+      actor: input.actor,
+      reason: input.reason ?? null,
+    });
+
+    if (fact.fact_type === 'identifier.abha') {
+      await q.query(
+        `INSERT INTO patient_identifier (org_id, patient_id, system, value)
+         VALUES ($1, $2, 'abha', $3)
+         ON CONFLICT (org_id, system, value) DO NOTHING`,
+        [fact.org_id, fact.patient_id, fact.value_normalized],
+      );
+
+      const isAddress = fact.value_normalized.includes('@');
+      const abhaAddress = isAddress
+        ? fact.value_normalized
+        : `${fact.value_normalized.replace(/[^0-9]/g, '')}@sbx`;
+      const abhaNumber = isAddress ? null : fact.value_normalized;
+
+      await q.query(
+        `INSERT INTO abdm_patient_link (org_id, patient_id, abha_address, abha_number, verification_source, updated_at)
+         VALUES ($1, $2, $3, $4, 'LEDGER_VERIFIED', now())
+         ON CONFLICT (org_id, patient_id) DO UPDATE SET
+           abha_address = CASE WHEN $5 THEN EXCLUDED.abha_address ELSE abdm_patient_link.abha_address END,
+           abha_number = COALESCE(EXCLUDED.abha_number, abdm_patient_link.abha_number),
+           verification_source = 'LEDGER_VERIFIED',
+           updated_at = now()`,
+        [fact.org_id, fact.patient_id, abhaAddress, abhaNumber, isAddress],
+      );
+    } else if (fact.fact_type === 'identifier.mrn') {
+      await q.query(
+        `INSERT INTO patient_identifier (org_id, patient_id, system, value)
+         VALUES ($1, $2, 'mrn', $3)
+         ON CONFLICT (org_id, system, value) DO NOTHING`,
+        [fact.org_id, fact.patient_id, fact.value_normalized],
+      );
+    }
+  }
+
+  await appendAuditEvent(q, {
+    orgId: input.orgId,
+    actor: toAuditActor(input.actor),
+    action: 'evidence.batch_verified',
+    entityKind: 'evidence_fact',
+    outcome: 'success',
+    metadata: {
+      factCount: uniqueFactIds.length,
+      factIds: uniqueFactIds,
+      reason: input.reason ?? null,
+    },
+  });
+
+  if (input.actor.kind === 'human' && input.actor.userId) {
+    await computeAndPersistReadiness(q, {
+      orgId: input.orgId,
+      patientId: input.patientId,
+      computedBy: input.actor.userId,
+    });
+  }
+
+  return {
+    verifiedFactIds: uniqueFactIds,
+    count: uniqueFactIds.length,
+  };
 }
 
 export async function rejectEvidence(q: Querier, input: HumanActionInput & { reason: string }): Promise<void> {

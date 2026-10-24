@@ -81,6 +81,33 @@ describe('classifyIntentDeterministic', () => {
     }
   });
 
+  it('classifies permitted institutional oncology guideline and SOP lookups', () => {
+    for (const q of [
+      "Locate the hospital's tumor-board documentation checklist.",
+      'Which section of this uploaded oncology guideline discusses documentation for post-operative review?',
+      'Find the institutional referral-preparation SOP.',
+      'Show the exact guideline passage concerning the documentation of radiation follow-up.',
+      'What does the NCG guideline state for post-MRM adjuvant radiation workup?',
+      'Show me the hospital SOP for breast oncology intake',
+    ]) {
+      expect(classifyIntentDeterministic(q)?.intent, q).toBe('guideline_knowledge_question');
+    }
+  });
+
+  it('strictly blocks patient-specific medical decisions and prescribing questions even when referencing guidelines', () => {
+    for (const q of [
+      'What chemotherapy should this patient receive?',
+      'What dose should I prescribe?',
+      "Does this patient's scan prove progression?",
+      'Should this patient undergo surgery?',
+      'Is this patient clinically safe for chemotherapy?',
+      'What dose should I prescribe based on the hospital guideline?',
+      'Should this patient start paclitaxel based on the SOP?',
+    ]) {
+      expect(classifyIntentDeterministic(q)?.intent, q).toBe('unsupported_medical_question');
+    }
+  });
+
   it('treats an empty message as ambiguous', () => {
     expect(classifyIntentDeterministic('   ')?.intent).toBe('ambiguous_question');
   });

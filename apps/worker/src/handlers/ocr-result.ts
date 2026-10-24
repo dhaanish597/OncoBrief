@@ -83,7 +83,7 @@ export async function handleOcrResult(msg: OcrResultMessage, deps: OcrHandlerDep
     return;
   }
 
-  if (status.status === 'FAILED') {
+  if (status.status === 'FAILED' || status.status === 'PARTIAL_SUCCESS') {
     await deps.store.setDocumentStatus(msg.documentId, 'failed', status.statusMessage ?? 'ocr_failed');
     await deps.store.setIngestionStage({
       documentId: msg.documentId,
@@ -104,7 +104,7 @@ export async function handleOcrResult(msg: OcrResultMessage, deps: OcrHandlerDep
 
   const { pages, raw } = await deps.ocr.getResults(msg.providerJobId);
 
-  if (pages.length === 0) {
+  if (pages.length === 0 || pages.every(page => !page.plainText.trim() && page.spans.length === 0)) {
     await deps.store.setDocumentStatus(msg.documentId, 'quarantined', 'manual_transcription_required');
     await deps.store.setIngestionStage({ documentId: msg.documentId, stage: 'completed' });
     await deps.store.appendAudit({

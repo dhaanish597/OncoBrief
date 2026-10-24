@@ -1,0 +1,1990 @@
+%PDF-1.4
+%‚„œ”
+1 0 obj
+<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica /Encoding /WinAnsiEncoding >>
+endobj
+2 0 obj
+<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica-Bold /Encoding /WinAnsiEncoding >>
+endobj
+3 0 obj
+<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica-Oblique /Encoding /WinAnsiEncoding >>
+endobj
+4 0 obj
+<< /Type /Font /Subtype /Type1 /BaseFont /Courier /Encoding /WinAnsiEncoding >>
+endobj
+5 0 obj
+<< /Type /Pages /Kids [7 0 R 9 0 R 11 0 R 13 0 R 15 0 R 17 0 R 19 0 R 21 0 R 23 0 R 25 0 R 27 0 R 29 0 R 31 0 R 33 0 R 35 0 R 37 0 R 39 0 R 41 0 R] /Count 18 >>
+endobj
+6 0 obj
+<< /Length 7889 >>
+stream
+0.15 0.22 0.36 rg
+42.0 805.9 511.3 1.2 re f
+BT /F2 8 Tf 0.25 0.30 0.40 rg 42.0 811.9 Td (ONCOBRIEF V4 -- MASTER ENHANCEMENT PLAN & ARCHITECTURAL BLUEPRINT) Tj ET
+BT /F2 15.5 Tf 0.08 0.16 0.32 rg 42.0 783.9 Td (OncoBrief V4 -- Master Enhancement Plan & Architectural Blueprint) Tj ET
+BT /F2 9.0 Tf 0.12 0.13 0.16 rg 42.0 760.4 Td (Excelling Across Use Case 02 \(Consultation Readiness\), Use Case 04 \(Clinic Operations & Patient Flow\), Use Case) Tj ET
+BT /F2 9.0 Tf 0.12 0.13 0.16 rg 42.0 747.9 Td (05 \(Doctor Productivity & Knowledge Assistant\), and All Hackathon Design Principles) Tj ET
+BT /F1 8.9 Tf 0.12 0.13 0.16 rg 52.0 730.4 Td (* Target Repository: /Users/dhaanish/Documents/OncoBrief) Tj ET
+BT /F1 8.9 Tf 0.12 0.13 0.16 rg 52.0 718.2 Td (* Target Tracks: Cancer Care \(National Cancer Grid / NCG-KCDO\), Maternal & Child Health \(FOGSI\), and Diabetes) Tj ET
+BT /F1 8.9 Tf 0.12 0.13 0.16 rg 52.0 706.0 Td (Care \(RSSDI.pdf\)\)) Tj ET
+BT /F1 8.9 Tf 0.12 0.13 0.16 rg 52.0 693.8 Td (* Standards & Stack: TypeScript Monorepo \(pnpm@9.15.4\), Next.js 15 App Router, PostgreSQL 16 + Forced RLS, NRCeS) Tj ET
+BT /F1 8.9 Tf 0.12 0.13 0.16 rg 52.0 681.6 Td (ABDM v6.5.0, HL7 mCODE STU4, Sarvam AI \(doc-digitise, saaras:v3, bulbul:v3\), Amazon Bedrock Nova Pro, and) Tj ET
+BT /F1 8.9 Tf 0.12 0.13 0.16 rg 52.0 669.4 Td (Deterministic Agentic State-Graph Orchestration) Tj ET
+0.75 0.78 0.82 rg
+42.0 648.2 511.3 0.75 re f
+0.93 0.95 0.99 rg
+38.0 607.2 519.3 24.0 re f
+BT /F2 12.2 Tf 0.10 0.22 0.44 rg 42.0 625.2 Td (1. Executive Charter, Vision & Target OKRs) Tj ET
+BT /F2 10.6 Tf 0.14 0.26 0.48 rg 42.0 593.2 Td (1.1 Overarching Vision) Tj ET
+BT /F1 9.0 Tf 0.12 0.13 0.16 rg 42.0 577.0 Td (OncoBrief V1-V3 established a strong foundation: an append-only, span-anchored Evidence Ledger) Tj ET
+BT /F1 9.0 Tf 0.12 0.13 0.16 rg 42.0 564.5 Td (\(packages/db/src/services/ledger.ts\), a two-stage deterministic provenance gate) Tj ET
+BT /F1 9.0 Tf 0.12 0.13 0.16 rg 42.0 552.0 Td (\(packages/domain/src/provenance/span-validation.ts\), a side-by-side Reconciliation Room) Tj ET
+BT /F1 9.0 Tf 0.12 0.13 0.16 rg 42.0 539.5 Td (\(apps/web/src/app/\(app\)/patients/[id]/conflicts/[conflictId]/page.tsx\), and strict code-level enforcement of the) Tj ET
+BT /F1 9.0 Tf 0.12 0.13 0.16 rg 42.0 527.0 Td (non-clinical boundary \(packages/domain/src/policy/clinical-boundary.ts\).) Tj ET
+BT /F1 9.0 Tf 0.12 0.13 0.16 rg 42.0 509.5 Td (However, our audit against the official hackathon rubric revealed that OncoBrief currently operates as a) Tj ET
+BT /F1 9.0 Tf 0.12 0.13 0.16 rg 42.0 497.0 Td (single-track, high-friction new-patient document intake ledger rather than a low-click, longitudinal clinical) Tj ET
+BT /F1 9.0 Tf 0.12 0.13 0.16 rg 42.0 484.5 Td (operations and productivity platform:) Tj ET
+BT /F1 8.9 Tf 0.12 0.13 0.16 rg 52.0 472.0 Td (1. Use Case 02 \(Consultation Readiness & Patient Journey Review\) Gaps: It lacks a "What Changed Since Last) Tj ET
+BT /F1 8.9 Tf 0.12 0.13 0.16 rg 52.0 459.8 Td (Visit" interval delta view, misclassifies longitudinal serial lab trends as cross-document contradictions, drops) Tj ET
+BT /F1 8.9 Tf 0.12 0.13 0.16 rg 52.0 447.6 Td (documented pending investigation instructions, hardcodes oncology-only UI labels, and bypasses cloud/Indic OCR) Tj ET
+BT /F1 8.9 Tf 0.12 0.13 0.16 rg 52.0 435.4 Td (on local web uploads.) Tj ET
+BT /F1 8.9 Tf 0.12 0.13 0.16 rg 52.0 423.2 Td (2. Use Case 04 \(Clinic Operations & Patient Flow\) Gaps: It has zero scheduling, slot, queue, arrival, walk-in,) Tj ET
+BT /F1 8.9 Tf 0.12 0.13 0.16 rg 52.0 411.0 Td (or waitlist tables, leaves tasks permanently "unassigned" in the UI, and never uses its readiness_band to) Tj ET
+BT /F1 8.9 Tf 0.12 0.13 0.16 rg 52.0 398.8 Td (prevent day-of-clinic bottlenecks or backfill cancelled OPD slots.) Tj ET
+BT /F1 8.9 Tf 0.12 0.13 0.16 rg 52.0 386.6 Td (3. Use Case 05 \(Doctor Productivity & Knowledge Assistant\) Gaps: Its assistant classifier blocks all guideline) Tj ET
+BT /F1 8.9 Tf 0.12 0.13 0.16 rg 52.0 374.4 Td (and protocol lookups, has no institutional knowledge corpus, and refuses to draft audience-adapted professional) Tj ET
+BT /F1 8.9 Tf 0.12 0.13 0.16 rg 52.0 362.2 Td (artifacts \(referral letters, tumor-board decks, academic case reports, or patient handouts\).) Tj ET
+BT /F1 8.9 Tf 0.12 0.13 0.16 rg 52.0 350.0 Td (4. Design Principles & Accessibility Gaps: It requires 45+ manual clicks to verify a single patient's chart \(no) Tj ET
+BT /F1 8.9 Tf 0.12 0.13 0.16 rg 52.0 337.8 Td (batch verify\), has zero caregiver data model or spoken voice-note preview on the Care Continuity page, leaves) Tj ET
+BT /F1 8.9 Tf 0.12 0.13 0.16 rg 52.0 325.6 Td (browser extension and ABDM/mCODE imports as alerts/stubs, and suffers from 375px mobile overflow and WCAG 2.2 AA) Tj ET
+BT /F1 8.9 Tf 0.12 0.13 0.16 rg 52.0 313.4 Td (contrast/label defects.) Tj ET
+BT /F1 9.0 Tf 0.12 0.13 0.16 rg 42.0 296.2 Td (The V4 Strategic Upgrade transforms OncoBrief into a unified, multi-use-case Clinical Readiness, OPD Flow &) Tj ET
+BT /F1 9.0 Tf 0.12 0.13 0.16 rg 42.0 283.7 Td (Grounded Knowledge Platform where:) Tj ET
+BT /F1 8.9 Tf 0.12 0.13 0.16 rg 52.0 271.2 Td (* Every follow-up consultation opens with an instant "Changes Since Last Visit" Delta Brief, longitudinal) Tj ET
+BT /F1 8.9 Tf 0.12 0.13 0.16 rg 52.0 259.0 Td (lab/medication flowsheets, and 1-click batch verification across Oncology \(NCG\), Diabetes \(RSSDI\), and Maternal) Tj ET
+BT /F1 8.9 Tf 0.12 0.13 0.16 rg 52.0 246.8 Td (Health \(FOGSI\) template packs \(Use Case 02\).) Tj ET
+BT /F1 8.9 Tf 0.12 0.13 0.16 rg 52.0 234.6 Td (* Every outpatient clinic runs a Readiness-Gated Smart OPD Queue that tracks arrivals, walk-ins, delayed) Tj ET
+BT /F1 8.9 Tf 0.12 0.13 0.16 rg 52.0 222.4 Td (investigations, and clinician-assigned administrative priority tiers--automatically backfilling cancelled or) Tj ET
+BT /F1 8.9 Tf 0.12 0.13 0.16 rg 52.0 210.2 Td (blocked slots with waitlisted patients whose consultation packets are already verified ready \(Use Case 04\).) Tj ET
+BT /F1 8.9 Tf 0.12 0.13 0.16 rg 52.0 198.0 Td (* Every clinician has a Source-Grounded Productivity & Protocol Co-Pilot that searches span-anchored) Tj ET
+BT /F1 8.9 Tf 0.12 0.13 0.16 rg 52.0 185.8 Td (institutional SOPs and society guidelines \(NCG, FOGSI, RSSDI\) with bounding-box provenance, and drafts editable) Tj ET
+BT /F1 8.9 Tf 0.12 0.13 0.16 rg 52.0 173.6 Td (referral letters, tumor-board slide outlines, academic case summaries, and multilingual patient handouts where) Tj ET
+BT /F1 8.9 Tf 0.12 0.13 0.16 rg 52.0 161.4 Td (every sentence cites [E1]/[G1] ledger spans \(Use Case 05\).) Tj ET
+BT /F1 8.9 Tf 0.12 0.13 0.16 rg 52.0 149.2 Td (* Every patient and family caregiver receives verified administrative reminders and pre-procedure checklists as) Tj ET
+BT /F1 8.9 Tf 0.12 0.13 0.16 rg 52.0 137.0 Td (playable regional-language voice notes \(Sarvam Bulbul v3 across 11 Indic languages\) with two-way attendance) Tj ET
+BT /F1 8.9 Tf 0.12 0.13 0.16 rg 52.0 124.8 Td (confirmation \(Design Principles & Use Case 01\).) Tj ET
+BT /F2 10.6 Tf 0.14 0.26 0.48 rg 42.0 100.6 Td (1.2 Quantitative Objectives & Key Results \(60-90 Day Pilot OKRs\)) Tj ET
+0.14 0.24 0.42 rg
+42.0 59.8 511.3 26.6 re f
+0.78 0.81 0.86 RG 0.5 w
+42.0 59.8 511.3 26.6 re S
+BT /F2 7.8 Tf 1.00 1.00 1.00 rg 46.0 76.6 Td (Objective) Tj ET
+BT /F2 7.8 Tf 1.00 1.00 1.00 rg 173.8 76.6 Td (Key Result \(Self-Measured in) Tj ET
+BT /F2 7.8 Tf 1.00 1.00 1.00 rg 173.8 66.8 Td (Database Telemetry\)) Tj ET
+BT /F2 7.8 Tf 1.00 1.00 1.00 rg 301.6 76.6 Td (Baseline \(V3\)) Tj ET
+BT /F2 7.8 Tf 1.00 1.00 1.00 rg 429.5 76.6 Td (Target \(V4 Pilot\)) Tj ET
+0.75 0.78 0.82 rg
+42.0 36.0 511.3 0.6 re f
+BT /F1 8 Tf 0.35 0.38 0.44 rg 42.0 24.0 Td (OncoBrief V4 Enhancement Plan -- Use Cases 02, 04, 05 & Design Principles) Tj ET
+BT /F2 8 Tf 0.35 0.38 0.44 rg 498.3 24.0 Td (Page 1 of 18) Tj ET
+endstream
+endobj
+7 0 obj
+<< /Type /Page /Parent 5 0 R /MediaBox [0 0 595.28 841.89] /Resources << /Font << /F1 1 0 R /F2 2 0 R /F3 3 0 R /F4 4 0 R >> >> /Contents 6 0 R >>
+endobj
+8 0 obj
+<< /Length 10645 >>
+stream
+0.15 0.22 0.36 rg
+42.0 805.9 511.3 1.2 re f
+BT /F2 8 Tf 0.25 0.30 0.40 rg 42.0 811.9 Td (ONCOBRIEF V4 -- MASTER ENHANCEMENT PLAN & ARCHITECTURAL BLUEPRINT) Tj ET
+0.96 0.97 0.99 rg
+42.0 731.1 511.3 65.8 re f
+0.78 0.81 0.86 RG 0.5 w
+42.0 731.1 511.3 65.8 re S
+BT /F2 7.8 Tf 0.12 0.14 0.18 rg 46.0 787.1 Td (O1: Excel at Consultation) Tj ET
+BT /F2 7.8 Tf 0.12 0.14 0.18 rg 46.0 777.3 Td (Readiness & Longitudinal) Tj ET
+BT /F2 7.8 Tf 0.12 0.14 0.18 rg 46.0 767.5 Td (Review \(Use Case 02\)) Tj ET
+BT /F1 7.8 Tf 0.12 0.14 0.18 rg 173.8 787.1 Td (KR1.1: Reduce clinician clicks) Tj ET
+BT /F1 7.8 Tf 0.12 0.14 0.18 rg 173.8 777.3 Td (required to verify a) Tj ET
+BT /F1 7.8 Tf 0.12 0.14 0.18 rg 173.8 767.5 Td (9-document referral packet via) Tj ET
+BT /F1 7.8 Tf 0.12 0.14 0.18 rg 173.8 757.7 Td (confidence-tiered batch) Tj ET
+BT /F1 7.8 Tf 0.12 0.14 0.18 rg 173.8 747.9 Td (verification) Tj ET
+BT /F1 7.8 Tf 0.12 0.14 0.18 rg 173.8 738.1 Td (\(verifyEvidenceBatchAction\).) Tj ET
+BT /F1 7.8 Tf 0.12 0.14 0.18 rg 301.6 787.1 Td (45+ clicks) Tj ET
+BT /F1 7.8 Tf 0.12 0.14 0.18 rg 429.5 787.1 Td (<= 4 clicks) Tj ET
+0.78 0.81 0.86 RG 0.5 w
+42.0 679.1 511.3 56.0 re S
+BT /F2 7.8 Tf 0.12 0.14 0.18 rg 46.0 725.3 Td () Tj ET
+BT /F1 7.8 Tf 0.12 0.14 0.18 rg 173.8 725.3 Td (KR1.2: Eliminate) Tj ET
+BT /F1 7.8 Tf 0.12 0.14 0.18 rg 173.8 715.5 Td (false-positive conflicts on) Tj ET
+BT /F1 7.8 Tf 0.12 0.14 0.18 rg 173.8 705.7 Td (longitudinal serial labs and) Tj ET
+BT /F1 7.8 Tf 0.12 0.14 0.18 rg 173.8 695.9 Td (medication adjustments across) Tj ET
+BT /F1 7.8 Tf 0.12 0.14 0.18 rg 173.8 686.1 Td (different dates \(observed_on\).) Tj ET
+BT /F1 7.8 Tf 0.12 0.14 0.18 rg 301.6 725.3 Td (100% false-conflict rate on) Tj ET
+BT /F1 7.8 Tf 0.12 0.14 0.18 rg 301.6 715.5 Td (serial labs) Tj ET
+BT /F1 7.8 Tf 0.12 0.14 0.18 rg 429.5 725.3 Td (0% false conflicts on dated) Tj ET
+BT /F1 7.8 Tf 0.12 0.14 0.18 rg 429.5 715.5 Td (series) Tj ET
+0.96 0.97 0.99 rg
+42.0 627.1 511.3 56.0 re f
+0.78 0.81 0.86 RG 0.5 w
+42.0 627.1 511.3 56.0 re S
+BT /F2 7.8 Tf 0.12 0.14 0.18 rg 46.0 673.3 Td () Tj ET
+BT /F1 7.8 Tf 0.12 0.14 0.18 rg 173.8 673.3 Td (KR1.3: Support complete) Tj ET
+BT /F1 7.8 Tf 0.12 0.14 0.18 rg 173.8 663.5 Td (longitudinal template packs) Tj ET
+BT /F1 7.8 Tf 0.12 0.14 0.18 rg 173.8 653.7 Td (across all 3 tracks \(NCG) Tj ET
+BT /F1 7.8 Tf 0.12 0.14 0.18 rg 173.8 643.9 Td (Oncology, FOGSI Maternal) Tj ET
+BT /F1 7.8 Tf 0.12 0.14 0.18 rg 173.8 634.1 Td (Health, RSSDI Diabetes\).) Tj ET
+BT /F1 7.8 Tf 0.12 0.14 0.18 rg 301.6 673.3 Td (1 track \(Oncology only\)) Tj ET
+BT /F1 7.8 Tf 0.12 0.14 0.18 rg 429.5 673.3 Td (3 tracks seeded & configurable) Tj ET
+0.78 0.81 0.86 RG 0.5 w
+42.0 555.5 511.3 75.6 re S
+BT /F2 7.8 Tf 0.12 0.14 0.18 rg 46.0 621.3 Td (O2: Optimize OPD Clinic Flow &) Tj ET
+BT /F2 7.8 Tf 0.12 0.14 0.18 rg 46.0 611.5 Td (Slot Utilization \(Use Case 04\)) Tj ET
+BT /F1 7.8 Tf 0.12 0.14 0.18 rg 173.8 621.3 Td (KR2.1: Track live OPD slot) Tj ET
+BT /F1 7.8 Tf 0.12 0.14 0.18 rg 173.8 611.5 Td (states \(scheduled, checked_in,) Tj ET
+BT /F1 7.8 Tf 0.12 0.14 0.18 rg 173.8 601.7 Td (in_consult,) Tj ET
+BT /F1 7.8 Tf 0.12 0.14 0.18 rg 173.8 591.9 Td (delayed_investigation,) Tj ET
+BT /F1 7.8 Tf 0.12 0.14 0.18 rg 173.8 582.1 Td (cancelled, walk_in\) and) Tj ET
+BT /F1 7.8 Tf 0.12 0.14 0.18 rg 173.8 572.3 Td (recommend ready waitlist) Tj ET
+BT /F1 7.8 Tf 0.12 0.14 0.18 rg 173.8 562.5 Td (backfills in < 5 seconds.) Tj ET
+BT /F1 7.8 Tf 0.12 0.14 0.18 rg 301.6 621.3 Td (0 slot/queue tracking) Tj ET
+BT /F1 7.8 Tf 0.12 0.14 0.18 rg 429.5 621.3 Td (100% slot state coverage +) Tj ET
+BT /F1 7.8 Tf 0.12 0.14 0.18 rg 429.5 611.5 Td (automated backfill) Tj ET
+0.96 0.97 0.99 rg
+42.0 503.5 511.3 56.0 re f
+0.78 0.81 0.86 RG 0.5 w
+42.0 503.5 511.3 56.0 re S
+BT /F2 7.8 Tf 0.12 0.14 0.18 rg 46.0 549.7 Td () Tj ET
+BT /F1 7.8 Tf 0.12 0.14 0.18 rg 173.8 549.7 Td (KR2.2: Achieve 100% task) Tj ET
+BT /F1 7.8 Tf 0.12 0.14 0.18 rg 173.8 539.9 Td (ownership assignment across) Tj ET
+BT /F1 7.8 Tf 0.12 0.14 0.18 rg 173.8 530.1 Td (coordinators, nurses, and) Tj ET
+BT /F1 7.8 Tf 0.12 0.14 0.18 rg 173.8 520.3 Td (records staff via in-row) Tj ET
+BT /F1 7.8 Tf 0.12 0.14 0.18 rg 173.8 510.5 Td (assignee controls.) Tj ET
+BT /F1 7.8 Tf 0.12 0.14 0.18 rg 301.6 549.7 Td (0% UI-assigned tasks) Tj ET
+BT /F1 7.8 Tf 0.12 0.14 0.18 rg 301.6 539.9 Td (\(unassigned\)) Tj ET
+BT /F1 7.8 Tf 0.12 0.14 0.18 rg 429.5 549.7 Td (100% assignable in 1 click) Tj ET
+0.78 0.81 0.86 RG 0.5 w
+42.0 441.7 511.3 65.8 re S
+BT /F2 7.8 Tf 0.12 0.14 0.18 rg 46.0 497.7 Td (O3: Empower Doctor) Tj ET
+BT /F2 7.8 Tf 0.12 0.14 0.18 rg 46.0 487.9 Td (Productivity & Knowledge) Tj ET
+BT /F2 7.8 Tf 0.12 0.14 0.18 rg 46.0 478.1 Td (Synthesis \(Use Case 05\)) Tj ET
+BT /F1 7.8 Tf 0.12 0.14 0.18 rg 173.8 497.7 Td (KR3.1: Deliver 100%) Tj ET
+BT /F1 7.8 Tf 0.12 0.14 0.18 rg 173.8 487.9 Td (span-grounded answers over) Tj ET
+BT /F1 7.8 Tf 0.12 0.14 0.18 rg 173.8 478.1 Td (uploaded institutional SOPs) Tj ET
+BT /F1 7.8 Tf 0.12 0.14 0.18 rg 173.8 468.3 Td (and NCG/FOGSI/RSSDI guideline) Tj ET
+BT /F1 7.8 Tf 0.12 0.14 0.18 rg 173.8 458.5 Td (PDFs \([G1] citations with bbox) Tj ET
+BT /F1 7.8 Tf 0.12 0.14 0.18 rg 173.8 448.7 Td (preview\).) Tj ET
+BT /F1 7.8 Tf 0.12 0.14 0.18 rg 301.6 497.7 Td (0% \(all guideline queries) Tj ET
+BT /F1 7.8 Tf 0.12 0.14 0.18 rg 301.6 487.9 Td (refused\)) Tj ET
+BT /F1 7.8 Tf 0.12 0.14 0.18 rg 429.5 497.7 Td (100% grounded SOP/guideline) Tj ET
+BT /F1 7.8 Tf 0.12 0.14 0.18 rg 429.5 487.9 Td (retrieval) Tj ET
+0.96 0.97 0.99 rg
+42.0 370.1 511.3 75.6 re f
+0.78 0.81 0.86 RG 0.5 w
+42.0 370.1 511.3 75.6 re S
+BT /F2 7.8 Tf 0.12 0.14 0.18 rg 46.0 435.9 Td () Tj ET
+BT /F1 7.8 Tf 0.12 0.14 0.18 rg 173.8 435.9 Td (KR3.2: Generate 4) Tj ET
+BT /F1 7.8 Tf 0.12 0.14 0.18 rg 173.8 426.1 Td (clinician-editable) Tj ET
+BT /F1 7.8 Tf 0.12 0.14 0.18 rg 173.8 416.3 Td (professional document formats) Tj ET
+BT /F1 7.8 Tf 0.12 0.14 0.18 rg 173.8 406.5 Td (\(Referral Letter, Tumor Board) Tj ET
+BT /F1 7.8 Tf 0.12 0.14 0.18 rg 173.8 396.7 Td (Deck, Case Report Draft,) Tj ET
+BT /F1 7.8 Tf 0.12 0.14 0.18 rg 173.8 386.9 Td (Patient Handout\) with 0) Tj ET
+BT /F1 7.8 Tf 0.12 0.14 0.18 rg 173.8 377.1 Td (unanchored claims.) Tj ET
+BT /F1 7.8 Tf 0.12 0.14 0.18 rg 301.6 435.9 Td (Raw JSON export only) Tj ET
+BT /F1 7.8 Tf 0.12 0.14 0.18 rg 429.5 435.9 Td (4 structured, source-cited) Tj ET
+BT /F1 7.8 Tf 0.12 0.14 0.18 rg 429.5 426.1 Td (formats) Tj ET
+0.78 0.81 0.86 RG 0.5 w
+42.0 318.1 511.3 56.0 re S
+BT /F2 7.8 Tf 0.12 0.14 0.18 rg 46.0 364.3 Td (O4: Meet Every Human-Centered,) Tj ET
+BT /F2 7.8 Tf 0.12 0.14 0.18 rg 46.0 354.5 Td (Multilingual & Safety) Tj ET
+BT /F2 7.8 Tf 0.12 0.14 0.18 rg 46.0 344.7 Td (Principle) Tj ET
+BT /F1 7.8 Tf 0.12 0.14 0.18 rg 173.8 364.3 Td (KR4.1: Enable caregiver) Tj ET
+BT /F1 7.8 Tf 0.12 0.14 0.18 rg 173.8 354.5 Td (registration and playable) Tj ET
+BT /F1 7.8 Tf 0.12 0.14 0.18 rg 173.8 344.7 Td (11-language spoken audio) Tj ET
+BT /F1 7.8 Tf 0.12 0.14 0.18 rg 173.8 334.9 Td (reminders \(Sarvam Bulbul v3\)) Tj ET
+BT /F1 7.8 Tf 0.12 0.14 0.18 rg 173.8 325.1 Td (on /continuity.) Tj ET
+BT /F1 7.8 Tf 0.12 0.14 0.18 rg 301.6 364.3 Td (Text-only En/Hi templates; 0) Tj ET
+BT /F1 7.8 Tf 0.12 0.14 0.18 rg 301.6 354.5 Td (caregiver fields) Tj ET
+BT /F1 7.8 Tf 0.12 0.14 0.18 rg 429.5 364.3 Td (11 Indic languages + playable) Tj ET
+BT /F1 7.8 Tf 0.12 0.14 0.18 rg 429.5 354.5 Td (TTS audio + caregiver sync) Tj ET
+0.96 0.97 0.99 rg
+42.0 256.3 511.3 65.8 re f
+0.78 0.81 0.86 RG 0.5 w
+42.0 256.3 511.3 65.8 re S
+BT /F2 7.8 Tf 0.12 0.14 0.18 rg 46.0 312.3 Td () Tj ET
+BT /F1 7.8 Tf 0.12 0.14 0.18 rg 173.8 312.3 Td (KR4.2: Achieve 100% WCAG 2.2) Tj ET
+BT /F1 7.8 Tf 0.12 0.14 0.18 rg 173.8 302.5 Td (AA contrast \(>= 4.5:1 text, >=) Tj ET
+BT /F1 7.8 Tf 0.12 0.14 0.18 rg 173.8 292.7 Td (3.0:1 UI borders\), 0 unlabeled) Tj ET
+BT /F1 7.8 Tf 0.12 0.14 0.18 rg 173.8 282.9 Td (form inputs, and 0 px) Tj ET
+BT /F1 7.8 Tf 0.12 0.14 0.18 rg 173.8 273.1 Td (horizontal overflow at 375px) Tj ET
+BT /F1 7.8 Tf 0.12 0.14 0.18 rg 173.8 263.3 Td (mobile width.) Tj ET
+BT /F1 7.8 Tf 0.12 0.14 0.18 rg 301.6 312.3 Td (135+ unlabeled inputs; +99px) Tj ET
+BT /F1 7.8 Tf 0.12 0.14 0.18 rg 301.6 302.5 Td (to +266px mobile overflow) Tj ET
+BT /F1 7.8 Tf 0.12 0.14 0.18 rg 429.5 312.3 Td (0 axe/a11y violations; 0px) Tj ET
+BT /F1 7.8 Tf 0.12 0.14 0.18 rg 429.5 302.5 Td (mobile overflow) Tj ET
+BT /F2 10.6 Tf 0.14 0.26 0.48 rg 42.0 235.3 Td (1.3 Explicit Non-Goals & Strict Out-of-Scope Boundaries) Tj ET
+BT /F1 9.0 Tf 0.12 0.13 0.16 rg 42.0 219.1 Td (To preserve regulatory safety and 100% compliance with the hackathon's Out of Scope rules) Tj ET
+BT /F1 9.0 Tf 0.12 0.13 0.16 rg 42.0 206.6 Td (\(packages/domain/src/policy/clinical-boundary.ts\), OncoBrief V4 will NEVER:) Tj ET
+BT /F1 8.9 Tf 0.12 0.13 0.16 rg 52.0 194.1 Td (1. Compute or infer a medical diagnosis, cancer stage \(TNM\), or RECIST tumor response--it only transcribes) Tj ET
+BT /F1 8.9 Tf 0.12 0.13 0.16 rg 52.0 181.9 Td (documented values verbatim \(diagnosis_text.as_written, stage_text.as_written\) and retrieves verbatim passages) Tj ET
+BT /F1 8.9 Tf 0.12 0.13 0.16 rg 52.0 169.7 Td (from human-approved institutional guideline documents.) Tj ET
+BT /F1 8.9 Tf 0.12 0.13 0.16 rg 52.0 157.5 Td (2. Generate autonomous treatment recommendations or clinical decision support \(CDS\)--when searching institutional) Tj ET
+BT /F1 8.9 Tf 0.12 0.13 0.16 rg 52.0 145.3 Td (SOPs or NCG/FOGSI/RSSDI guidelines, the assistant retrieves and quotes the exact published guideline section) Tj ET
+BT /F1 8.9 Tf 0.12 0.13 0.16 rg 52.0 133.1 Td (with its source bounding box so the clinician reads and applies it; the system never tells the doctor what drug) Tj ET
+BT /F1 8.9 Tf 0.12 0.13 0.16 rg 52.0 120.9 Td (or dose to prescribe for a patient.) Tj ET
+BT /F1 8.9 Tf 0.12 0.13 0.16 rg 52.0 108.7 Td (3. Calculate a clinical risk score, physiological acuity score, or autonomous medical triage--OPD queue) Tj ET
+BT /F1 8.9 Tf 0.12 0.13 0.16 rg 52.0 96.5 Td (prioritization in Use Case 04 uses clinician-assigned or referring-doctor-documented administrative priority) Tj ET
+BT /F1 8.9 Tf 0.12 0.13 0.16 rg 52.0 84.3 Td (tags \(stat_referral_documented, post_op_check_documented, expedited_slot_requested, standard_followup\) anchored) Tj ET
+BT /F1 8.9 Tf 0.12 0.13 0.16 rg 52.0 72.1 Td (to a source document or explicit human selection, never an AI-computed medical severity score.) Tj ET
+0.75 0.78 0.82 rg
+42.0 36.0 511.3 0.6 re f
+BT /F1 8 Tf 0.35 0.38 0.44 rg 42.0 24.0 Td (OncoBrief V4 Enhancement Plan -- Use Cases 02, 04, 05 & Design Principles) Tj ET
+BT /F2 8 Tf 0.35 0.38 0.44 rg 498.3 24.0 Td (Page 2 of 18) Tj ET
+endstream
+endobj
+9 0 obj
+<< /Type /Page /Parent 5 0 R /MediaBox [0 0 595.28 841.89] /Resources << /Font << /F1 1 0 R /F2 2 0 R /F3 3 0 R /F4 4 0 R >> >> /Contents 8 0 R >>
+endobj
+10 0 obj
+<< /Length 15043 >>
+stream
+0.15 0.22 0.36 rg
+42.0 805.9 511.3 1.2 re f
+BT /F2 8 Tf 0.25 0.30 0.40 rg 42.0 811.9 Td (ONCOBRIEF V4 -- MASTER ENHANCEMENT PLAN & ARCHITECTURAL BLUEPRINT) Tj ET
+BT /F1 8.9 Tf 0.12 0.13 0.16 rg 52.0 789.9 Td (4. Interpret medical images \(DICOM pixel arrays\), pathology slides, or genomic variants--multi-modal adapters) Tj ET
+BT /F1 8.9 Tf 0.12 0.13 0.16 rg 52.0 777.7 Td (extract only administrative headers, stated report text, and tabular lab rows as written.) Tj ET
+BT /F1 8.9 Tf 0.12 0.13 0.16 rg 52.0 765.5 Td (5. Execute silent automation--every batch verification, conflict resolution, slot backfill offer, referral letter) Tj ET
+BT /F1 8.9 Tf 0.12 0.13 0.16 rg 52.0 753.3 Td (export, and patient/caregiver message requires explicit human confirmation and appends a tamper-evident SHA-256) Tj ET
+BT /F1 8.9 Tf 0.12 0.13 0.16 rg 52.0 741.1 Td (hash-chained audit event.) Tj ET
+0.75 0.78 0.82 rg
+42.0 719.9 511.3 0.75 re f
+0.93 0.95 0.99 rg
+38.0 678.9 519.3 24.0 re f
+BT /F2 12.2 Tf 0.10 0.22 0.44 rg 42.0 696.9 Td (2. Deep Competitive & Ecosystem Research) Tj ET
+BT /F2 10.6 Tf 0.14 0.26 0.48 rg 42.0 664.9 Td (2.1 Cross-Use-Case Competitive Landscape Matrix) Tj ET
+0.14 0.24 0.42 rg
+42.0 624.1 511.3 26.6 re f
+0.78 0.81 0.86 RG 0.5 w
+42.0 624.1 511.3 26.6 re S
+BT /F2 7.2 Tf 1.00 1.00 1.00 rg 46.0 640.9 Td (Platform / System) Tj ET
+BT /F2 7.2 Tf 1.00 1.00 1.00 rg 148.3 640.9 Td (Use Case Coverage) Tj ET
+BT /F2 7.2 Tf 1.00 1.00 1.00 rg 250.5 640.9 Td (Core Strengths in) Tj ET
+BT /F2 7.2 Tf 1.00 1.00 1.00 rg 250.5 631.1 Td (Production) Tj ET
+BT /F2 7.2 Tf 1.00 1.00 1.00 rg 352.8 640.9 Td (Critical Gaps in Indian /) Tj ET
+BT /F2 7.2 Tf 1.00 1.00 1.00 rg 352.8 631.1 Td (NCG Context) Tj ET
+BT /F2 7.2 Tf 1.00 1.00 1.00 rg 455.0 640.9 Td (How OncoBrief V4 Beats or) Tj ET
+BT /F2 7.2 Tf 1.00 1.00 1.00 rg 455.0 631.1 Td (Bridges It) Tj ET
+0.96 0.97 0.99 rg
+42.0 542.7 511.3 85.4 re f
+0.78 0.81 0.86 RG 0.5 w
+42.0 542.7 511.3 85.4 re S
+BT /F2 7.2 Tf 0.12 0.14 0.18 rg 46.0 618.3 Td (Vizlitics Consult Prep) Tj ET
+BT /F2 7.2 Tf 0.12 0.14 0.18 rg 46.0 608.5 Td (\(Cancer Insights\)) Tj ET
+BT /F1 7.2 Tf 0.12 0.14 0.18 rg 148.3 618.3 Td (UC 02 \(Oncology Consult) Tj ET
+BT /F1 7.2 Tf 0.12 0.14 0.18 rg 148.3 608.5 Td (Prep\)) Tj ET
+BT /F1 7.2 Tf 0.12 0.14 0.18 rg 250.5 618.3 Td (Pulls electronic records) Tj ET
+BT /F1 7.2 Tf 0.12 0.14 0.18 rg 250.5 608.5 Td (from 93% of US health) Tj ET
+BT /F1 7.2 Tf 0.12 0.14 0.18 rg 250.5 598.7 Td (systems; builds) Tj ET
+BT /F1 7.2 Tf 0.12 0.14 0.18 rg 250.5 588.9 Td (source-linked longitudinal) Tj ET
+BT /F1 7.2 Tf 0.12 0.14 0.18 rg 250.5 579.1 Td (cancer summaries and trial) Tj ET
+BT /F1 7.2 Tf 0.12 0.14 0.18 rg 250.5 569.3 Td (matches.) Tj ET
+BT /F1 7.2 Tf 0.12 0.14 0.18 rg 352.8 618.3 Td (Assumes US HIE) Tj ET
+BT /F1 7.2 Tf 0.12 0.14 0.18 rg 352.8 608.5 Td (interoperability; relies) Tj ET
+BT /F1 7.2 Tf 0.12 0.14 0.18 rg 352.8 598.7 Td (on generative clinical) Tj ET
+BT /F1 7.2 Tf 0.12 0.14 0.18 rg 352.8 588.9 Td (summarization rather than) Tj ET
+BT /F1 7.2 Tf 0.12 0.14 0.18 rg 352.8 579.1 Td (deterministic fact-state) Tj ET
+BT /F1 7.2 Tf 0.12 0.14 0.18 rg 352.8 569.3 Td (separation \(extracted vs) Tj ET
+BT /F1 7.2 Tf 0.12 0.14 0.18 rg 352.8 559.5 Td (verified\) or conflict) Tj ET
+BT /F1 7.2 Tf 0.12 0.14 0.18 rg 352.8 549.7 Td (reconciliation rooms.) Tj ET
+BT /F1 7.2 Tf 0.12 0.14 0.18 rg 455.0 618.3 Td (Adds zero-integration) Tj ET
+BT /F1 7.2 Tf 0.12 0.14 0.18 rg 455.0 608.5 Td (multi-report scan) Tj ET
+BT /F1 7.2 Tf 0.12 0.14 0.18 rg 455.0 598.7 Td (segmentation,) Tj ET
+BT /F1 7.2 Tf 0.12 0.14 0.18 rg 455.0 588.9 Td (deterministic two-stage) Tj ET
+BT /F1 7.2 Tf 0.12 0.14 0.18 rg 455.0 579.1 Td (span entailment, explicit) Tj ET
+BT /F1 7.2 Tf 0.12 0.14 0.18 rg 455.0 569.3 Td (contradiction) Tj ET
+BT /F1 7.2 Tf 0.12 0.14 0.18 rg 455.0 559.5 Td (reconciliation, and NRCeS) Tj ET
+BT /F1 7.2 Tf 0.12 0.14 0.18 rg 455.0 549.7 Td (ABDM v6.5.0 export.) Tj ET
+0.78 0.81 0.86 RG 0.5 w
+42.0 471.1 511.3 75.6 re S
+BT /F2 7.2 Tf 0.12 0.14 0.18 rg 46.0 536.9 Td (GE HealthCare) Tj ET
+BT /F2 7.2 Tf 0.12 0.14 0.18 rg 46.0 527.1 Td (CareIntellect for Oncology) Tj ET
+BT /F1 7.2 Tf 0.12 0.14 0.18 rg 148.3 536.9 Td (UC 02 \(Longitudinal) Tj ET
+BT /F1 7.2 Tf 0.12 0.14 0.18 rg 148.3 527.1 Td (Timeline\)) Tj ET
+BT /F1 7.2 Tf 0.12 0.14 0.18 rg 250.5 536.9 Td (Summarizes multi-modal) Tj ET
+BT /F1 7.2 Tf 0.12 0.14 0.18 rg 250.5 527.1 Td (hospital data \(DICOM,) Tj ET
+BT /F1 7.2 Tf 0.12 0.14 0.18 rg 250.5 517.3 Td (labs, notes\) into a single) Tj ET
+BT /F1 7.2 Tf 0.12 0.14 0.18 rg 250.5 507.5 Td (view and flags progression) Tj ET
+BT /F1 7.2 Tf 0.12 0.14 0.18 rg 250.5 497.7 Td (since prior visits.) Tj ET
+BT /F1 7.2 Tf 0.12 0.14 0.18 rg 352.8 536.9 Td (Enterprise hospital-locked) Tj ET
+BT /F1 7.2 Tf 0.12 0.14 0.18 rg 352.8 527.1 Td (deployment; crosses into) Tj ET
+BT /F1 7.2 Tf 0.12 0.14 0.18 rg 352.8 517.3 Td (clinical progression) Tj ET
+BT /F1 7.2 Tf 0.12 0.14 0.18 rg 352.8 507.5 Td (interpretation; no) Tj ET
+BT /F1 7.2 Tf 0.12 0.14 0.18 rg 352.8 497.7 Td (outpatient slot backfill) Tj ET
+BT /F1 7.2 Tf 0.12 0.14 0.18 rg 352.8 487.9 Td (or multilingual caregiver) Tj ET
+BT /F1 7.2 Tf 0.12 0.14 0.18 rg 352.8 478.1 Td (outreach.) Tj ET
+BT /F1 7.2 Tf 0.12 0.14 0.18 rg 455.0 536.9 Td (Adopts CareIntellect's) Tj ET
+BT /F1 7.2 Tf 0.12 0.14 0.18 rg 455.0 527.1 Td ("Changes Since Last Visit") Tj ET
+BT /F1 7.2 Tf 0.12 0.14 0.18 rg 455.0 517.3 Td (delta banner and serial) Tj ET
+BT /F1 7.2 Tf 0.12 0.14 0.18 rg 455.0 507.5 Td (lab trend flowsheets while) Tj ET
+BT /F1 7.2 Tf 0.12 0.14 0.18 rg 455.0 497.7 Td (keeping every value) Tj ET
+BT /F1 7.2 Tf 0.12 0.14 0.18 rg 455.0 487.9 Td (strictly .as_written and) Tj ET
+BT /F1 7.2 Tf 0.12 0.14 0.18 rg 455.0 478.1 Td (non-interpretive.) Tj ET
+0.96 0.97 0.99 rg
+42.0 399.5 511.3 75.6 re f
+0.78 0.81 0.86 RG 0.5 w
+42.0 399.5 511.3 75.6 re S
+BT /F2 7.2 Tf 0.12 0.14 0.18 rg 46.0 465.3 Td (Navina Clinician Copilot) Tj ET
+BT /F2 7.2 Tf 0.12 0.14 0.18 rg 46.0 455.5 Td (\(Core Tech\)) Tj ET
+BT /F1 7.2 Tf 0.12 0.14 0.18 rg 148.3 465.3 Td (UC 02 \(Pre-Visit Chart) Tj ET
+BT /F1 7.2 Tf 0.12 0.14 0.18 rg 148.3 455.5 Td (Review across Chronic) Tj ET
+BT /F1 7.2 Tf 0.12 0.14 0.18 rg 148.3 445.7 Td (Care\)) Tj ET
+BT /F1 7.2 Tf 0.12 0.14 0.18 rg 250.5 465.3 Td (Best-in-class) Tj ET
+BT /F1 7.2 Tf 0.12 0.14 0.18 rg 250.5 455.5 Td (problem-oriented pre-visit) Tj ET
+BT /F1 7.2 Tf 0.12 0.14 0.18 rg 250.5 445.7 Td (summary across diabetes,) Tj ET
+BT /F1 7.2 Tf 0.12 0.14 0.18 rg 250.5 435.9 Td (cardiology, and primary) Tj ET
+BT /F1 7.2 Tf 0.12 0.14 0.18 rg 250.5 426.1 Td (care; links claims to PDF) Tj ET
+BT /F1 7.2 Tf 0.12 0.14 0.18 rg 250.5 416.3 Td (bounding boxes.) Tj ET
+BT /F1 7.2 Tf 0.12 0.14 0.18 rg 352.8 465.3 Td (Focused on US Value-Based) Tj ET
+BT /F1 7.2 Tf 0.12 0.14 0.18 rg 352.8 455.5 Td (Care \(HCC coding/RAF) Tj ET
+BT /F1 7.2 Tf 0.12 0.14 0.18 rg 352.8 445.7 Td (scores\); lacks Indian) Tj ET
+BT /F1 7.2 Tf 0.12 0.14 0.18 rg 352.8 435.9 Td (regional language) Tj ET
+BT /F1 7.2 Tf 0.12 0.14 0.18 rg 352.8 426.1 Td (OCR/voice and OPD) Tj ET
+BT /F1 7.2 Tf 0.12 0.14 0.18 rg 352.8 416.3 Td (queue/slot management.) Tj ET
+BT /F1 7.2 Tf 0.12 0.14 0.18 rg 455.0 465.3 Td (Adopts Navina's) Tj ET
+BT /F1 7.2 Tf 0.12 0.14 0.18 rg 455.0 455.5 Td (chronic-care versatility) Tj ET
+BT /F1 7.2 Tf 0.12 0.14 0.18 rg 455.0 445.7 Td (\(adding Diabetes &) Tj ET
+BT /F1 7.2 Tf 0.12 0.14 0.18 rg 455.0 435.9 Td (Maternal Health packs\) and) Tj ET
+BT /F1 7.2 Tf 0.12 0.14 0.18 rg 455.0 426.1 Td (interval-change cards) Tj ET
+BT /F1 7.2 Tf 0.12 0.14 0.18 rg 455.0 416.3 Td (while avoiding diagnostic) Tj ET
+BT /F1 7.2 Tf 0.12 0.14 0.18 rg 455.0 406.5 Td (HCC coding.) Tj ET
+0.78 0.81 0.86 RG 0.5 w
+42.0 327.9 511.3 75.6 re S
+BT /F2 7.2 Tf 0.12 0.14 0.18 rg 46.0 393.7 Td (Tempus One & Tempus Next) Tj ET
+BT /F1 7.2 Tf 0.12 0.14 0.18 rg 148.3 393.7 Td (UC 02 & UC 05 \(Oncology AI) Tj ET
+BT /F1 7.2 Tf 0.12 0.14 0.18 rg 148.3 383.9 Td (& Care Gaps\)) Tj ET
+BT /F1 7.2 Tf 0.12 0.14 0.18 rg 250.5 393.7 Td (LLM timeline construction) Tj ET
+BT /F1 7.2 Tf 0.12 0.14 0.18 rg 250.5 383.9 Td (from unstructured PDFs) Tj ET
+BT /F1 7.2 Tf 0.12 0.14 0.18 rg 250.5 374.1 Td (\(ASCO 245826\) and) Tj ET
+BT /F1 7.2 Tf 0.12 0.14 0.18 rg 250.5 364.3 Td (real-time guideline gap) Tj ET
+BT /F1 7.2 Tf 0.12 0.14 0.18 rg 250.5 354.5 Td (alerts.) Tj ET
+BT /F1 7.2 Tf 0.12 0.14 0.18 rg 352.8 393.7 Td (Operates as a clinical) Tj ET
+BT /F1 7.2 Tf 0.12 0.14 0.18 rg 352.8 383.9 Td (decision support \(CDS\) and) Tj ET
+BT /F1 7.2 Tf 0.12 0.14 0.18 rg 352.8 374.1 Td (molecular profiling) Tj ET
+BT /F1 7.2 Tf 0.12 0.14 0.18 rg 352.8 364.3 Td (platform \(out of scope for) Tj ET
+BT /F1 7.2 Tf 0.12 0.14 0.18 rg 352.8 354.5 Td (non-clinical guardrails\).) Tj ET
+BT /F1 7.2 Tf 0.12 0.14 0.18 rg 455.0 393.7 Td (Keeps guideline retrieval) Tj ET
+BT /F1 7.2 Tf 0.12 0.14 0.18 rg 455.0 383.9 Td (strictly as a) Tj ET
+BT /F1 7.2 Tf 0.12 0.14 0.18 rg 455.0 374.1 Td (clinician-initiated,) Tj ET
+BT /F1 7.2 Tf 0.12 0.14 0.18 rg 455.0 364.3 Td (span-grounded reference) Tj ET
+BT /F1 7.2 Tf 0.12 0.14 0.18 rg 455.0 354.5 Td (library \([G1]\) rather than) Tj ET
+BT /F1 7.2 Tf 0.12 0.14 0.18 rg 455.0 344.7 Td (autonomous clinical) Tj ET
+BT /F1 7.2 Tf 0.12 0.14 0.18 rg 455.0 334.9 Td (alerting.) Tj ET
+0.96 0.97 0.99 rg
+42.0 256.3 511.3 75.6 re f
+0.78 0.81 0.86 RG 0.5 w
+42.0 256.3 511.3 75.6 re S
+BT /F2 7.2 Tf 0.12 0.14 0.18 rg 46.0 322.1 Td (Honey Health) Tj ET
+BT /F2 7.2 Tf 0.12 0.14 0.18 rg 46.0 312.3 Td (\(Pre-Charting\)) Tj ET
+BT /F1 7.2 Tf 0.12 0.14 0.18 rg 148.3 322.1 Td (UC 02 & UC 04 \(Referral) Tj ET
+BT /F1 7.2 Tf 0.12 0.14 0.18 rg 148.3 312.3 Td (Intake & Pre-Charting\)) Tj ET
+BT /F1 7.2 Tf 0.12 0.14 0.18 rg 250.5 322.1 Td (Autonomous AI workers) Tj ET
+BT /F1 7.2 Tf 0.12 0.14 0.18 rg 250.5 312.3 Td (ingest referrals, verify) Tj ET
+BT /F1 7.2 Tf 0.12 0.14 0.18 rg 250.5 302.5 Td (insurance authorizations,) Tj ET
+BT /F1 7.2 Tf 0.12 0.14 0.18 rg 250.5 292.7 Td (and pre-chart interval) Tj ET
+BT /F1 7.2 Tf 0.12 0.14 0.18 rg 250.5 282.9 Td (ER/consult notes before) Tj ET
+BT /F1 7.2 Tf 0.12 0.14 0.18 rg 250.5 273.1 Td (the visit.) Tj ET
+BT /F1 7.2 Tf 0.12 0.14 0.18 rg 352.8 322.1 Td (US EHR-specific; lacks) Tj ET
+BT /F1 7.2 Tf 0.12 0.14 0.18 rg 352.8 312.3 Td (cryptographic append-only) Tj ET
+BT /F1 7.2 Tf 0.12 0.14 0.18 rg 352.8 302.5 Td (audit chains and) Tj ET
+BT /F1 7.2 Tf 0.12 0.14 0.18 rg 352.8 292.7 Td (side-by-side source) Tj ET
+BT /F1 7.2 Tf 0.12 0.14 0.18 rg 352.8 282.9 Td (contradiction resolution.) Tj ET
+BT /F1 7.2 Tf 0.12 0.14 0.18 rg 455.0 322.1 Td (Adopts Honey Health's) Tj ET
+BT /F1 7.2 Tf 0.12 0.14 0.18 rg 455.0 312.3 Td (low-click pre-charting) Tj ET
+BT /F1 7.2 Tf 0.12 0.14 0.18 rg 455.0 302.5 Td (ergonomics \(1-click batch) Tj ET
+BT /F1 7.2 Tf 0.12 0.14 0.18 rg 455.0 292.7 Td (verification of) Tj ET
+BT /F1 7.2 Tf 0.12 0.14 0.18 rg 455.0 282.9 Td (high-confidence spans and) Tj ET
+BT /F1 7.2 Tf 0.12 0.14 0.18 rg 455.0 273.1 Td (automated pending-order) Tj ET
+BT /F1 7.2 Tf 0.12 0.14 0.18 rg 455.0 263.3 Td (task extraction\).) Tj ET
+0.78 0.81 0.86 RG 0.5 w
+42.0 174.9 511.3 85.4 re S
+BT /F2 7.2 Tf 0.12 0.14 0.18 rg 46.0 250.5 Td (OpenEvidence \(PMC Study\)) Tj ET
+BT /F1 7.2 Tf 0.12 0.14 0.18 rg 148.3 250.5 Td (UC 05 \(Medical Literature) Tj ET
+BT /F1 7.2 Tf 0.12 0.14 0.18 rg 148.3 240.7 Td (& Guideline Co-Pilot\)) Tj ET
+BT /F1 7.2 Tf 0.12 0.14 0.18 rg 250.5 250.5 Td (Searches peer-reviewed) Tj ET
+BT /F1 7.2 Tf 0.12 0.14 0.18 rg 250.5 240.7 Td (literature and society) Tj ET
+BT /F1 7.2 Tf 0.12 0.14 0.18 rg 250.5 230.9 Td (guidelines \(NCCN, AAP\) to) Tj ET
+BT /F1 7.2 Tf 0.12 0.14 0.18 rg 250.5 221.1 Td (synthesize cited answers) Tj ET
+BT /F1 7.2 Tf 0.12 0.14 0.18 rg 250.5 211.3 Td (for teaching, research,) Tj ET
+BT /F1 7.2 Tf 0.12 0.14 0.18 rg 250.5 201.5 Td (and practice.) Tj ET
+BT /F1 7.2 Tf 0.12 0.14 0.18 rg 352.8 250.5 Td (Queries external global) Tj ET
+BT /F1 7.2 Tf 0.12 0.14 0.18 rg 352.8 240.7 Td (literature without) Tj ET
+BT /F1 7.2 Tf 0.12 0.14 0.18 rg 352.8 230.9 Td (awareness of a hospital's) Tj ET
+BT /F1 7.2 Tf 0.12 0.14 0.18 rg 352.8 221.1 Td (local SOPs or the) Tj ET
+BT /F1 7.2 Tf 0.12 0.14 0.18 rg 352.8 211.3 Td (patient's administrative) Tj ET
+BT /F1 7.2 Tf 0.12 0.14 0.18 rg 352.8 201.5 Td (record readiness.) Tj ET
+BT /F1 7.2 Tf 0.12 0.14 0.18 rg 455.0 250.5 Td (Adds an Institutional SOP) Tj ET
+BT /F1 7.2 Tf 0.12 0.14 0.18 rg 455.0 240.7 Td (& Guideline Ledger) Tj ET
+BT /F1 7.2 Tf 0.12 0.14 0.18 rg 455.0 230.9 Td (\(guideline_document +) Tj ET
+BT /F1 7.2 Tf 0.12 0.14 0.18 rg 455.0 221.1 Td (guideline_span\) so doctors) Tj ET
+BT /F1 7.2 Tf 0.12 0.14 0.18 rg 455.0 211.3 Td (can query NCG/FOGSI/RSSDI) Tj ET
+BT /F1 7.2 Tf 0.12 0.14 0.18 rg 455.0 201.5 Td (protocols alongside) Tj ET
+BT /F1 7.2 Tf 0.12 0.14 0.18 rg 455.0 191.7 Td (patient records with exact) Tj ET
+BT /F1 7.2 Tf 0.12 0.14 0.18 rg 455.0 181.9 Td (bbox provenance.) Tj ET
+0.96 0.97 0.99 rg
+42.0 93.5 511.3 85.4 re f
+0.78 0.81 0.86 RG 0.5 w
+42.0 93.5 511.3 85.4 re S
+BT /F2 7.2 Tf 0.12 0.14 0.18 rg 46.0 169.1 Td (Doximity GPT & Glass) Tj ET
+BT /F2 7.2 Tf 0.12 0.14 0.18 rg 46.0 159.3 Td (Health) Tj ET
+BT /F1 7.2 Tf 0.12 0.14 0.18 rg 148.3 169.1 Td (UC 05 \(Clinical Writing &) Tj ET
+BT /F1 7.2 Tf 0.12 0.14 0.18 rg 148.3 159.3 Td (Admin Productivity\)) Tj ET
+BT /F1 7.2 Tf 0.12 0.14 0.18 rg 250.5 169.1 Td (Drafts referral letters,) Tj ET
+BT /F1 7.2 Tf 0.12 0.14 0.18 rg 250.5 159.3 Td (prior-auth appeals,) Tj ET
+BT /F1 7.2 Tf 0.12 0.14 0.18 rg 250.5 149.5 Td (after-visit summaries, and) Tj ET
+BT /F1 7.2 Tf 0.12 0.14 0.18 rg 250.5 139.7 Td (reading-level-adapted) Tj ET
+BT /F1 7.2 Tf 0.12 0.14 0.18 rg 250.5 129.9 Td (patient education handouts) Tj ET
+BT /F1 7.2 Tf 0.12 0.14 0.18 rg 250.5 120.1 Td (in seconds.) Tj ET
+BT /F1 7.2 Tf 0.12 0.14 0.18 rg 352.8 169.1 Td (Prompt-only generation) Tj ET
+BT /F1 7.2 Tf 0.12 0.14 0.18 rg 352.8 159.3 Td (without character-level) Tj ET
+BT /F1 7.2 Tf 0.12 0.14 0.18 rg 352.8 149.5 Td (substring validation) Tj ET
+BT /F1 7.2 Tf 0.12 0.14 0.18 rg 352.8 139.7 Td (against underlying source) Tj ET
+BT /F1 7.2 Tf 0.12 0.14 0.18 rg 352.8 129.9 Td (PDFs--vulnerable to subtle) Tj ET
+BT /F1 7.2 Tf 0.12 0.14 0.18 rg 352.8 120.1 Td (date/lab hallucinations.) Tj ET
+BT /F1 7.2 Tf 0.12 0.14 0.18 rg 455.0 169.1 Td (Builds an) Tj ET
+BT /F1 7.2 Tf 0.12 0.14 0.18 rg 455.0 159.3 Td (Audience-Adaptive Studio) Tj ET
+BT /F1 7.2 Tf 0.12 0.14 0.18 rg 455.0 149.5 Td (where referral letters,) Tj ET
+BT /F1 7.2 Tf 0.12 0.14 0.18 rg 455.0 139.7 Td (tumor-board decks, and) Tj ET
+BT /F1 7.2 Tf 0.12 0.14 0.18 rg 455.0 129.9 Td (patient handouts are) Tj ET
+BT /F1 7.2 Tf 0.12 0.14 0.18 rg 455.0 120.1 Td (compiled exclusively from) Tj ET
+BT /F1 7.2 Tf 0.12 0.14 0.18 rg 455.0 110.3 Td (verified ledger facts) Tj ET
+BT /F1 7.2 Tf 0.12 0.14 0.18 rg 455.0 100.5 Td (\([E1]\).) Tj ET
+0.75 0.78 0.82 rg
+42.0 36.0 511.3 0.6 re f
+BT /F1 8 Tf 0.35 0.38 0.44 rg 42.0 24.0 Td (OncoBrief V4 Enhancement Plan -- Use Cases 02, 04, 05 & Design Principles) Tj ET
+BT /F2 8 Tf 0.35 0.38 0.44 rg 498.3 24.0 Td (Page 3 of 18) Tj ET
+endstream
+endobj
+11 0 obj
+<< /Type /Page /Parent 5 0 R /MediaBox [0 0 595.28 841.89] /Resources << /Font << /F1 1 0 R /F2 2 0 R /F3 3 0 R /F4 4 0 R >> >> /Contents 10 0 R >>
+endobj
+12 0 obj
+<< /Length 11503 >>
+stream
+0.15 0.22 0.36 rg
+42.0 805.9 511.3 1.2 re f
+BT /F2 8 Tf 0.25 0.30 0.40 rg 42.0 811.9 Td (ONCOBRIEF V4 -- MASTER ENHANCEMENT PLAN & ARCHITECTURAL BLUEPRINT) Tj ET
+0.78 0.81 0.86 RG 0.5 w
+42.0 721.3 511.3 75.6 re S
+BT /F2 7.2 Tf 0.12 0.14 0.18 rg 46.0 787.1 Td (LeanTaaS iQueue & Phreesia) Tj ET
+BT /F1 7.2 Tf 0.12 0.14 0.18 rg 148.3 787.1 Td (UC 04 \(OPD Flow,) Tj ET
+BT /F1 7.2 Tf 0.12 0.14 0.18 rg 148.3 777.3 Td (Scheduling & Slot) Tj ET
+BT /F1 7.2 Tf 0.12 0.14 0.18 rg 148.3 767.5 Td (Backfill\)) Tj ET
+BT /F1 7.2 Tf 0.12 0.14 0.18 rg 250.5 787.1 Td (LeanTaaS optimizes) Tj ET
+BT /F1 7.2 Tf 0.12 0.14 0.18 rg 250.5 777.3 Td (oncology clinic/infusion) Tj ET
+BT /F1 7.2 Tf 0.12 0.14 0.18 rg 250.5 767.5 Td (templates across 36+ NCI) Tj ET
+BT /F1 7.2 Tf 0.12 0.14 0.18 rg 250.5 757.7 Td (centers; Phreesia) Tj ET
+BT /F1 7.2 Tf 0.12 0.14 0.18 rg 250.5 747.9 Td (Appointment Accelerator) Tj ET
+BT /F1 7.2 Tf 0.12 0.14 0.18 rg 250.5 738.1 Td (backfills cancelled slots) Tj ET
+BT /F1 7.2 Tf 0.12 0.14 0.18 rg 250.5 728.3 Td (in ~5 minutes.) Tj ET
+BT /F1 7.2 Tf 0.12 0.14 0.18 rg 352.8 787.1 Td (Neither system inspects) Tj ET
+BT /F1 7.2 Tf 0.12 0.14 0.18 rg 352.8 777.3 Td (whether a waitlisted) Tj ET
+BT /F1 7.2 Tf 0.12 0.14 0.18 rg 352.8 767.5 Td (patient's outside medical) Tj ET
+BT /F1 7.2 Tf 0.12 0.14 0.18 rg 352.8 757.7 Td (records, pathology slides,) Tj ET
+BT /F1 7.2 Tf 0.12 0.14 0.18 rg 352.8 747.9 Td (and insurance auths are) Tj ET
+BT /F1 7.2 Tf 0.12 0.14 0.18 rg 352.8 738.1 Td (actually ready before) Tj ET
+BT /F1 7.2 Tf 0.12 0.14 0.18 rg 352.8 728.3 Td (slotting them in.) Tj ET
+BT /F1 7.2 Tf 0.12 0.14 0.18 rg 455.0 787.1 Td (Introduces Readiness-Gated) Tj ET
+BT /F1 7.2 Tf 0.12 0.14 0.18 rg 455.0 777.3 Td (Slot Backfill: when an OPD) Tj ET
+BT /F1 7.2 Tf 0.12 0.14 0.18 rg 455.0 767.5 Td (slot opens, OncoBrief) Tj ET
+BT /F1 7.2 Tf 0.12 0.14 0.18 rg 455.0 757.7 Td (recommends waitlisted) Tj ET
+BT /F1 7.2 Tf 0.12 0.14 0.18 rg 455.0 747.9 Td (patients whose record) Tj ET
+BT /F1 7.2 Tf 0.12 0.14 0.18 rg 455.0 738.1 Td (readiness band is already) Tj ET
+BT /F1 7.2 Tf 0.12 0.14 0.18 rg 455.0 728.3 Td (ready.) Tj ET
+0.96 0.97 0.99 rg
+42.0 649.7 511.3 75.6 re f
+0.78 0.81 0.86 RG 0.5 w
+42.0 649.7 511.3 75.6 re S
+BT /F2 7.2 Tf 0.12 0.14 0.18 rg 46.0 715.5 Td (Qventus & Eka Care) Tj ET
+BT /F1 7.2 Tf 0.12 0.14 0.18 rg 148.3 715.5 Td (UC 04 & UC 02 \(Pre-Visit) Tj ET
+BT /F1 7.2 Tf 0.12 0.14 0.18 rg 148.3 705.7 Td (Clearance & Indian OPD) Tj ET
+BT /F1 7.2 Tf 0.12 0.14 0.18 rg 148.3 695.9 Td (Queue\)) Tj ET
+BT /F1 7.2 Tf 0.12 0.14 0.18 rg 250.5 715.5 Td (Qventus flags missing) Tj ET
+BT /F1 7.2 Tf 0.12 0.14 0.18 rg 250.5 705.7 Td (pre-op clearances before) Tj ET
+BT /F1 7.2 Tf 0.12 0.14 0.18 rg 250.5 695.9 Td (surgery; Eka Care manages) Tj ET
+BT /F1 7.2 Tf 0.12 0.14 0.18 rg 250.5 686.1 Td (Indian OPD token queues) Tj ET
+BT /F1 7.2 Tf 0.12 0.14 0.18 rg 250.5 676.3 Td (and ABHA ID linkage.) Tj ET
+BT /F1 7.2 Tf 0.12 0.14 0.18 rg 352.8 715.5 Td (Eka Care lacks) Tj ET
+BT /F1 7.2 Tf 0.12 0.14 0.18 rg 352.8 705.7 Td (multi-document) Tj ET
+BT /F1 7.2 Tf 0.12 0.14 0.18 rg 352.8 695.9 Td (contradiction) Tj ET
+BT /F1 7.2 Tf 0.12 0.14 0.18 rg 352.8 686.1 Td (reconciliation; Qventus is) Tj ET
+BT /F1 7.2 Tf 0.12 0.14 0.18 rg 352.8 676.3 Td (built for US) Tj ET
+BT /F1 7.2 Tf 0.12 0.14 0.18 rg 352.8 666.5 Td (inpatient/perioperative) Tj ET
+BT /F1 7.2 Tf 0.12 0.14 0.18 rg 352.8 656.7 Td (suites.) Tj ET
+BT /F1 7.2 Tf 0.12 0.14 0.18 rg 455.0 715.5 Td (Combines Eka Care's Indian) Tj ET
+BT /F1 7.2 Tf 0.12 0.14 0.18 rg 455.0 705.7 Td (OPD token/walk-in queue) Tj ET
+BT /F1 7.2 Tf 0.12 0.14 0.18 rg 455.0 695.9 Td (and ABDM integration with) Tj ET
+BT /F1 7.2 Tf 0.12 0.14 0.18 rg 455.0 686.1 Td (Qventus-style pre-visit) Tj ET
+BT /F1 7.2 Tf 0.12 0.14 0.18 rg 455.0 676.3 Td (readiness gating and) Tj ET
+BT /F1 7.2 Tf 0.12 0.14 0.18 rg 455.0 666.5 Td (Sarvam Indic voice) Tj ET
+BT /F1 7.2 Tf 0.12 0.14 0.18 rg 455.0 656.7 Td (outreach.) Tj ET
+0.78 0.81 0.86 RG 0.5 w
+42.0 578.1 511.3 75.6 re S
+BT /F2 7.2 Tf 0.12 0.14 0.18 rg 46.0 643.9 Td (Navya Care & Karkinos) Tj ET
+BT /F2 7.2 Tf 0.12 0.14 0.18 rg 46.0 634.1 Td (Healthcare) Tj ET
+BT /F1 7.2 Tf 0.12 0.14 0.18 rg 148.3 643.9 Td (Indian Oncology Ecosystem) Tj ET
+BT /F1 7.2 Tf 0.12 0.14 0.18 rg 250.5 643.9 Td (Navya provides NCG/TMC) Tj ET
+BT /F1 7.2 Tf 0.12 0.14 0.18 rg 250.5 634.1 Td (expert treatment opinions;) Tj ET
+BT /F1 7.2 Tf 0.12 0.14 0.18 rg 250.5 624.3 Td (Karkinos provides) Tj ET
+BT /F1 7.2 Tf 0.12 0.14 0.18 rg 250.5 614.5 Td (KareMitra navigators and a) Tj ET
+BT /F1 7.2 Tf 0.12 0.14 0.18 rg 250.5 604.7 Td (Command Centre.) Tj ET
+BT /F1 7.2 Tf 0.12 0.14 0.18 rg 352.8 643.9 Td (Rely heavily on manual) Tj ET
+BT /F1 7.2 Tf 0.12 0.14 0.18 rg 352.8 634.1 Td (human chart abstraction to) Tj ET
+BT /F1 7.2 Tf 0.12 0.14 0.18 rg 352.8 624.3 Td (assemble unstructured) Tj ET
+BT /F1 7.2 Tf 0.12 0.14 0.18 rg 352.8 614.5 Td (paper/WhatsApp records) Tj ET
+BT /F1 7.2 Tf 0.12 0.14 0.18 rg 352.8 604.7 Td (before tumor-board review.) Tj ET
+BT /F1 7.2 Tf 0.12 0.14 0.18 rg 455.0 643.9 Td (Serves as the upstream) Tj ET
+BT /F1 7.2 Tf 0.12 0.14 0.18 rg 455.0 634.1 Td (automated Record-Readiness) Tj ET
+BT /F1 7.2 Tf 0.12 0.14 0.18 rg 455.0 624.3 Td (& Provenance Engine that) Tj ET
+BT /F1 7.2 Tf 0.12 0.14 0.18 rg 455.0 614.5 Td (feeds clean, verified) Tj ET
+BT /F1 7.2 Tf 0.12 0.14 0.18 rg 455.0 604.7 Td (packets into NCG tumor) Tj ET
+BT /F1 7.2 Tf 0.12 0.14 0.18 rg 455.0 594.9 Td (boards and navigation) Tj ET
+BT /F1 7.2 Tf 0.12 0.14 0.18 rg 455.0 585.1 Td (workflows.) Tj ET
+BT /F2 10.6 Tf 0.14 0.26 0.48 rg 42.0 557.1 Td (2.2 Multi-Track Clinical Domain Research \(Cancer, Diabetes & Maternal Health\)) Tj ET
+BT /F1 9.0 Tf 0.12 0.13 0.16 rg 42.0 540.9 Td (Use Case 02 explicitly requires supporting long-term care settings such as cancer, diabetes, and maternal health,) Tj ET
+BT /F1 9.0 Tf 0.12 0.13 0.16 rg 42.0 528.4 Td (where every consultation builds upon previous decisions:) Tj ET
+BT /F1 8.9 Tf 0.12 0.13 0.16 rg 52.0 515.9 Td (1. Cancer Care \(NCG-KCDO Oncology EMR Initiative\): Requires tracking multi-modality episodes \(histopathology/IHC) Tj ET
+BT /F1 8.9 Tf 0.12 0.13 0.16 rg 52.0 503.7 Td (receptor status, surgical operative notes, chemotherapy cycle administration logs, radiation completion) Tj ET
+BT /F1 8.9 Tf 0.12 0.13 0.16 rg 52.0 491.5 Td (summaries, serial tumor markers/CBCs, and insurance pre-authorizations like AB-PMJAY\) across 380+ NCG hospitals.) Tj ET
+BT /F1 8.9 Tf 0.12 0.13 0.16 rg 52.0 479.3 Td (2. Maternal & Child Health \(FOGSI-ICOG Good Clinical Practice Recommendations\): Requires milestone-driven) Tj ET
+BT /F1 8.9 Tf 0.12 0.13 0.16 rg 52.0 467.1 Td (longitudinal tracking across trimesters: Last Menstrual Period \(LMP\) & Estimated Due Date \(EDD\), serial) Tj ET
+BT /F1 8.9 Tf 0.12 0.13 0.16 rg 52.0 454.9 Td (Antenatal Care \(ANC\) visit blood pressure and weight logs, serial Hemoglobin and Oral Glucose Tolerance Test) Tj ET
+BT /F1 8.9 Tf 0.12 0.13 0.16 rg 52.0 442.7 Td (\(OGTT\) results, TIFFA/anomaly ultrasound scans, Tetanus/Tdap immunization dates, and post-partum follow-up) Tj ET
+BT /F1 8.9 Tf 0.12 0.13 0.16 rg 52.0 430.5 Td (checklists.) Tj ET
+BT /F1 8.9 Tf 0.12 0.13 0.16 rg 52.0 418.3 Td (3. Diabetes Care \(RSSDI Clinical Practice Recommendations.pdf\)\): Requires decade-spanning longitudinal) Tj ET
+BT /F1 8.9 Tf 0.12 0.13 0.16 rg 52.0 406.1 Td (flowsheets of Fasting/Post-Prandial Blood Glucose \(FBG/PPBG\), serial HbA1c trajectories, renal function panels) Tj ET
+BT /F1 8.9 Tf 0.12 0.13 0.16 rg 52.0 393.9 Td (\(Serum Creatinine, eGFR, Urine Albumin-to-Creatinine Ratio / UACR\), lipid profiles, annual dilated) Tj ET
+BT /F1 8.9 Tf 0.12 0.13 0.16 rg 52.0 381.7 Td (retinal/fundus exam dates, peripheral neuropathy foot screening records, and oral hypoglycemic / insulin dose) Tj ET
+BT /F1 8.9 Tf 0.12 0.13 0.16 rg 52.0 369.5 Td (adjustments.) Tj ET
+0.75 0.78 0.82 rg
+42.0 348.3 511.3 0.75 re f
+0.93 0.95 0.99 rg
+38.0 307.3 519.3 24.0 re f
+BT /F2 12.2 Tf 0.10 0.22 0.44 rg 42.0 325.3 Td (3. Root-Cause Summary of Current Application Failures) Tj ET
+0.14 0.24 0.42 rg
+42.0 290.5 511.3 16.8 re f
+0.78 0.81 0.86 RG 0.5 w
+42.0 290.5 511.3 16.8 re S
+BT /F2 7.8 Tf 1.00 1.00 1.00 rg 46.0 297.5 Td (Module / Subsystem) Tj ET
+BT /F2 7.8 Tf 1.00 1.00 1.00 rg 173.8 297.5 Td (Exact File & Line in Repo) Tj ET
+BT /F2 7.8 Tf 1.00 1.00 1.00 rg 301.6 297.5 Td (Current Failure Mode) Tj ET
+BT /F2 7.8 Tf 1.00 1.00 1.00 rg 429.5 297.5 Td (Impacted Requirement) Tj ET
+0.96 0.97 0.99 rg
+42.0 189.5 511.3 105.0 re f
+0.78 0.81 0.86 RG 0.5 w
+42.0 189.5 511.3 105.0 re S
+BT /F2 7.8 Tf 0.12 0.14 0.18 rg 46.0 284.7 Td (Serial Lab & Medication) Tj ET
+BT /F2 7.8 Tf 0.12 0.14 0.18 rg 46.0 274.9 Td (Conflict Comparator) Tj ET
+BT /F1 7.8 Tf 0.12 0.14 0.18 rg 173.8 284.7 Td (packages/domain/src/vocab/fact) Tj ET
+BT /F1 7.8 Tf 0.12 0.14 0.18 rg 173.8 274.9 Td (-types.ts:103-147 & packages/d) Tj ET
+BT /F1 7.8 Tf 0.12 0.14 0.18 rg 173.8 265.1 Td (omain/src/conflict/comparators) Tj ET
+BT /F1 7.8 Tf 0.12 0.14 0.18 rg 173.8 255.3 Td (.ts:144-169) Tj ET
+BT /F1 7.8 Tf 0.12 0.14 0.18 rg 301.6 284.7 Td (slotQualifier groups all) Tj ET
+BT /F1 7.8 Tf 0.12 0.14 0.18 rg 301.6 274.9 Td (lab_result.as_written by) Tj ET
+BT /F1 7.8 Tf 0.12 0.14 0.18 rg 301.6 265.1 Td (lab:<name> and all) Tj ET
+BT /F1 7.8 Tf 0.12 0.14 0.18 rg 301.6 255.3 Td (medication.recorded by) Tj ET
+BT /F1 7.8 Tf 0.12 0.14 0.18 rg 301.6 245.5 Td (drug:<name> regardless of) Tj ET
+BT /F1 7.8 Tf 0.12 0.14 0.18 rg 301.6 235.7 Td (observed_on date. Two CBC) Tj ET
+BT /F1 7.8 Tf 0.12 0.14 0.18 rg 301.6 225.9 Td (reports from June and July) Tj ET
+BT /F1 7.8 Tf 0.12 0.14 0.18 rg 301.6 216.1 Td (with different Hemoglobin) Tj ET
+BT /F1 7.8 Tf 0.12 0.14 0.18 rg 301.6 206.3 Td (values are flagged as a) Tj ET
+BT /F1 7.8 Tf 0.12 0.14 0.18 rg 301.6 196.5 Td (contradiction \(disagree\).) Tj ET
+BT /F1 7.8 Tf 0.12 0.14 0.18 rg 429.5 284.7 Td (UC 02: Longitudinal lab trends) Tj ET
+BT /F1 7.8 Tf 0.12 0.14 0.18 rg 429.5 274.9 Td (& medication history) Tj ET
+0.78 0.81 0.86 RG 0.5 w
+42.0 117.9 511.3 75.6 re S
+BT /F2 7.8 Tf 0.12 0.14 0.18 rg 46.0 183.7 Td (Missing "Changes Since Last) Tj ET
+BT /F2 7.8 Tf 0.12 0.14 0.18 rg 46.0 173.9 Td (Visit" Delta Engine) Tj ET
+BT /F1 7.8 Tf 0.12 0.14 0.18 rg 173.8 183.7 Td (apps/web/src/app/\(app\)/patient) Tj ET
+BT /F1 7.8 Tf 0.12 0.14 0.18 rg 173.8 173.9 Td (s/[id]/evidence/page.tsx:50-56) Tj ET
+BT /F1 7.8 Tf 0.12 0.14 0.18 rg 173.8 164.1 Td (& packages/db/src/services/pat) Tj ET
+BT /F1 7.8 Tf 0.12 0.14 0.18 rg 173.8 154.3 Td (ients.ts:95-153) Tj ET
+BT /F1 7.8 Tf 0.12 0.14 0.18 rg 301.6 183.7 Td (getTimeline returns a flat) Tj ET
+BT /F1 7.8 Tf 0.12 0.14 0.18 rg 301.6 173.9 Td (list grouped by YYYY-MM. No) Tj ET
+BT /F1 7.8 Tf 0.12 0.14 0.18 rg 301.6 164.1 Td (concept of) Tj ET
+BT /F1 7.8 Tf 0.12 0.14 0.18 rg 301.6 154.3 Td (last_consultation_date or) Tj ET
+BT /F1 7.8 Tf 0.12 0.14 0.18 rg 301.6 144.5 Td (comparison against the) Tj ET
+BT /F1 7.8 Tf 0.12 0.14 0.18 rg 301.6 134.7 Td (previous approved) Tj ET
+BT /F1 7.8 Tf 0.12 0.14 0.18 rg 301.6 124.9 Td (consultation_packet exists.) Tj ET
+BT /F1 7.8 Tf 0.12 0.14 0.18 rg 429.5 183.7 Td (UC 02: Quickly understand what) Tj ET
+BT /F1 7.8 Tf 0.12 0.14 0.18 rg 429.5 173.9 Td (changed since last visit) Tj ET
+0.75 0.78 0.82 rg
+42.0 36.0 511.3 0.6 re f
+BT /F1 8 Tf 0.35 0.38 0.44 rg 42.0 24.0 Td (OncoBrief V4 Enhancement Plan -- Use Cases 02, 04, 05 & Design Principles) Tj ET
+BT /F2 8 Tf 0.35 0.38 0.44 rg 498.3 24.0 Td (Page 4 of 18) Tj ET
+endstream
+endobj
+13 0 obj
+<< /Type /Page /Parent 5 0 R /MediaBox [0 0 595.28 841.89] /Resources << /Font << /F1 1 0 R /F2 2 0 R /F3 3 0 R /F4 4 0 R >> >> /Contents 12 0 R >>
+endobj
+14 0 obj
+<< /Length 11310 >>
+stream
+0.15 0.22 0.36 rg
+42.0 805.9 511.3 1.2 re f
+BT /F2 8 Tf 0.25 0.30 0.40 rg 42.0 811.9 Td (ONCOBRIEF V4 -- MASTER ENHANCEMENT PLAN & ARCHITECTURAL BLUEPRINT) Tj ET
+0.96 0.97 0.99 rg
+42.0 711.5 511.3 85.4 re f
+0.78 0.81 0.86 RG 0.5 w
+42.0 711.5 511.3 85.4 re S
+BT /F2 7.8 Tf 0.12 0.14 0.18 rg 46.0 787.1 Td (Ignored Pending Investigation) Tj ET
+BT /F2 7.8 Tf 0.12 0.14 0.18 rg 46.0 777.3 Td (& Action Instructions) Tj ET
+BT /F1 7.8 Tf 0.12 0.14 0.18 rg 173.8 787.1 Td (packages/domain/src/vocab/fact) Tj ET
+BT /F1 7.8 Tf 0.12 0.14 0.18 rg 173.8 777.3 Td (-types.ts:13-31 & packages/ada) Tj ET
+BT /F1 7.8 Tf 0.12 0.14 0.18 rg 173.8 767.5 Td (pters/src/rule-based-extractor) Tj ET
+BT /F1 7.8 Tf 0.12 0.14 0.18 rg 173.8 757.7 Td (.ts:59-250) Tj ET
+BT /F1 7.8 Tf 0.12 0.14 0.18 rg 301.6 787.1 Td (FACT_TYPES has no entry for) Tj ET
+BT /F1 7.8 Tf 0.12 0.14 0.18 rg 301.6 777.3 Td (pending investigations or) Tj ET
+BT /F1 7.8 Tf 0.12 0.14 0.18 rg 301.6 767.5 Td (explicit clinical-admin) Tj ET
+BT /F1 7.8 Tf 0.12 0.14 0.18 rg 301.6 757.7 Td (instructions \(e.g., "Bring) Tj ET
+BT /F1 7.8 Tf 0.12 0.14 0.18 rg 301.6 747.9 Td (prior imaging and) Tj ET
+BT /F1 7.8 Tf 0.12 0.14 0.18 rg 301.6 738.1 Td (histopathology slides",) Tj ET
+BT /F1 7.8 Tf 0.12 0.14 0.18 rg 301.6 728.3 Td ("Awaiting IHC"\), so) Tj ET
+BT /F1 7.8 Tf 0.12 0.14 0.18 rg 301.6 718.5 Td (RuleBasedExtractor drops them.) Tj ET
+BT /F1 7.8 Tf 0.12 0.14 0.18 rg 429.5 787.1 Td (UC 02 & UC 04: Pending) Tj ET
+BT /F1 7.8 Tf 0.12 0.14 0.18 rg 429.5 777.3 Td (investigations & action queues) Tj ET
+0.78 0.81 0.86 RG 0.5 w
+42.0 600.7 511.3 114.8 re S
+BT /F2 7.8 Tf 0.12 0.14 0.18 rg 46.0 705.7 Td (Hardcoded Local Upload) Tj ET
+BT /F2 7.8 Tf 0.12 0.14 0.18 rg 46.0 695.9 Td (Adapters & Stubbed Image OCR) Tj ET
+BT /F1 7.8 Tf 0.12 0.14 0.18 rg 173.8 705.7 Td (apps/web/src/lib/actions.ts:31) Tj ET
+BT /F1 7.8 Tf 0.12 0.14 0.18 rg 173.8 695.9 Td (3-320 & packages/adapters/src/) Tj ET
+BT /F1 7.8 Tf 0.12 0.14 0.18 rg 173.8 686.1 Td (local-multimodal-ocr.ts:387-43) Tj ET
+BT /F1 7.8 Tf 0.12 0.14 0.18 rg 173.8 676.3 Td (6) Tj ET
+BT /F1 7.8 Tf 0.12 0.14 0.18 rg 301.6 705.7 Td (uploadDocumentAction hardcodes) Tj ET
+BT /F1 7.8 Tf 0.12 0.14 0.18 rg 301.6 695.9 Td (LocalMultimodalOcrAdapter +) Tj ET
+BT /F1 7.8 Tf 0.12 0.14 0.18 rg 301.6 686.1 Td (RuleBasedExtractor \(ignoring) Tj ET
+BT /F1 7.8 Tf 0.12 0.14 0.18 rg 301.6 676.3 Td (OCR_DRIVER\); extractImage only) Tj ET
+BT /F1 7.8 Tf 0.12 0.14 0.18 rg 301.6 666.5 Td (returns image dimensions and) Tj ET
+BT /F1 7.8 Tf 0.12 0.14 0.18 rg 301.6 656.7 Td (SHA-256 without OCRing text in) Tj ET
+BT /F1 7.8 Tf 0.12 0.14 0.18 rg 301.6 646.9 Td (photos; SarvamVisionOcrAdapter) Tj ET
+BT /F1 7.8 Tf 0.12 0.14 0.18 rg 301.6 637.1 Td (.splitPdfIntoBatches) Tj ET
+BT /F1 7.8 Tf 0.12 0.14 0.18 rg 301.6 627.3 Td (\(sarvam-vision-ocr.ts:98-118\)) Tj ET
+BT /F1 7.8 Tf 0.12 0.14 0.18 rg 301.6 617.5 Td (replaces >10-page PDFs with) Tj ET
+BT /F1 7.8 Tf 0.12 0.14 0.18 rg 301.6 607.7 Td (synthetic stub text.) Tj ET
+BT /F1 7.8 Tf 0.12 0.14 0.18 rg 429.5 705.7 Td (UC 02 & Design Principles:) Tj ET
+BT /F1 7.8 Tf 0.12 0.14 0.18 rg 429.5 695.9 Td (Multi-modal photo/scan OCR) Tj ET
+0.96 0.97 0.99 rg
+42.0 548.7 511.3 56.0 re f
+0.78 0.81 0.86 RG 0.5 w
+42.0 548.7 511.3 56.0 re S
+BT /F2 7.8 Tf 0.12 0.14 0.18 rg 46.0 594.9 Td (Fake EHR/ABDM Import & Link) Tj ET
+BT /F2 7.8 Tf 0.12 0.14 0.18 rg 46.0 585.1 Td (Tabs) Tj ET
+BT /F1 7.8 Tf 0.12 0.14 0.18 rg 173.8 594.9 Td (apps/web/src/components/Docume) Tj ET
+BT /F1 7.8 Tf 0.12 0.14 0.18 rg 173.8 585.1 Td (ntUploadForm.tsx:320-374) Tj ET
+BT /F1 7.8 Tf 0.12 0.14 0.18 rg 301.6 594.9 Td ("Import from EHR / ABDM") Tj ET
+BT /F1 7.8 Tf 0.12 0.14 0.18 rg 301.6 585.1 Td (buttons only call browser) Tj ET
+BT /F1 7.8 Tf 0.12 0.14 0.18 rg 301.6 575.3 Td (alert\(\), and "Link to) Tj ET
+BT /F1 7.8 Tf 0.12 0.14 0.18 rg 301.6 565.5 Td (Existing" search button has no) Tj ET
+BT /F1 7.8 Tf 0.12 0.14 0.18 rg 301.6 555.7 Td (handler.) Tj ET
+BT /F1 7.8 Tf 0.12 0.14 0.18 rg 429.5 594.9 Td (UC 02 & Workflow First) Tj ET
+BT /F1 7.8 Tf 0.12 0.14 0.18 rg 429.5 585.1 Td (Principle) Tj ET
+0.78 0.81 0.86 RG 0.5 w
+42.0 486.9 511.3 65.8 re S
+BT /F2 7.8 Tf 0.12 0.14 0.18 rg 46.0 542.9 Td (Hardcoded Oncology Labels in) Tj ET
+BT /F2 7.8 Tf 0.12 0.14 0.18 rg 46.0 533.1 Td (Timeline View) Tj ET
+BT /F1 7.8 Tf 0.12 0.14 0.18 rg 173.8 542.9 Td (apps/web/src/components/Timeli) Tj ET
+BT /F1 7.8 Tf 0.12 0.14 0.18 rg 173.8 533.1 Td (neNodeView.tsx:48,138) Tj ET
+BT /F1 7.8 Tf 0.12 0.14 0.18 rg 301.6 542.9 Td (Hardcodes 'Apollo Hospitals') Tj ET
+BT /F1 7.8 Tf 0.12 0.14 0.18 rg 301.6 533.1 Td (when issuingFacility is null) Tj ET
+BT /F1 7.8 Tf 0.12 0.14 0.18 rg 301.6 523.3 Td (and labels every imaging fact) Tj ET
+BT /F1 7.8 Tf 0.12 0.14 0.18 rg 301.6 513.5 Td ('CT Scan \(Thorax\)'; cannot) Tj ET
+BT /F1 7.8 Tf 0.12 0.14 0.18 rg 301.6 503.7 Td (represent Diabetes or Maternal) Tj ET
+BT /F1 7.8 Tf 0.12 0.14 0.18 rg 301.6 493.9 Td (Health modalities.) Tj ET
+BT /F1 7.8 Tf 0.12 0.14 0.18 rg 429.5 542.9 Td (UC 02: Cancer, Diabetes &) Tj ET
+BT /F1 7.8 Tf 0.12 0.14 0.18 rg 429.5 533.1 Td (Maternal Health generality) Tj ET
+0.96 0.97 0.99 rg
+42.0 405.5 511.3 85.4 re f
+0.78 0.81 0.86 RG 0.5 w
+42.0 405.5 511.3 85.4 re S
+BT /F2 7.8 Tf 0.12 0.14 0.18 rg 46.0 481.1 Td (Zero OPD Scheduling, Slot,) Tj ET
+BT /F2 7.8 Tf 0.12 0.14 0.18 rg 46.0 471.3 Td (Arrival, or Waitlist Engine) Tj ET
+BT /F1 7.8 Tf 0.12 0.14 0.18 rg 173.8 481.1 Td (packages/db/migrations/0002_sc) Tj ET
+BT /F1 7.8 Tf 0.12 0.14 0.18 rg 173.8 471.3 Td (hema.sql & apps/web/src/app/\(a) Tj ET
+BT /F1 7.8 Tf 0.12 0.14 0.18 rg 173.8 461.5 Td (pp\)/workspace/page.tsx:31-90) Tj ET
+BT /F1 7.8 Tf 0.12 0.14 0.18 rg 301.6 481.1 Td (No tables for) Tj ET
+BT /F1 7.8 Tf 0.12 0.14 0.18 rg 301.6 471.3 Td (appointment_slot,) Tj ET
+BT /F1 7.8 Tf 0.12 0.14 0.18 rg 301.6 461.5 Td (opd_queue_entry, or) Tj ET
+BT /F1 7.8 Tf 0.12 0.14 0.18 rg 301.6 451.7 Td (waitlist_entry. Workspace) Tj ET
+BT /F1 7.8 Tf 0.12 0.14 0.18 rg 301.6 441.9 Td (table does not even display) Tj ET
+BT /F1 7.8 Tf 0.12 0.14 0.18 rg 301.6 432.1 Td (appointmentDate, arrival) Tj ET
+BT /F1 7.8 Tf 0.12 0.14 0.18 rg 301.6 422.3 Td (status, walk-ins, or slot) Tj ET
+BT /F1 7.8 Tf 0.12 0.14 0.18 rg 301.6 412.5 Td (backfill options.) Tj ET
+BT /F1 7.8 Tf 0.12 0.14 0.18 rg 429.5 481.1 Td (UC 04: Clinic Operations &) Tj ET
+BT /F1 7.8 Tf 0.12 0.14 0.18 rg 429.5 471.3 Td (Patient Flow) Tj ET
+0.78 0.81 0.86 RG 0.5 w
+42.0 353.5 511.3 56.0 re S
+BT /F2 7.8 Tf 0.12 0.14 0.18 rg 46.0 399.7 Td (Unassigned Tasks & Dead Server) Tj ET
+BT /F2 7.8 Tf 0.12 0.14 0.18 rg 46.0 389.9 Td (Actions) Tj ET
+BT /F1 7.8 Tf 0.12 0.14 0.18 rg 173.8 399.7 Td (apps/web/src/app/\(app\)/patient) Tj ET
+BT /F1 7.8 Tf 0.12 0.14 0.18 rg 173.8 389.9 Td (s/[id]/tasks/page.tsx:73-114 &) Tj ET
+BT /F1 7.8 Tf 0.12 0.14 0.18 rg 173.8 380.1 Td (apps/web/src/lib/actions.ts:18) Tj ET
+BT /F1 7.8 Tf 0.12 0.14 0.18 rg 173.8 370.3 Td (6,223,330) Tj ET
+BT /F1 7.8 Tf 0.12 0.14 0.18 rg 301.6 399.7 Td (assignTaskAction,) Tj ET
+BT /F1 7.8 Tf 0.12 0.14 0.18 rg 301.6 389.9 Td (waiveGapAction, and) Tj ET
+BT /F1 7.8 Tf 0.12 0.14 0.18 rg 301.6 380.1 Td (withdrawPacketAction have no) Tj ET
+BT /F1 7.8 Tf 0.12 0.14 0.18 rg 301.6 370.3 Td (UI triggers; all tasks created) Tj ET
+BT /F1 7.8 Tf 0.12 0.14 0.18 rg 301.6 360.5 Td (via UI render "unassigned".) Tj ET
+BT /F1 7.8 Tf 0.12 0.14 0.18 rg 429.5 399.7 Td (UC 04 & UC 02: Care-team) Tj ET
+BT /F1 7.8 Tf 0.12 0.14 0.18 rg 429.5 389.9 Td (coordination) Tj ET
+0.96 0.97 0.99 rg
+42.0 242.7 511.3 114.8 re f
+0.78 0.81 0.86 RG 0.5 w
+42.0 242.7 511.3 114.8 re S
+BT /F2 7.8 Tf 0.12 0.14 0.18 rg 46.0 347.7 Td (Assistant Blocks All) Tj ET
+BT /F2 7.8 Tf 0.12 0.14 0.18 rg 46.0 337.9 Td (Guideline/SOP Queries &) Tj ET
+BT /F2 7.8 Tf 0.12 0.14 0.18 rg 46.0 328.1 Td (Content Drafting) Tj ET
+BT /F1 7.8 Tf 0.12 0.14 0.18 rg 173.8 347.7 Td (apps/web/src/lib/assistant/cla) Tj ET
+BT /F1 7.8 Tf 0.12 0.14 0.18 rg 173.8 337.9 Td (ssify.ts:30-54, tools.ts:301 &) Tj ET
+BT /F1 7.8 Tf 0.12 0.14 0.18 rg 173.8 328.1 Td (packages/adapters/src/bedrock-) Tj ET
+BT /F1 7.8 Tf 0.12 0.14 0.18 rg 173.8 318.3 Td (llm.ts:308-311) Tj ET
+BT /F1 7.8 Tf 0.12 0.14 0.18 rg 301.6 347.7 Td (classify.ts blocks all) Tj ET
+BT /F1 7.8 Tf 0.12 0.14 0.18 rg 301.6 337.9 Td (medical/guideline questions;) Tj ET
+BT /F1 7.8 Tf 0.12 0.14 0.18 rg 301.6 328.1 Td (no institutional SOP/guideline) Tj ET
+BT /F1 7.8 Tf 0.12 0.14 0.18 rg 301.6 318.3 Td (table exists;) Tj ET
+BT /F1 7.8 Tf 0.12 0.14 0.18 rg 301.6 308.5 Td (PACKET_SYSTEM_PROMPT forbids) Tj ET
+BT /F1 7.8 Tf 0.12 0.14 0.18 rg 301.6 298.7 Td (prose drafting \(referral) Tj ET
+BT /F1 7.8 Tf 0.12 0.14 0.18 rg 301.6 288.9 Td (letters, slide outlines, case) Tj ET
+BT /F1 7.8 Tf 0.12 0.14 0.18 rg 301.6 279.1 Td (reports, handouts\);) Tj ET
+BT /F1 7.8 Tf 0.12 0.14 0.18 rg 301.6 269.3 Td (getCaseContext \(tools.ts:301\)) Tj ET
+BT /F1 7.8 Tf 0.12 0.14 0.18 rg 301.6 259.5 Td (computes openTasksCount from) Tj ET
+BT /F1 7.8 Tf 0.12 0.14 0.18 rg 301.6 249.7 Td (timeline instead of listTasks.) Tj ET
+BT /F1 7.8 Tf 0.12 0.14 0.18 rg 429.5 347.7 Td (UC 05: Doctor Productivity &) Tj ET
+BT /F1 7.8 Tf 0.12 0.14 0.18 rg 429.5 337.9 Td (Knowledge Assistant) Tj ET
+0.78 0.81 0.86 RG 0.5 w
+42.0 151.5 511.3 95.2 re S
+BT /F2 7.8 Tf 0.12 0.14 0.18 rg 46.0 236.9 Td (High Click Burden, Missing) Tj ET
+BT /F2 7.8 Tf 0.12 0.14 0.18 rg 46.0 227.1 Td (Caregiver Model & A11y/Mobile) Tj ET
+BT /F2 7.8 Tf 0.12 0.14 0.18 rg 46.0 217.3 Td (Bugs) Tj ET
+BT /F1 7.8 Tf 0.12 0.14 0.18 rg 173.8 236.9 Td (apps/web/src/components/Eviden) Tj ET
+BT /F1 7.8 Tf 0.12 0.14 0.18 rg 173.8 227.1 Td (ceRow.tsx,) Tj ET
+BT /F1 7.8 Tf 0.12 0.14 0.18 rg 173.8 217.3 Td (continuity/page.tsx,) Tj ET
+BT /F1 7.8 Tf 0.12 0.14 0.18 rg 173.8 207.5 Td (audit/page.tsx) Tj ET
+BT /F1 7.8 Tf 0.12 0.14 0.18 rg 301.6 236.9 Td (No batch verification UI \(45+) Tj ET
+BT /F1 7.8 Tf 0.12 0.14 0.18 rg 301.6 227.1 Td (clicks/patient\); no) Tj ET
+BT /F1 7.8 Tf 0.12 0.14 0.18 rg 301.6 217.3 Td (caregiver_contact or TTS audio) Tj ET
+BT /F1 7.8 Tf 0.12 0.14 0.18 rg 301.6 207.5 Td (preview on /continuity;) Tj ET
+BT /F1 7.8 Tf 0.12 0.14 0.18 rg 301.6 197.7 Td (state-extracted \(#9a6b12\) and) Tj ET
+BT /F1 7.8 Tf 0.12 0.14 0.18 rg 301.6 187.9 Td (rule-strong \(#b9b0a0\) fail) Tj ET
+BT /F1 7.8 Tf 0.12 0.14 0.18 rg 301.6 178.1 Td (WCAG AA contrast; horizontal) Tj ET
+BT /F1 7.8 Tf 0.12 0.14 0.18 rg 301.6 168.3 Td (overflow at 375px mobile) Tj ET
+BT /F1 7.8 Tf 0.12 0.14 0.18 rg 301.6 158.5 Td (width.) Tj ET
+BT /F1 7.8 Tf 0.12 0.14 0.18 rg 429.5 236.9 Td (Design Principles: Easy for) Tj ET
+BT /F1 7.8 Tf 0.12 0.14 0.18 rg 429.5 227.1 Td (doctors/patients, Multilingual) Tj ET
+BT /F1 7.8 Tf 0.12 0.14 0.18 rg 429.5 217.3 Td (& Caregiver-friendly) Tj ET
+0.75 0.78 0.82 rg
+42.0 133.5 511.3 0.75 re f
+0.93 0.95 0.99 rg
+38.0 92.5 519.3 24.0 re f
+BT /F2 12.2 Tf 0.10 0.22 0.44 rg 42.0 110.5 Td (4. Functional Specifications & User Stories \(Given-When-Then\)) Tj ET
+BT /F2 10.6 Tf 0.14 0.26 0.48 rg 42.0 78.5 Td (Epic 1: Longitudinal Patient Journey, Interval Deltas & Multi-Track Readiness \(Use Case 02\)) Tj ET
+0.75 0.78 0.82 rg
+42.0 36.0 511.3 0.6 re f
+BT /F1 8 Tf 0.35 0.38 0.44 rg 42.0 24.0 Td (OncoBrief V4 Enhancement Plan -- Use Cases 02, 04, 05 & Design Principles) Tj ET
+BT /F2 8 Tf 0.35 0.38 0.44 rg 498.3 24.0 Td (Page 5 of 18) Tj ET
+endstream
+endobj
+15 0 obj
+<< /Type /Page /Parent 5 0 R /MediaBox [0 0 595.28 841.89] /Resources << /Font << /F1 1 0 R /F2 2 0 R /F3 3 0 R /F4 4 0 R >> >> /Contents 14 0 R >>
+endobj
+16 0 obj
+<< /Length 8097 >>
+stream
+0.15 0.22 0.36 rg
+42.0 805.9 511.3 1.2 re f
+BT /F2 8 Tf 0.25 0.30 0.40 rg 42.0 811.9 Td (ONCOBRIEF V4 -- MASTER ENHANCEMENT PLAN & ARCHITECTURAL BLUEPRINT) Tj ET
+BT /F2 9.6 Tf 0.18 0.22 0.30 rg 42.0 789.9 Td (Story 1.1: "Changes Since Last Consultation" Interval Delta Brief) Tj ET
+BT /F1 8.9 Tf 0.12 0.13 0.16 rg 52.0 775.1 Td (* User Story: As a consulting clinician preparing for a follow-up visit, I want to see a dedicated "Changes) Tj ET
+BT /F1 8.9 Tf 0.12 0.13 0.16 rg 52.0 762.9 Td (Since Last Consultation" banner and filter on the Evidence Journey page so that I can immediately identify new) Tj ET
+BT /F1 8.9 Tf 0.12 0.13 0.16 rg 52.0 750.7 Td (documents, new lab/imaging results, reopened conflicts, and pending tasks since the patient's last encounter) Tj ET
+BT /F1 8.9 Tf 0.12 0.13 0.16 rg 52.0 738.5 Td (without re-reading the entire historical chart.) Tj ET
+BT /F1 8.9 Tf 0.12 0.13 0.16 rg 52.0 726.3 Td (* Acceptance Criteria \(Gherkin\):) Tj ET
+BT /F1 8.9 Tf 0.12 0.13 0.16 rg 60.0 714.1 Td (* Scenario 1: Patient has a prior consultation date or approved packet) Tj ET
+BT /F1 8.9 Tf 0.12 0.13 0.16 rg 68.0 701.9 Td (* Given a patient record has last_consultation_date = '2025-07-05' \(or a prior approved consultation_packet) Tj ET
+BT /F1 8.9 Tf 0.12 0.13 0.16 rg 68.0 689.7 Td (approved at ledger_seq = 18\)) Tj ET
+BT /F1 8.9 Tf 0.12 0.13 0.16 rg 68.0 677.5 Td (* When the clinician opens /patients/[id]/evidence) Tj ET
+BT /F1 8.9 Tf 0.12 0.13 0.16 rg 68.0 665.3 Td (* Then the top of the page renders a "Changes Since Last Visit \(05 Jul 2025\)" summary card displaying exact) Tj ET
+BT /F1 8.9 Tf 0.12 0.13 0.16 rg 68.0 653.1 Td (counts and 1-click filter pills for: New Documents \(+3\), New / Updated Facts \(+8\), New / Reopened Conflicts) Tj ET
+BT /F1 8.9 Tf 0.12 0.13 0.16 rg 68.0 640.9 Td (\(+1\), and Pending Investigations / Tasks \(+2\)) Tj ET
+BT /F1 8.9 Tf 0.12 0.13 0.16 rg 68.0 628.7 Td (* And clicking the Since Last Visit filter chip filters both the Timeline View and Ledger Details View to) Tj ET
+BT /F1 8.9 Tf 0.12 0.13 0.16 rg 68.0 616.5 Td (display only facts with observed_on > '2025-07-05' or ledger_seq > 18, badged with a high-contrast NEW SINCE) Tj ET
+BT /F1 8.9 Tf 0.12 0.13 0.16 rg 68.0 604.3 Td (LAST VISIT indicator.) Tj ET
+BT /F2 9.6 Tf 0.18 0.22 0.30 rg 42.0 582.1 Td (Story 1.2: Longitudinal Serial Lab Flowsheets & Medication Regimen History \(Fixing False Conflicts\)) Tj ET
+BT /F1 8.9 Tf 0.12 0.13 0.16 rg 52.0 567.3 Td (* User Story: As a clinician reviewing a chronic care patient \(oncology, diabetes, or maternal health\), I want) Tj ET
+BT /F1 8.9 Tf 0.12 0.13 0.16 rg 52.0 555.1 Td (serial laboratory results \(e.g., Hemoglobin, HbA1c, Serum Creatinine, Platelets\) and dated medication records) Tj ET
+BT /F1 8.9 Tf 0.12 0.13 0.16 rg 52.0 542.9 Td (across different dates to be grouped into a Longitudinal Flowsheet & Regimen Timeline rather than flagged as) Tj ET
+BT /F1 8.9 Tf 0.12 0.13 0.16 rg 52.0 530.7 Td (contradictions, while still flagging genuine same-date cross-document disagreements as conflicts.) Tj ET
+BT /F1 8.9 Tf 0.12 0.13 0.16 rg 52.0 518.5 Td (* Acceptance Criteria \(Gherkin\):) Tj ET
+BT /F1 8.9 Tf 0.12 0.13 0.16 rg 60.0 506.3 Td (* Scenario 1: Serial labs on different dates form a trend series, not a conflict) Tj ET
+BT /F1 8.9 Tf 0.12 0.13 0.16 rg 68.0 494.1 Td (* Given Document A \(2025-06-02\) records Hemoglobin: 11.4 g/dL and Document B \(2025-07-26\) records Hemoglobin:) Tj ET
+BT /F1 8.9 Tf 0.12 0.13 0.16 rg 68.0 481.9 Td (10.2 g/dL) Tj ET
+BT /F1 8.9 Tf 0.12 0.13 0.16 rg 68.0 469.7 Td (* When detectAndRecordConflicts runs during ingestion) Tj ET
+BT /F1 8.9 Tf 0.12 0.13 0.16 rg 68.0 457.5 Td (* Then slotQualifier scopes lab and medication comparison by date \(lab:hemoglobin@2025-06-02 vs) Tj ET
+BT /F1 8.9 Tf 0.12 0.13 0.16 rg 68.0 445.3 Td (lab:hemoglobin@2025-07-26\) or COMPARATORS['lab_result.as_written'] returns 'agree' \(non-conflicting series\)) Tj ET
+BT /F1 8.9 Tf 0.12 0.13 0.16 rg 68.0 433.1 Td (when observedOn dates differ by > 1 day) Tj ET
+BT /F1 8.9 Tf 0.12 0.13 0.16 rg 68.0 420.9 Td (* And the Evidence Journey page renders a "Longitudinal Lab & Vitals Flowsheet" table showing Test Name |) Tj ET
+BT /F1 8.9 Tf 0.12 0.13 0.16 rg 68.0 408.7 Td (Prior Value \(Date\) | Latest Value \(Date\) | Delta \(As Written\) | Source Links with zero clinical) Tj ET
+BT /F1 8.9 Tf 0.12 0.13 0.16 rg 68.0 396.5 Td (interpretation.) Tj ET
+BT /F1 8.9 Tf 0.12 0.13 0.16 rg 60.0 384.3 Td (* Scenario 2: Same-date cross-document lab disagreement triggers a conflict) Tj ET
+BT /F1 8.9 Tf 0.12 0.13 0.16 rg 68.0 372.1 Td (* Given two documents both dated 2025-07-26 record Hemoglobin: 10.2 g/dL and Hemoglobin: 13.8 g/dL) Tj ET
+BT /F1 8.9 Tf 0.12 0.13 0.16 rg 68.0 359.9 Td (* When detectAndRecordConflicts runs) Tj ET
+BT /F1 8.9 Tf 0.12 0.13 0.16 rg 68.0 347.7 Td (* Then both facts are marked conflicting and surfaced in the Reconciliation Room.) Tj ET
+BT /F2 9.6 Tf 0.18 0.22 0.30 rg 42.0 325.5 Td (Story 1.3: Automated Extraction of Pending Investigations & Documented Instructions) Tj ET
+BT /F1 8.9 Tf 0.12 0.13 0.16 rg 52.0 310.7 Td (* User Story: As a care coordinator, I want OncoBrief to extract explicitly documented pending investigations) Tj ET
+BT /F1 8.9 Tf 0.12 0.13 0.16 rg 52.0 298.5 Td (\(e.g., "Awaiting IHC report", "Pending PET-CT", "OGTT scheduled"\) and patient instructions \(e.g., "Bring prior) Tj ET
+BT /F1 8.9 Tf 0.12 0.13 0.16 rg 52.0 286.3 Td (imaging CD and histopathology slides at next visit"\) as span-anchored facts that can be promoted into) Tj ET
+BT /F1 8.9 Tf 0.12 0.13 0.16 rg 52.0 274.1 Td (administrative tasks in one click.) Tj ET
+BT /F1 8.9 Tf 0.12 0.13 0.16 rg 52.0 261.9 Td (* Acceptance Criteria \(Gherkin\):) Tj ET
+BT /F1 8.9 Tf 0.12 0.13 0.16 rg 60.0 249.7 Td (* Given a discharge summary contains "Bring prior imaging and the histopathology slides at the next visit") Tj ET
+BT /F1 8.9 Tf 0.12 0.13 0.16 rg 60.0 237.5 Td (* When the document is ingested via RuleBasedExtractor or BedrockLlmProvider) Tj ET
+BT /F1 8.9 Tf 0.12 0.13 0.16 rg 60.0 225.3 Td (* Then the extractor emits a candidate with factType: 'instruction.recorded' \(or) Tj ET
+BT /F1 8.9 Tf 0.12 0.13 0.16 rg 60.0 213.1 Td ('pending_investigation.recorded'\) anchored to the exact span) Tj ET
+BT /F1 8.9 Tf 0.12 0.13 0.16 rg 60.0 200.9 Td (* And the Evidence Row and Record Map display a Create Task from Instruction button pre-filled with the) Tj ET
+BT /F1 8.9 Tf 0.12 0.13 0.16 rg 60.0 188.7 Td (verbatim instruction and source link.) Tj ET
+BT /F2 9.6 Tf 0.18 0.22 0.30 rg 42.0 166.5 Td (Story 1.4: Multi-Track Chronic Care Template Packs \(NCG Oncology, FOGSI Maternal Health, RSSDI Diabetes\)) Tj ET
+BT /F1 8.9 Tf 0.12 0.13 0.16 rg 52.0 151.7 Td (* User Story: As a hospital administrator or clinician operating across oncology, obstetrics, or endocrinology) Tj ET
+BT /F1 8.9 Tf 0.12 0.13 0.16 rg 52.0 139.5 Td (OPDs, I want to assign domain-specific Checklist Template Packs \(ncg_oncology_intake, fogsi_antenatal_care,) Tj ET
+BT /F1 8.9 Tf 0.12 0.13 0.16 rg 52.0 127.3 Td (rssdi_diabetes_followup\) so that record readiness and timeline modalities reflect the patient's care track.) Tj ET
+BT /F1 8.9 Tf 0.12 0.13 0.16 rg 52.0 115.1 Td (* Acceptance Criteria \(Gherkin\):) Tj ET
+BT /F1 8.9 Tf 0.12 0.13 0.16 rg 60.0 102.9 Td (* Given checklist_template is seeded with 3 track templates \(ncg_oncology_intake, fogsi_antenatal_care,) Tj ET
+BT /F1 8.9 Tf 0.12 0.13 0.16 rg 60.0 90.7 Td (rssdi_diabetes_followup\) and 5 demo patients \(DEMO-001 to DEMO-003 for Oncology, DEMO-MAT-004 for High-Risk) Tj ET
+BT /F1 8.9 Tf 0.12 0.13 0.16 rg 60.0 78.5 Td (Antenatal Care, DEMO-DIA-005 for Long-Term Type 2 Diabetes\)) Tj ET
+BT /F1 8.9 Tf 0.12 0.13 0.16 rg 60.0 66.3 Td (* When a clinician filters /workspace by Care Track or opens DEMO-MAT-004 / DEMO-DIA-005) Tj ET
+0.75 0.78 0.82 rg
+42.0 36.0 511.3 0.6 re f
+BT /F1 8 Tf 0.35 0.38 0.44 rg 42.0 24.0 Td (OncoBrief V4 Enhancement Plan -- Use Cases 02, 04, 05 & Design Principles) Tj ET
+BT /F2 8 Tf 0.35 0.38 0.44 rg 498.3 24.0 Td (Page 6 of 18) Tj ET
+endstream
+endobj
+17 0 obj
+<< /Type /Page /Parent 5 0 R /MediaBox [0 0 595.28 841.89] /Resources << /Font << /F1 1 0 R /F2 2 0 R /F3 3 0 R /F4 4 0 R >> >> /Contents 16 0 R >>
+endobj
+18 0 obj
+<< /Length 7335 >>
+stream
+0.15 0.22 0.36 rg
+42.0 805.9 511.3 1.2 re f
+BT /F2 8 Tf 0.25 0.30 0.40 rg 42.0 811.9 Td (ONCOBRIEF V4 -- MASTER ENHANCEMENT PLAN & ARCHITECTURAL BLUEPRINT) Tj ET
+BT /F1 8.9 Tf 0.12 0.13 0.16 rg 60.0 789.9 Td (* Then RecordMapPage evaluates track-specific required documents \(e.g., anc_card, tiffa_ultrasound_report,) Tj ET
+BT /F1 8.9 Tf 0.12 0.13 0.16 rg 60.0 777.7 Td (ogtt_lab_report for Maternal Health; hba1c_lab_report, renal_panel_report, retinal_fundus_report,) Tj ET
+BT /F1 8.9 Tf 0.12 0.13 0.16 rg 60.0 765.5 Td (foot_neuropathy_chart for Diabetes\)) Tj ET
+BT /F1 8.9 Tf 0.12 0.13 0.16 rg 60.0 753.3 Td (* And TimelineNodeView dynamically assigns modality labels and icons from the actual factType and documentType) Tj ET
+BT /F1 8.9 Tf 0.12 0.13 0.16 rg 60.0 741.1 Td (without ever falling back to hardcoded 'Apollo Hospitals' or 'CT Scan \(Thorax\)'.) Tj ET
+0.75 0.78 0.82 rg
+42.0 719.9 511.3 0.75 re f
+BT /F2 10.6 Tf 0.14 0.26 0.48 rg 42.0 699.9 Td (Epic 2: Readiness-Gated OPD Clinic Operations & Patient Flow \(Use Case 04\)) Tj ET
+BT /F2 9.6 Tf 0.18 0.22 0.30 rg 42.0 673.7 Td (Story 2.1: Live OPD Queue, Slot Status & Walk-In / Cancellation Management) Tj ET
+BT /F1 8.9 Tf 0.12 0.13 0.16 rg 52.0 658.9 Td (* User Story: As an OPD coordinator or front-desk manager, I want /workspace to provide a real-time OPD Clinic) Tj ET
+BT /F1 8.9 Tf 0.12 0.13 0.16 rg 52.0 646.7 Td (Flow & Slot Board alongside Record Readiness so that I can manage scheduled appointment slots, patient) Tj ET
+BT /F1 8.9 Tf 0.12 0.13 0.16 rg 52.0 634.5 Td (check-ins, walk-ins, delayed investigations, and last-minute cancellations in one view.) Tj ET
+BT /F1 8.9 Tf 0.12 0.13 0.16 rg 52.0 622.3 Td (* Acceptance Criteria \(Gherkin\):) Tj ET
+BT /F1 8.9 Tf 0.12 0.13 0.16 rg 60.0 610.1 Td (* Given today's OPD clinic has scheduled time slots \(09:00, 09:30, 10:00, 10:30, 11:00\) across consulting) Tj ET
+BT /F1 8.9 Tf 0.12 0.13 0.16 rg 60.0 597.9 Td (rooms) Tj ET
+BT /F1 8.9 Tf 0.12 0.13 0.16 rg 60.0 585.7 Td (* When the coordinator opens /workspace \(or /workspace/flow\)) Tj ET
+BT /F1 8.9 Tf 0.12 0.13 0.16 rg 60.0 573.5 Td (* Then each slot displays: Slot Time, Patient & Token #, Attendance Status \(scheduled | checked_in |) Tj ET
+BT /F1 8.9 Tf 0.12 0.13 0.16 rg 60.0 561.3 Td (in_consult | delayed_investigation | cancelled | no_show | walk_in\), Record Readiness Band \(ready | gaps |) Tj ET
+BT /F1 8.9 Tf 0.12 0.13 0.16 rg 60.0 549.1 Td (blocked\), Documented Priority Tag \(source-anchored, e.g., post_op_review / chemo_clearance / routine\), and) Tj ET
+BT /F1 8.9 Tf 0.12 0.13 0.16 rg 60.0 536.9 Td (Bottleneck Alert) Tj ET
+BT /F1 8.9 Tf 0.12 0.13 0.16 rg 60.0 524.7 Td (* And the coordinator can update slot status \(Check In, Mark Delayed Lab, Cancel Slot, Register Walk-In\) with) Tj ET
+BT /F1 8.9 Tf 0.12 0.13 0.16 rg 60.0 512.5 Td (full audit logging.) Tj ET
+BT /F2 9.6 Tf 0.18 0.22 0.30 rg 42.0 490.3 Td (Story 2.2: Readiness-Gated Vacant Slot Backfill Engine) Tj ET
+BT /F1 8.9 Tf 0.12 0.13 0.16 rg 52.0 475.5 Td (* User Story: As an OPD coordinator, when a scheduled patient cancels last-minute or is held in the waiting room) Tj ET
+BT /F1 8.9 Tf 0.12 0.13 0.16 rg 52.0 463.3 Td (due to a delayed investigation \(blocked\), I want OncoBrief to automatically identify waitlisted or later-slotted) Tj ET
+BT /F1 8.9 Tf 0.12 0.13 0.16 rg 52.0 451.1 Td (patients whose consultation packets are already ready \(readiness_band = 'ready'\) and send a human-approved) Tj ET
+BT /F1 8.9 Tf 0.12 0.13 0.16 rg 52.0 438.9 Td (slot-offer message so clinic capacity is never wasted.) Tj ET
+BT /F1 8.9 Tf 0.12 0.13 0.16 rg 52.0 426.7 Td (* Acceptance Criteria \(Gherkin\):) Tj ET
+BT /F1 8.9 Tf 0.12 0.13 0.16 rg 60.0 414.5 Td (* Given the 09:30 slot for DEMO-001 is marked cancelled or delayed_investigation \(readiness_band = 'blocked'\)) Tj ET
+BT /F1 8.9 Tf 0.12 0.13 0.16 rg 60.0 402.3 Td (* When the Smart Slot Backfill drawer opens) Tj ET
+BT /F1 8.9 Tf 0.12 0.13 0.16 rg 60.0 390.1 Td (* Then the system ranks candidate patients on the waitlist or later slots strictly by operational criteria:) Tj ET
+BT /F1 8.9 Tf 0.12 0.13 0.16 rg 60.0 377.9 Td (\(1\) readiness_band === 'ready', \(2\) documented administrative priority tag, and \(3\) earliest requested date) Tj ET
+BT /F1 8.9 Tf 0.12 0.13 0.16 rg 60.0 365.7 Td (* And clicking "Offer 09:30 Slot & Reassign" swaps the slot assignment, logs an opd.slot_backfilled audit) Tj ET
+BT /F1 8.9 Tf 0.12 0.13 0.16 rg 60.0 353.5 Td (event, and queues a verified appointment update message for clinician/coordinator dispatch.) Tj ET
+BT /F2 9.6 Tf 0.18 0.22 0.30 rg 42.0 331.3 Td (Story 2.3: In-Row Care-Team Task Assignment & Escalation) Tj ET
+BT /F1 8.9 Tf 0.12 0.13 0.16 rg 52.0 316.5 Td (* User Story: As a care coordinator, I want to assign and reassign any administrative task on) Tj ET
+BT /F1 8.9 Tf 0.12 0.13 0.16 rg 52.0 304.3 Td (/patients/[id]/tasks and /patients/[id]/record-map to a specific team member \(Clinician, Coordinator, Records) Tj ET
+BT /F1 8.9 Tf 0.12 0.13 0.16 rg 52.0 292.1 Td (Officer\) with a target due time so that every clinic bottleneck has a named owner.) Tj ET
+BT /F1 8.9 Tf 0.12 0.13 0.16 rg 52.0 279.9 Td (* Acceptance Criteria \(Gherkin\):) Tj ET
+BT /F1 8.9 Tf 0.12 0.13 0.16 rg 60.0 267.7 Td (* Given an open task exists on /patients/[id]/tasks) Tj ET
+BT /F1 8.9 Tf 0.12 0.13 0.16 rg 60.0 255.5 Td (* When a user with task:assign permission selects a staff member from the in-row Assignee dropdown and clicks) Tj ET
+BT /F1 8.9 Tf 0.12 0.13 0.16 rg 60.0 243.3 Td (Assign) Tj ET
+BT /F1 8.9 Tf 0.12 0.13 0.16 rg 60.0 231.1 Td (* Then assignTaskAction updates admin_task.assigned_to, appends a task_event \(action = 'assigned'\), and) Tj ET
+BT /F1 8.9 Tf 0.12 0.13 0.16 rg 60.0 218.9 Td (renders assigned to <Name> \(<Role>\) immediately.) Tj ET
+0.75 0.78 0.82 rg
+42.0 197.7 511.3 0.75 re f
+BT /F2 10.6 Tf 0.14 0.26 0.48 rg 42.0 177.7 Td (Epic 3: Source-Grounded Doctor Productivity & Knowledge Assistant \(Use Case 05\)) Tj ET
+BT /F2 9.6 Tf 0.18 0.22 0.30 rg 42.0 151.5 Td (Story 3.1: Span-Anchored Institutional SOP & Clinical Guideline RAG \([G1] Citations\)) Tj ET
+BT /F1 8.9 Tf 0.12 0.13 0.16 rg 52.0 136.7 Td (* User Story: As a doctor preparing for a consultation, teaching session, or tumor board, I want to ask Ask) Tj ET
+BT /F1 8.9 Tf 0.12 0.13 0.16 rg 52.0 124.5 Td (OncoBrief questions about institutional clinical protocols and society guidelines \(NCG Oncology, FOGSI Maternal) Tj ET
+BT /F1 8.9 Tf 0.12 0.13 0.16 rg 52.0 112.3 Td (Health, RSSDI Diabetes\) and receive answers grounded strictly in uploaded, version-pinned guideline PDFs with) Tj ET
+BT /F1 8.9 Tf 0.12 0.13 0.16 rg 52.0 100.1 Td (exact page and bounding-box citations \([G1], [G2]\), while keeping patient-specific treatment decisions in my) Tj ET
+BT /F1 8.9 Tf 0.12 0.13 0.16 rg 52.0 87.9 Td (hands.) Tj ET
+BT /F1 8.9 Tf 0.12 0.13 0.16 rg 52.0 75.7 Td (* Acceptance Criteria \(Gherkin\):) Tj ET
+BT /F1 8.9 Tf 0.12 0.13 0.16 rg 60.0 63.5 Td (* Given the hospital's library contains version-pinned guideline documents \(NCG Breast Cancer Management) Tj ET
+0.75 0.78 0.82 rg
+42.0 36.0 511.3 0.6 re f
+BT /F1 8 Tf 0.35 0.38 0.44 rg 42.0 24.0 Td (OncoBrief V4 Enhancement Plan -- Use Cases 02, 04, 05 & Design Principles) Tj ET
+BT /F2 8 Tf 0.35 0.38 0.44 rg 498.3 24.0 Td (Page 7 of 18) Tj ET
+endstream
+endobj
+19 0 obj
+<< /Type /Page /Parent 5 0 R /MediaBox [0 0 595.28 841.89] /Resources << /Font << /F1 1 0 R /F2 2 0 R /F3 3 0 R /F4 4 0 R >> >> /Contents 18 0 R >>
+endobj
+20 0 obj
+<< /Length 7861 >>
+stream
+0.15 0.22 0.36 rg
+42.0 805.9 511.3 1.2 re f
+BT /F2 8 Tf 0.25 0.30 0.40 rg 42.0 811.9 Td (ONCOBRIEF V4 -- MASTER ENHANCEMENT PLAN & ARCHITECTURAL BLUEPRINT) Tj ET
+BT /F1 8.9 Tf 0.12 0.13 0.16 rg 60.0 789.9 Td (Guidelines v2026, FOGSI Routine Antenatal Care GCPR, RSSDI Type 2 Diabetes Practice Recommendations\) stored in) Tj ET
+BT /F1 8.9 Tf 0.12 0.13 0.16 rg 60.0 777.7 Td (guideline_document and guideline_span) Tj ET
+BT /F1 8.9 Tf 0.12 0.13 0.16 rg 60.0 765.5 Td (* When a clinician asks Ask OncoBrief: "What does the NCG guideline state for post-MRM adjuvant radiation) Tj ET
+BT /F1 8.9 Tf 0.12 0.13 0.16 rg 60.0 753.3 Td (workup?" or "What is the FOGSI antenatal screening schedule for gestational diabetes?") Tj ET
+BT /F1 8.9 Tf 0.12 0.13 0.16 rg 60.0 741.1 Td (* Then classifyIntent routes the query to 'guideline_knowledge_question' \(distinguishing general guideline) Tj ET
+BT /F1 8.9 Tf 0.12 0.13 0.16 rg 60.0 728.9 Td (lookup from autonomous patient prescribing\)) Tj ET
+BT /F1 8.9 Tf 0.12 0.13 0.16 rg 60.0 716.7 Td (* And the assistant returns a grounded synthesis citing [G1], [G2] with clickable SourceCard links that open) Tj ET
+BT /F1 8.9 Tf 0.12 0.13 0.16 rg 60.0 704.5 Td (the exact guideline page and highlight the verbatim paragraph in SourcePaneView) Tj ET
+BT /F1 8.9 Tf 0.12 0.13 0.16 rg 60.0 692.3 Td (* And every response includes the explicit header: Reference Guideline Extract -- For Clinician Review Only) Tj ET
+BT /F1 8.9 Tf 0.12 0.13 0.16 rg 60.0 680.1 Td (\(Not a Patient-Specific Order\).) Tj ET
+BT /F2 9.6 Tf 0.18 0.22 0.30 rg 42.0 657.9 Td (Story 3.2: Audience-Adaptive Professional Content & Academic Studio \(/patients/[id]/studio\)) Tj ET
+BT /F1 8.9 Tf 0.12 0.13 0.16 rg 52.0 643.1 Td (* User Story: As a clinician, I want to transform a patient's verified Evidence Ledger and linked institutional) Tj ET
+BT /F1 8.9 Tf 0.12 0.13 0.16 rg 52.0 630.9 Td (guidelines into editable, source-cited professional drafts--including \(1\) Specialist Referral / Transfer Letter,) Tj ET
+BT /F1 8.9 Tf 0.12 0.13 0.16 rg 52.0 618.7 Td (\(2\) Multidisciplinary Tumor Board / Case Presentation \(Markdown & Printable Slide View\), \(3\) De-Identified) Tj ET
+BT /F1 8.9 Tf 0.12 0.13 0.16 rg 52.0 606.5 Td (Academic Case Report Abstract, and \(4\) Multilingual Patient & Caregiver Information Sheet--while remaining in) Tj ET
+BT /F1 8.9 Tf 0.12 0.13 0.16 rg 52.0 594.3 Td (100% control of editing and approving the final output.) Tj ET
+BT /F1 8.9 Tf 0.12 0.13 0.16 rg 52.0 582.1 Td (* Acceptance Criteria \(Gherkin\):) Tj ET
+BT /F1 8.9 Tf 0.12 0.13 0.16 rg 60.0 569.9 Td (* Given a patient has verified facts in the Evidence Ledger) Tj ET
+BT /F1 8.9 Tf 0.12 0.13 0.16 rg 60.0 557.7 Td (* When the clinician opens /patients/[id]/packet \(or the new Productivity Studio section\) and selects one of) Tj ET
+BT /F1 8.9 Tf 0.12 0.13 0.16 rg 60.0 545.5 Td (the 4 artifact templates \(referral_letter, tumor_board_deck, academic_case_abstract, patient_info_sheet\)) Tj ET
+BT /F1 8.9 Tf 0.12 0.13 0.16 rg 60.0 533.3 Td (* Then the deterministic/LLM composer generates a structured draft where every factual statement carries an) Tj ET
+BT /F1 8.9 Tf 0.12 0.13 0.16 rg 60.0 521.1 Td (inline [E#] provenance badge linked to its evidence_fact_id \(and automatically strips patient identifiers) Tj ET
+BT /F1 8.9 Tf 0.12 0.13 0.16 rg 60.0 508.9 Td (MRN/ABHA/Name when academic_case_abstract is selected\)) Tj ET
+BT /F1 8.9 Tf 0.12 0.13 0.16 rg 60.0 496.7 Td (* And any unverified fact is visually badged [UNVERIFIED -- Confirm Source Before Sign-Off]) Tj ET
+BT /F1 8.9 Tf 0.12 0.13 0.16 rg 60.0 484.5 Td (* And the clinician can edit the draft inline, sign off \(packet:approve\), and export as Print-Ready PDF,) Tj ET
+BT /F1 8.9 Tf 0.12 0.13 0.16 rg 60.0 472.3 Td (Markdown/Slides, ABDM v6.5.0 JSON, or HL7 mCODE STU4 JSON.) Tj ET
+0.75 0.78 0.82 rg
+42.0 451.1 511.3 0.75 re f
+BT /F2 10.6 Tf 0.14 0.26 0.48 rg 42.0 431.1 Td (Epic 4: Human-Centered UX, Caregiver Voice Continuity & Workflow-First Integration \(Design) Tj ET
+BT /F2 10.6 Tf 0.14 0.26 0.48 rg 42.0 416.9 Td (Principles\)) Tj ET
+BT /F2 9.6 Tf 0.18 0.22 0.30 rg 42.0 390.7 Td (Story 4.1: Guided "Next Step" Readiness Banner & 1-Click Batch Verification) Tj ET
+BT /F1 8.9 Tf 0.12 0.13 0.16 rg 52.0 375.9 Td (* User Story: As a busy outpatient doctor or records officer, I want a top "Next Step to Consult Ready" action) Tj ET
+BT /F1 8.9 Tf 0.12 0.13 0.16 rg 52.0 363.7 Td (bar and a "Verify All High-Confidence Facts \(OCR >= 90%\)" batch action with a single confirmation modal so I can) Tj ET
+BT /F1 8.9 Tf 0.12 0.13 0.16 rg 52.0 351.5 Td (prepare a clean chart in under 60 seconds.) Tj ET
+BT /F1 8.9 Tf 0.12 0.13 0.16 rg 52.0 339.3 Td (* Acceptance Criteria \(Gherkin\):) Tj ET
+BT /F1 8.9 Tf 0.12 0.13 0.16 rg 60.0 327.1 Td (* Given a patient has 18 extracted facts with confidence_band = 'high' \(ocr_confidence >= 0.90\) and state =) Tj ET
+BT /F1 8.9 Tf 0.12 0.13 0.16 rg 60.0 314.9 Td ('extracted') Tj ET
+BT /F1 8.9 Tf 0.12 0.13 0.16 rg 60.0 302.7 Td (* When the clinician clicks Review & Verify High-Confidence Batch \(18\) and confirms in the modal) Tj ET
+BT /F1 8.9 Tf 0.12 0.13 0.16 rg 60.0 290.5 Td (* Then verifyEvidenceBatchAction transitions all 18 facts to verified in one atomic PostgreSQL transaction,) Tj ET
+BT /F1 8.9 Tf 0.12 0.13 0.16 rg 60.0 278.3 Td (records individual ledger_entry rows plus a batch audit_event, and recomputes readiness_band.) Tj ET
+BT /F2 9.6 Tf 0.18 0.22 0.30 rg 42.0 256.1 Td (Story 4.2: Consented Caregiver Network & Playable 11-Language Voice Reminders \(Sarvam Bulbul v3\)) Tj ET
+BT /F1 8.9 Tf 0.12 0.13 0.16 rg 52.0 241.3 Td (* User Story: As a care coordinator supporting low-literacy patients and family caregivers, I want to register a) Tj ET
+BT /F1 8.9 Tf 0.12 0.13 0.16 rg 52.0 229.1 Td (consented family caregiver \(caregiver_name, relationship, phone, preferred_locale\), compose reminders in all 11) Tj ET
+BT /F1 8.9 Tf 0.12 0.13 0.16 rg 52.0 216.9 Td (supported Indic languages, and generate a playable spoken audio voice note \(Sarvam Bulbul v3 TTS\) on) Tj ET
+BT /F1 8.9 Tf 0.12 0.13 0.16 rg 52.0 204.7 Td (/patients/[id]/continuity.) Tj ET
+BT /F1 8.9 Tf 0.12 0.13 0.16 rg 52.0 192.5 Td (* Acceptance Criteria \(Gherkin\):) Tj ET
+BT /F1 8.9 Tf 0.12 0.13 0.16 rg 60.0 180.3 Td (* Given a patient has a verified appointment fact and a registered caregiver with preferred_locale = 'ta-IN') Tj ET
+BT /F1 8.9 Tf 0.12 0.13 0.16 rg 60.0 168.1 Td (\(or 'hi-IN', 'te-IN', 'bn-IN', 'mr-IN', 'kn-IN', 'ml-IN', 'gu-IN', 'pa-IN', 'or-IN'\)) Tj ET
+BT /F1 8.9 Tf 0.12 0.13 0.16 rg 60.0 155.9 Td (* When the coordinator composes a continuity reminder and clicks "Generate & Preview Spoken Voice Note") Tj ET
+BT /F1 8.9 Tf 0.12 0.13 0.16 rg 60.0 143.7 Td (* Then the page calls /api/v1/assistant/voice/tts \(or an offline Web Speech / WAV fallback when SARVAM_API_KEY) Tj ET
+BT /F1 8.9 Tf 0.12 0.13 0.16 rg 60.0 131.5 Td (is unconfigured\) and renders an inline <audio controls> player so the care team or judge can listen to the) Tj ET
+BT /F1 8.9 Tf 0.12 0.13 0.16 rg 60.0 119.3 Td (localized voice reminder and dispatch it to both patient and caregiver.) Tj ET
+BT /F2 9.6 Tf 0.18 0.22 0.30 rg 42.0 97.1 Td (Story 4.3: Working ABDM / mCODE Intake & Browser Extension Launch Overlay) Tj ET
+BT /F1 8.9 Tf 0.12 0.13 0.16 rg 52.0 82.3 Td (* User Story: As a clinician in an existing hospital EHR, I want the Import from EHR / ABDM and Link to Existing) Tj ET
+BT /F1 8.9 Tf 0.12 0.13 0.16 rg 52.0 70.1 Td (tabs in DocumentUploadForm.tsx to execute real server actions \(ingesting valid NRCeS ABDM v6.5.0 and HL7 mCODE) Tj ET
+0.75 0.78 0.82 rg
+42.0 36.0 511.3 0.6 re f
+BT /F1 8 Tf 0.35 0.38 0.44 rg 42.0 24.0 Td (OncoBrief V4 Enhancement Plan -- Use Cases 02, 04, 05 & Design Principles) Tj ET
+BT /F2 8 Tf 0.35 0.38 0.44 rg 498.3 24.0 Td (Page 8 of 18) Tj ET
+endstream
+endobj
+21 0 obj
+<< /Type /Page /Parent 5 0 R /MediaBox [0 0 595.28 841.89] /Resources << /Font << /F1 1 0 R /F2 2 0 R /F3 3 0 R /F4 4 0 R >> >> /Contents 20 0 R >>
+endobj
+22 0 obj
+<< /Length 8942 >>
+stream
+0.15 0.22 0.36 rg
+42.0 805.9 511.3 1.2 re f
+BT /F2 8 Tf 0.25 0.30 0.40 rg 42.0 811.9 Td (ONCOBRIEF V4 -- MASTER ENHANCEMENT PLAN & ARCHITECTURAL BLUEPRINT) Tj ET
+BT /F1 8.9 Tf 0.12 0.13 0.16 rg 52.0 789.9 Td (STU4 bundles into the ledger\), and I want a working Manifest V3 Browser Extension \(apps/extension\) that launches) Tj ET
+BT /F1 8.9 Tf 0.12 0.13 0.16 rg 52.0 777.7 Td (OncoBrief from any hospital EHR page using short-lived extension_grant tokens.) Tj ET
+BT /F1 8.9 Tf 0.12 0.13 0.16 rg 52.0 765.5 Td (* Acceptance Criteria \(Gherkin\):) Tj ET
+BT /F1 8.9 Tf 0.12 0.13 0.16 rg 60.0 753.3 Td (* Given a user clicks Pull ABDM Bundle \(Tata Memorial / ACTREC\) or Import mCODE FHIR Bundle \(AIIMS\) on) Tj ET
+BT /F1 8.9 Tf 0.12 0.13 0.16 rg 60.0 741.1 Td (/patients/[id]/sources) Tj ET
+BT /F1 8.9 Tf 0.12 0.13 0.16 rg 60.0 728.9 Td (* When importStandardBundleAction executes) Tj ET
+BT /F1 8.9 Tf 0.12 0.13 0.16 rg 60.0 716.7 Td (* Then it ingests a complete, standards-valid FHIR R4 JSON bundle through createDocument + ingestDocument,) Tj ET
+BT /F1 8.9 Tf 0.12 0.13 0.16 rg 60.0 704.5 Td (extracts structured spans and facts into the Evidence Ledger, and refreshes /patients/[id]/sources with zero) Tj ET
+BT /F1 8.9 Tf 0.12 0.13 0.16 rg 60.0 692.3 Td (alert\(\) popups.) Tj ET
+0.75 0.78 0.82 rg
+42.0 671.1 511.3 0.75 re f
+0.93 0.95 0.99 rg
+38.0 630.1 519.3 24.0 re f
+BT /F2 12.2 Tf 0.10 0.22 0.44 rg 42.0 648.1 Td (5. System Architecture & Agentic Orchestration Upgrade) Tj ET
+BT /F4 7.4 Tf 0.12 0.18 0.28 rg 50.0 619.1 Td (+--------------------------------------------------------------------------------------------+) Tj ET
+BT /F4 7.4 Tf 0.12 0.18 0.28 rg 50.0 609.7 Td (|                        ACCESS, INTAKE & INTEROPERABILITY LAYER                             |) Tj ET
+BT /F4 7.4 Tf 0.12 0.18 0.28 rg 50.0 600.3 Td (|  * Web Workspace \(Next.js 15\)           * Manifest V3 EHR Browser Extension \(apps/extension\)|) Tj ET
+BT /F4 7.4 Tf 0.12 0.18 0.28 rg 50.0 590.9 Td (|  * Multi-Modal Upload \(PDF/Photo/DICOM\) * Live ABDM v6.5.0 & HL7 mCODE STU4 Import/Export  |) Tj ET
+BT /F4 7.4 Tf 0.12 0.18 0.28 rg 50.0 581.5 Td (+----------------------------------------------+---------------------------------------------+) Tj ET
+BT /F4 7.4 Tf 0.12 0.18 0.28 rg 50.0 572.1 Td (                                               |) Tj ET
+BT /F4 7.4 Tf 0.12 0.18 0.28 rg 50.0 562.7 Td (                                               v) Tj ET
+BT /F4 7.4 Tf 0.12 0.18 0.28 rg 50.0 553.3 Td (+--------------------------------------------------------------------------------------------+) Tj ET
+BT /F4 7.4 Tf 0.12 0.18 0.28 rg 50.0 543.9 Td (|             MULTI-MODAL INGESTION & DETERMINISTIC STATE-GRAPH ORCHESTRATOR                 |) Tj ET
+BT /F4 7.4 Tf 0.12 0.18 0.28 rg 50.0 534.5 Td (|  [Node 1: Triage & SHA-256 Dedup] --> [Node 2: Packet Segmenter \(Damani et al., 2026\)]     |) Tj ET
+BT /F4 7.4 Tf 0.12 0.18 0.28 rg 50.0 525.1 Td (|                 |                                      |                                   |) Tj ET
+BT /F4 7.4 Tf 0.12 0.18 0.28 rg 50.0 515.7 Td (|                 v                                      v                                   |) Tj ET
+BT /F4 7.4 Tf 0.12 0.18 0.28 rg 50.0 506.3 Td (|  [Node 3: Dynamic OCR Router]          [Node 4: Multi-Track Fact & Instruction Extractor]  |) Tj ET
+BT /F4 7.4 Tf 0.12 0.18 0.28 rg 50.0 496.9 Td (|  \(Sarvam Vision / Textract / PDF+Tesseract\)  \(Oncology, Maternal ANC, Diabetes, Pending\)   |) Tj ET
+BT /F4 7.4 Tf 0.12 0.18 0.28 rg 50.0 487.5 Td (|                 |                                      |                                   |) Tj ET
+BT /F4 7.4 Tf 0.12 0.18 0.28 rg 50.0 478.1 Td (|                 v                                      v                                   |) Tj ET
+BT /F4 7.4 Tf 0.12 0.18 0.28 rg 50.0 468.7 Td (|  [Node 5: Two-Stage Span & Entailment Gate] --> [Node 6: Date-Scoped Conflict & Delta Eng] |) Tj ET
+BT /F4 7.4 Tf 0.12 0.18 0.28 rg 50.0 459.3 Td (+----------------------------------------------+---------------------------------------------+) Tj ET
+BT /F4 7.4 Tf 0.12 0.18 0.28 rg 50.0 449.9 Td (                                               |) Tj ET
+BT /F4 7.4 Tf 0.12 0.18 0.28 rg 50.0 440.5 Td (         +-------------------------------------+-------------------------------------+) Tj ET
+BT /F4 7.4 Tf 0.12 0.18 0.28 rg 50.0 431.1 Td (         v                                     v                                     v) Tj ET
+BT /F4 7.4 Tf 0.12 0.18 0.28 rg 50.0 421.7 Td (+-----------------------------+  +-----------------------------+  +--------------------------+) Tj ET
+BT /F4 7.4 Tf 0.12 0.18 0.28 rg 50.0 412.3 Td (|   USE CASE 02: LONGITUDINAL |  |   USE CASE 04: SMART OPD    |  |  USE CASE 05: PRODUCTIVITY|) Tj ET
+BT /F4 7.4 Tf 0.12 0.18 0.28 rg 50.0 402.9 Td (|   JOURNEY & READINESS       |  |   FLOW & SLOT BACKFILL      |  |  & GUIDELINE CO-PILOT    |) Tj ET
+BT /F4 7.4 Tf 0.12 0.18 0.28 rg 50.0 393.5 Td (| * "Since Last Visit" Deltas |  | * Live OPD Slot & Token Brd |  | * Span-Anchored NCG /    |) Tj ET
+BT /F4 7.4 Tf 0.12 0.18 0.28 rg 50.0 384.1 Td (| * Serial Lab Flowsheets     |  | * Walk-in / Delayed Lab Trk |  |   FOGSI / RSSDI SOP RAG  |) Tj ET
+BT /F4 7.4 Tf 0.12 0.18 0.28 rg 50.0 374.7 Td (| * Med Regimen Timeline      |  | * Readiness-Gated Waitlist  |  | * Referral Letter, Tumor |) Tj ET
+BT /F4 7.4 Tf 0.12 0.18 0.28 rg 50.0 365.3 Td (| * 1-Click Batch Verify      |  |   Slot Backfill Recommender |  |   Board & Case Studio    |) Tj ET
+BT /F4 7.4 Tf 0.12 0.18 0.28 rg 50.0 355.9 Td (| * NCG / FOGSI / RSSDI Packs |  | * In-Row Task Assignment    |  | * Print PDF + FHIR Export|) Tj ET
+BT /F4 7.4 Tf 0.12 0.18 0.28 rg 50.0 346.5 Td (+-----------------------------+  +-----------------------------+  +--------------------------+) Tj ET
+BT /F4 7.4 Tf 0.12 0.18 0.28 rg 50.0 337.1 Td (                                               |) Tj ET
+BT /F4 7.4 Tf 0.12 0.18 0.28 rg 50.0 327.7 Td (                                               v) Tj ET
+BT /F4 7.4 Tf 0.12 0.18 0.28 rg 50.0 318.3 Td (+--------------------------------------------------------------------------------------------+) Tj ET
+BT /F4 7.4 Tf 0.12 0.18 0.28 rg 50.0 308.9 Td (|               CARE CONTINUITY & CAREGIVER VOICE NETWORK \(11 INDIC LANGUAGES\)               |) Tj ET
+BT /F4 7.4 Tf 0.12 0.18 0.28 rg 50.0 299.5 Td (|  * Consented Family Caregiver Registry  * Sarvam Bulbul v3 Playable Audio Voice Notes      |) Tj ET
+BT /F4 7.4 Tf 0.12 0.18 0.28 rg 50.0 290.1 Td (|  * Two-Way Attendance Confirmation      * Cryptographic SHA-256 Ledger & Audit Chain       |) Tj ET
+BT /F4 7.4 Tf 0.12 0.18 0.28 rg 50.0 280.7 Td (+--------------------------------------------------------------------------------------------+) Tj ET
+BT /F2 10.6 Tf 0.14 0.26 0.48 rg 42.0 255.3 Td (Why a Deterministic State-Graph Orchestrator) Tj ET
+BT /F2 10.6 Tf 0.14 0.26 0.48 rg 42.0 241.1 Td (\(packages/domain/src/orchestration/workflow-graph.ts\) Beats Fragile Prompt Chains) Tj ET
+BT /F1 9.0 Tf 0.12 0.13 0.16 rg 42.0 224.9 Td (To satisfy the Technology Approach principle \("Leverage existing AI capabilities, including AI agents,) Tj ET
+BT /F1 9.0 Tf 0.12 0.13 0.16 rg 42.0 212.4 Td (orchestration frameworks..."\) without violating the Safety Expectations principle \("No autonomous clinical) Tj ET
+BT /F1 9.0 Tf 0.12 0.13 0.16 rg 42.0 199.9 Td (advice; human override on every step"\), OncoBrief V4 implements a typed, LangGraph-compatible State-Graph) Tj ET
+BT /F1 9.0 Tf 0.12 0.13 0.16 rg 42.0 187.4 Td (Workflow Orchestrator \(WorkflowStateGraph<TState>\) with explicit nodes, conditional edges, checkpoint) Tj ET
+BT /F1 9.0 Tf 0.12 0.13 0.16 rg 42.0 174.9 Td (persistence, and human-in-the-loop interrupt gates:) Tj ET
+BT /F1 8.9 Tf 0.12 0.13 0.16 rg 52.0 162.4 Td (1. Document Ingestion Graph: triageNode -> segmentPacketNode -> ocrRouteNode \(selecting SarvamVisionOcrAdapter,) Tj ET
+BT /F1 8.9 Tf 0.12 0.13 0.16 rg 52.0 150.2 Td (TextractOcrAdapter, or LocalMultimodalOcrAdapter based on env.ocrDriver and document script\) ->) Tj ET
+BT /F1 8.9 Tf 0.12 0.13 0.16 rg 52.0 138.0 Td (extractCandidatesNode -> twoStageSpanGateNode -> dateScopedConflictAndDeltaNode -> humanReviewInterruptGate.) Tj ET
+BT /F1 8.9 Tf 0.12 0.13 0.16 rg 52.0 125.8 Td (2. Assistant & Co-Pilot Graph: intentClassifierNode -> branches deterministically to patientEvidenceRetrieverNode) Tj ET
+BT /F1 8.9 Tf 0.12 0.13 0.16 rg 52.0 113.6 Td (\([E#]\), institutionalGuidelineRetrieverNode \([G#]\), opdFlowStatusNode, or boundaryRefusalNode ->) Tj ET
+BT /F1 8.9 Tf 0.12 0.13 0.16 rg 52.0 101.4 Td (groundedSynthesisNode -> citationVerificationGateNode.) Tj ET
+0.75 0.78 0.82 rg
+42.0 80.2 511.3 0.75 re f
+0.75 0.78 0.82 rg
+42.0 36.0 511.3 0.6 re f
+BT /F1 8 Tf 0.35 0.38 0.44 rg 42.0 24.0 Td (OncoBrief V4 Enhancement Plan -- Use Cases 02, 04, 05 & Design Principles) Tj ET
+BT /F2 8 Tf 0.35 0.38 0.44 rg 498.3 24.0 Td (Page 9 of 18) Tj ET
+endstream
+endobj
+23 0 obj
+<< /Type /Page /Parent 5 0 R /MediaBox [0 0 595.28 841.89] /Resources << /Font << /F1 1 0 R /F2 2 0 R /F3 3 0 R /F4 4 0 R >> >> /Contents 22 0 R >>
+endobj
+24 0 obj
+<< /Length 7815 >>
+stream
+0.15 0.22 0.36 rg
+42.0 805.9 511.3 1.2 re f
+BT /F2 8 Tf 0.25 0.30 0.40 rg 42.0 811.9 Td (ONCOBRIEF V4 -- MASTER ENHANCEMENT PLAN & ARCHITECTURAL BLUEPRINT) Tj ET
+0.93 0.95 0.99 rg
+38.0 771.9 519.3 24.0 re f
+BT /F2 12.2 Tf 0.10 0.22 0.44 rg 42.0 789.9 Td (6. Database Schema Migration Specification \(0009_v4_multi_usecase_enhancement.sql\)) Tj ET
+BT /F1 9.0 Tf 0.12 0.13 0.16 rg 42.0 764.9 Td (Create packages/db/migrations/0009_v4_multi_usecase_enhancement.sql to add the exact tables required for Use) Tj ET
+BT /F1 9.0 Tf 0.12 0.13 0.16 rg 42.0 752.4 Td (Cases 02, 04, 05, and Caregiver Continuity while maintaining 100% backward compatibility and PostgreSQL Row-Level) Tj ET
+BT /F1 9.0 Tf 0.12 0.13 0.16 rg 42.0 739.9 Td (Security \(RLS\):) Tj ET
+BT /F4 7.4 Tf 0.12 0.18 0.28 rg 50.0 718.4 Td (-- ===========================================================================) Tj ET
+BT /F4 7.4 Tf 0.12 0.18 0.28 rg 50.0 709.0 Td (-- 0009_v4_multi_usecase_enhancement.sql) Tj ET
+BT /F4 7.4 Tf 0.12 0.18 0.28 rg 50.0 699.6 Td (-- Multi-Track Chronic Care \(UC02\), OPD Slot & Queue Flow \(UC04\),) Tj ET
+BT /F4 7.4 Tf 0.12 0.18 0.28 rg 50.0 690.2 Td (-- Institutional Guideline RAG & Productivity Studio \(UC05\), and Caregivers) Tj ET
+BT /F4 7.4 Tf 0.12 0.18 0.28 rg 50.0 680.8 Td (-- ===========================================================================) Tj ET
+BT /F4 7.4 Tf 0.12 0.18 0.28 rg 50.0 671.4 Td () Tj ET
+BT /F4 7.4 Tf 0.12 0.18 0.28 rg 50.0 662.0 Td (SET ROLE oncobrief_migrator;) Tj ET
+BT /F4 7.4 Tf 0.12 0.18 0.28 rg 50.0 652.6 Td () Tj ET
+BT /F4 7.4 Tf 0.12 0.18 0.28 rg 50.0 643.2 Td (-- 1. Extend patient with care_track, last_consultation_date, and caregiver metadata) Tj ET
+BT /F4 7.4 Tf 0.12 0.18 0.28 rg 50.0 633.8 Td (ALTER TABLE patient) Tj ET
+BT /F4 7.4 Tf 0.12 0.18 0.28 rg 50.0 624.4 Td (  ADD COLUMN IF NOT EXISTS care_track text NOT NULL DEFAULT 'oncology') Tj ET
+BT /F4 7.4 Tf 0.12 0.18 0.28 rg 50.0 615.0 Td (    CHECK \(care_track IN \('oncology', 'maternal_health', 'diabetes'\)\),) Tj ET
+BT /F4 7.4 Tf 0.12 0.18 0.28 rg 50.0 605.6 Td (  ADD COLUMN IF NOT EXISTS last_consultation_date date,) Tj ET
+BT /F4 7.4 Tf 0.12 0.18 0.28 rg 50.0 596.2 Td (  ADD COLUMN IF NOT EXISTS primary_language text NOT NULL DEFAULT 'en-IN';) Tj ET
+BT /F4 7.4 Tf 0.12 0.18 0.28 rg 50.0 586.8 Td () Tj ET
+BT /F4 7.4 Tf 0.12 0.18 0.28 rg 50.0 577.4 Td (CREATE TABLE IF NOT EXISTS caregiver_contact \() Tj ET
+BT /F4 7.4 Tf 0.12 0.18 0.28 rg 50.0 568.0 Td (  id                  uuid PRIMARY KEY DEFAULT gen_random_uuid\(\),) Tj ET
+BT /F4 7.4 Tf 0.12 0.18 0.28 rg 50.0 558.6 Td (  org_id              uuid NOT NULL REFERENCES organization\(id\),) Tj ET
+BT /F4 7.4 Tf 0.12 0.18 0.28 rg 50.0 549.2 Td (  patient_id          uuid NOT NULL REFERENCES patient\(id\),) Tj ET
+BT /F4 7.4 Tf 0.12 0.18 0.28 rg 50.0 539.8 Td (  full_name           text NOT NULL,) Tj ET
+BT /F4 7.4 Tf 0.12 0.18 0.28 rg 50.0 530.4 Td (  relationship        text NOT NULL,) Tj ET
+BT /F4 7.4 Tf 0.12 0.18 0.28 rg 50.0 521.0 Td (  phone_number        text NOT NULL,) Tj ET
+BT /F4 7.4 Tf 0.12 0.18 0.28 rg 50.0 511.6 Td (  preferred_locale    text NOT NULL DEFAULT 'hi-IN',) Tj ET
+BT /F4 7.4 Tf 0.12 0.18 0.28 rg 50.0 502.2 Td (  prefers_voice_note  boolean NOT NULL DEFAULT true,) Tj ET
+BT /F4 7.4 Tf 0.12 0.18 0.28 rg 50.0 492.8 Td (  consent_recorded_at timestamptz NOT NULL DEFAULT now\(\),) Tj ET
+BT /F4 7.4 Tf 0.12 0.18 0.28 rg 50.0 483.4 Td (  consent_recorded_by uuid NOT NULL REFERENCES app_user\(id\),) Tj ET
+BT /F4 7.4 Tf 0.12 0.18 0.28 rg 50.0 474.0 Td (  is_active           boolean NOT NULL DEFAULT true,) Tj ET
+BT /F4 7.4 Tf 0.12 0.18 0.28 rg 50.0 464.6 Td (  UNIQUE \(org_id, id\)) Tj ET
+BT /F4 7.4 Tf 0.12 0.18 0.28 rg 50.0 455.2 Td (\);) Tj ET
+BT /F4 7.4 Tf 0.12 0.18 0.28 rg 50.0 445.8 Td (CREATE INDEX IF NOT EXISTS caregiver_patient_idx ON caregiver_contact \(patient_id\);) Tj ET
+BT /F4 7.4 Tf 0.12 0.18 0.28 rg 50.0 436.4 Td () Tj ET
+BT /F4 7.4 Tf 0.12 0.18 0.28 rg 50.0 427.0 Td (-- 2. Use Case 04: OPD Clinic Slots, Queue Tokens & Readiness-Gated Waitlist) Tj ET
+BT /F4 7.4 Tf 0.12 0.18 0.28 rg 50.0 417.6 Td (CREATE TYPE opd_slot_status AS ENUM \() Tj ET
+BT /F4 7.4 Tf 0.12 0.18 0.28 rg 50.0 408.2 Td (  'scheduled',) Tj ET
+BT /F4 7.4 Tf 0.12 0.18 0.28 rg 50.0 398.8 Td (  'checked_in',) Tj ET
+BT /F4 7.4 Tf 0.12 0.18 0.28 rg 50.0 389.4 Td (  'in_consult',) Tj ET
+BT /F4 7.4 Tf 0.12 0.18 0.28 rg 50.0 380.0 Td (  'delayed_investigation',) Tj ET
+BT /F4 7.4 Tf 0.12 0.18 0.28 rg 50.0 370.6 Td (  'completed',) Tj ET
+BT /F4 7.4 Tf 0.12 0.18 0.28 rg 50.0 361.2 Td (  'cancelled',) Tj ET
+BT /F4 7.4 Tf 0.12 0.18 0.28 rg 50.0 351.8 Td (  'no_show',) Tj ET
+BT /F4 7.4 Tf 0.12 0.18 0.28 rg 50.0 342.4 Td (  'walk_in',) Tj ET
+BT /F4 7.4 Tf 0.12 0.18 0.28 rg 50.0 333.0 Td (  'vacant') Tj ET
+BT /F4 7.4 Tf 0.12 0.18 0.28 rg 50.0 323.6 Td (\);) Tj ET
+BT /F4 7.4 Tf 0.12 0.18 0.28 rg 50.0 314.2 Td () Tj ET
+BT /F4 7.4 Tf 0.12 0.18 0.28 rg 50.0 304.8 Td (CREATE TYPE admin_priority_tag AS ENUM \() Tj ET
+BT /F4 7.4 Tf 0.12 0.18 0.28 rg 50.0 295.4 Td (  'routine_followup',) Tj ET
+BT /F4 7.4 Tf 0.12 0.18 0.28 rg 50.0 286.0 Td (  'new_referral',) Tj ET
+BT /F4 7.4 Tf 0.12 0.18 0.28 rg 50.0 276.6 Td (  'post_op_wound_check_documented',) Tj ET
+BT /F4 7.4 Tf 0.12 0.18 0.28 rg 50.0 267.2 Td (  'chemo_cycle_clearance_documented',) Tj ET
+BT /F4 7.4 Tf 0.12 0.18 0.28 rg 50.0 257.8 Td (  'high_risk_anc_milestone_documented',) Tj ET
+BT /F4 7.4 Tf 0.12 0.18 0.28 rg 50.0 248.4 Td (  'expedited_slot_requested') Tj ET
+BT /F4 7.4 Tf 0.12 0.18 0.28 rg 50.0 239.0 Td (\);) Tj ET
+BT /F4 7.4 Tf 0.12 0.18 0.28 rg 50.0 229.6 Td () Tj ET
+BT /F4 7.4 Tf 0.12 0.18 0.28 rg 50.0 220.2 Td (CREATE TABLE IF NOT EXISTS opd_appointment_slot \() Tj ET
+BT /F4 7.4 Tf 0.12 0.18 0.28 rg 50.0 210.8 Td (  id                       uuid PRIMARY KEY DEFAULT gen_random_uuid\(\),) Tj ET
+BT /F4 7.4 Tf 0.12 0.18 0.28 rg 50.0 201.4 Td (  org_id                   uuid NOT NULL REFERENCES organization\(id\),) Tj ET
+BT /F4 7.4 Tf 0.12 0.18 0.28 rg 50.0 192.0 Td (  clinic_date              date NOT NULL DEFAULT CURRENT_DATE,) Tj ET
+BT /F4 7.4 Tf 0.12 0.18 0.28 rg 50.0 182.6 Td (  slot_Start_time          time NOT NULL,) Tj ET
+BT /F4 7.4 Tf 0.12 0.18 0.28 rg 50.0 173.2 Td (  slot_end_time            time NOT NULL,) Tj ET
+BT /F4 7.4 Tf 0.12 0.18 0.28 rg 50.0 163.8 Td (  room_label               text NOT NULL DEFAULT 'OPD Room 1',) Tj ET
+BT /F4 7.4 Tf 0.12 0.18 0.28 rg 50.0 154.4 Td (  clinician_id             uuid REFERENCES app_user\(id\),) Tj ET
+BT /F4 7.4 Tf 0.12 0.18 0.28 rg 50.0 145.0 Td (  patient_id               uuid REFERENCES patient\(id\),) Tj ET
+BT /F4 7.4 Tf 0.12 0.18 0.28 rg 50.0 135.6 Td (  token_number             text,) Tj ET
+BT /F4 7.4 Tf 0.12 0.18 0.28 rg 50.0 126.2 Td (  status                   opd_slot_status NOT NULL DEFAULT 'scheduled',) Tj ET
+BT /F4 7.4 Tf 0.12 0.18 0.28 rg 50.0 116.8 Td (  priority_tag             admin_priority_tag NOT NULL DEFAULT 'routine_followup',) Tj ET
+BT /F4 7.4 Tf 0.12 0.18 0.28 rg 50.0 107.4 Td (  priority_source_fact_id  uuid REFERENCES evidence_fact\(id\),) Tj ET
+BT /F4 7.4 Tf 0.12 0.18 0.28 rg 50.0 98.0 Td (  bottleneck_note          text,) Tj ET
+BT /F4 7.4 Tf 0.12 0.18 0.28 rg 50.0 88.6 Td (  checked_in_at            timestamptz,) Tj ET
+BT /F4 7.4 Tf 0.12 0.18 0.28 rg 50.0 79.2 Td (  updated_by               uuid REFERENCES app_user\(id\),) Tj ET
+BT /F4 7.4 Tf 0.12 0.18 0.28 rg 50.0 69.8 Td (  updated_at               timestamptz NOT NULL DEFAULT now\(\),) Tj ET
+BT /F4 7.4 Tf 0.12 0.18 0.28 rg 50.0 60.4 Td (  UNIQUE \(org_id, id\)) Tj ET
+0.75 0.78 0.82 rg
+42.0 36.0 511.3 0.6 re f
+BT /F1 8 Tf 0.35 0.38 0.44 rg 42.0 24.0 Td (OncoBrief V4 Enhancement Plan -- Use Cases 02, 04, 05 & Design Principles) Tj ET
+BT /F2 8 Tf 0.35 0.38 0.44 rg 498.3 24.0 Td (Page 10 of 18) Tj ET
+endstream
+endobj
+25 0 obj
+<< /Type /Page /Parent 5 0 R /MediaBox [0 0 595.28 841.89] /Resources << /Font << /F1 1 0 R /F2 2 0 R /F3 3 0 R /F4 4 0 R >> >> /Contents 24 0 R >>
+endobj
+26 0 obj
+<< /Length 8377 >>
+stream
+0.15 0.22 0.36 rg
+42.0 805.9 511.3 1.2 re f
+BT /F2 8 Tf 0.25 0.30 0.40 rg 42.0 811.9 Td (ONCOBRIEF V4 -- MASTER ENHANCEMENT PLAN & ARCHITECTURAL BLUEPRINT) Tj ET
+BT /F4 7.4 Tf 0.12 0.18 0.28 rg 50.0 789.9 Td (\);) Tj ET
+BT /F4 7.4 Tf 0.12 0.18 0.28 rg 50.0 780.5 Td (CREATE INDEX IF NOT EXISTS opd_slot_date_idx ON opd_appointment_slot \(org_id, clinic_date, slot_start_time\);) Tj ET
+BT /F4 7.4 Tf 0.12 0.18 0.28 rg 50.0 771.1 Td () Tj ET
+BT /F4 7.4 Tf 0.12 0.18 0.28 rg 50.0 761.7 Td (CREATE TABLE IF NOT EXISTS opd_waitlist_entry \() Tj ET
+BT /F4 7.4 Tf 0.12 0.18 0.28 rg 50.0 752.3 Td (  id                      uuid PRIMARY KEY DEFAULT gen_random_uuid\(\),) Tj ET
+BT /F4 7.4 Tf 0.12 0.18 0.28 rg 50.0 742.9 Td (  org_id                  uuid NOT NULL REFERENCES organization\(id\),) Tj ET
+BT /F4 7.4 Tf 0.12 0.18 0.28 rg 50.0 733.5 Td (  patient_id              uuid NOT NULL REFERENCES patient\(id\),) Tj ET
+BT /F4 7.4 Tf 0.12 0.18 0.28 rg 50.0 724.1 Td (  care_track              text NOT NULL DEFAULT 'oncology',) Tj ET
+BT /F4 7.4 Tf 0.12 0.18 0.28 rg 50.0 714.7 Td (  requested_date          date NOT NULL DEFAULT CURRENT_DATE,) Tj ET
+BT /F4 7.4 Tf 0.12 0.18 0.28 rg 50.0 705.3 Td (  priority_tag            admin_priority_tag NOT NULL DEFAULT 'routine_followup',) Tj ET
+BT /F4 7.4 Tf 0.12 0.18 0.28 rg 50.0 695.9 Td (  priority_source_fact_id uuid REFERENCES evidence_fact\(id\),) Tj ET
+BT /F4 7.4 Tf 0.12 0.18 0.28 rg 50.0 686.5 Td (  status                  text NOT NULL DEFAULT 'waiting') Tj ET
+BT /F4 7.4 Tf 0.12 0.18 0.28 rg 50.0 677.1 Td (                            CHECK \(status IN \('waiting', 'offered', 'slotted', 'cancelled'\)\),) Tj ET
+BT /F4 7.4 Tf 0.12 0.18 0.28 rg 50.0 667.7 Td (  offered_slot_id         uuid REFERENCES opd_appointment_slot\(id\),) Tj ET
+BT /F4 7.4 Tf 0.12 0.18 0.28 rg 50.0 658.3 Td (  created_at              timestamptz NOT NULL DEFAULT now\(\),) Tj ET
+BT /F4 7.4 Tf 0.12 0.18 0.28 rg 50.0 648.9 Td (  UNIQUE \(org_id, id\)) Tj ET
+BT /F4 7.4 Tf 0.12 0.18 0.28 rg 50.0 639.5 Td (\);) Tj ET
+BT /F4 7.4 Tf 0.12 0.18 0.28 rg 50.0 630.1 Td () Tj ET
+BT /F4 7.4 Tf 0.12 0.18 0.28 rg 50.0 620.7 Td (-- 3. Use Case 05: Span-Anchored Institutional SOPs & Society Guidelines \(NCG, FOGSI, RSSDI\)) Tj ET
+BT /F4 7.4 Tf 0.12 0.18 0.28 rg 50.0 611.3 Td (CREATE TABLE IF NOT EXISTS guideline_document \() Tj ET
+BT /F4 7.4 Tf 0.12 0.18 0.28 rg 50.0 601.9 Td (  id                uuid PRIMARY KEY DEFAULT gen_random_uuid\(\),) Tj ET
+BT /F4 7.4 Tf 0.12 0.18 0.28 rg 50.0 592.5 Td (  org_id            uuid NOT NULL REFERENCES organization\(id\),) Tj ET
+BT /F4 7.4 Tf 0.12 0.18 0.28 rg 50.0 583.1 Td (  code              text NOT NULL,) Tj ET
+BT /F4 7.4 Tf 0.12 0.18 0.28 rg 50.0 573.7 Td (  title             text NOT NULL,) Tj ET
+BT /F4 7.4 Tf 0.12 0.18 0.28 rg 50.0 564.3 Td (  issuing_body      text NOT NULL, -- e.g. 'National Cancer Grid \(NCG\)', 'FOGSI', 'RSSDI') Tj ET
+BT /F4 7.4 Tf 0.12 0.18 0.28 rg 50.0 554.9 Td (  care_track        text NOT NULL CHECK \(care_track IN \('oncology', 'maternal_health', 'diabetes'\)\),) Tj ET
+BT /F4 7.4 Tf 0.12 0.18 0.28 rg 50.0 545.5 Td (  version_label     text NOT NULL,) Tj ET
+BT /F4 7.4 Tf 0.12 0.18 0.28 rg 50.0 536.1 Td (  publication_date  date NOT NULL,) Tj ET
+BT /F4 7.4 Tf 0.12 0.18 0.28 rg 50.0 526.7 Td (  content_sha256    bytea NOT NULL,) Tj ET
+BT /F4 7.4 Tf 0.12 0.18 0.28 rg 50.0 517.3 Td (  is_active         boolean NOT NULL DEFAULT true,) Tj ET
+BT /F4 7.4 Tf 0.12 0.18 0.28 rg 50.0 507.9 Td (  uploaded_by       uuid NOT NULL REFERENCES app_user\(id\),) Tj ET
+BT /F4 7.4 Tf 0.12 0.18 0.28 rg 50.0 498.5 Td (  uploaded_at       timestamptz NOT NULL DEFAULT now\(\),) Tj ET
+BT /F4 7.4 Tf 0.12 0.18 0.28 rg 50.0 489.1 Td (  UNIQUE \(org_id, code, version_label\)) Tj ET
+BT /F4 7.4 Tf 0.12 0.18 0.28 rg 50.0 479.7 Td (\);) Tj ET
+BT /F4 7.4 Tf 0.12 0.18 0.28 rg 50.0 470.3 Td () Tj ET
+BT /F4 7.4 Tf 0.12 0.18 0.28 rg 50.0 460.9 Td (CREATE TABLE IF NOT EXISTS guideline_span \() Tj ET
+BT /F4 7.4 Tf 0.12 0.18 0.28 rg 50.0 451.5 Td (  id                    uuid PRIMARY KEY DEFAULT gen_random_uuid\(\),) Tj ET
+BT /F4 7.4 Tf 0.12 0.18 0.28 rg 50.0 442.1 Td (  org_id                uuid NOT NULL REFERENCES organization\(id\),) Tj ET
+BT /F4 7.4 Tf 0.12 0.18 0.28 rg 50.0 432.7 Td (  guideline_document_id uuid NOT NULL REFERENCES guideline_document\(id\) ON DELETE CASCADE,) Tj ET
+BT /F4 7.4 Tf 0.12 0.18 0.28 rg 50.0 423.3 Td (  page_number           integer NOT NULL CHECK \(page_number >= 1\),) Tj ET
+BT /F4 7.4 Tf 0.12 0.18 0.28 rg 50.0 413.9 Td (  section_heading       text NOT NULL,) Tj ET
+BT /F4 7.4 Tf 0.12 0.18 0.28 rg 50.0 404.5 Td (  span_index            integer NOT NULL,) Tj ET
+BT /F4 7.4 Tf 0.12 0.18 0.28 rg 50.0 395.1 Td (  verbatim_text         text NOT NULL,) Tj ET
+BT /F4 7.4 Tf 0.12 0.18 0.28 rg 50.0 385.7 Td (  bbox_x                real NOT NULL DEFAULT 0.05,) Tj ET
+BT /F4 7.4 Tf 0.12 0.18 0.28 rg 50.0 376.3 Td (  bbox_y                real NOT NULL DEFAULT 0.10,) Tj ET
+BT /F4 7.4 Tf 0.12 0.18 0.28 rg 50.0 366.9 Td (  bbox_w                real NOT NULL DEFAULT 0.90,) Tj ET
+BT /F4 7.4 Tf 0.12 0.18 0.28 rg 50.0 357.5 Td (  bbox_h                real NOT NULL DEFAULT 0.08,) Tj ET
+BT /F4 7.4 Tf 0.12 0.18 0.28 rg 50.0 348.1 Td (  keywords              text[] NOT NULL DEFAULT '{}',) Tj ET
+BT /F4 7.4 Tf 0.12 0.18 0.28 rg 50.0 338.7 Td (  UNIQUE \(guideline_document_id, page_number, span_index\)) Tj ET
+BT /F4 7.4 Tf 0.12 0.18 0.28 rg 50.0 329.3 Td (\);) Tj ET
+BT /F4 7.4 Tf 0.12 0.18 0.28 rg 50.0 319.9 Td () Tj ET
+BT /F4 7.4 Tf 0.12 0.18 0.28 rg 50.0 310.5 Td (-- 4. Use Case 05: Clinician-Controlled Professional Content & Academic Studio Drafts) Tj ET
+BT /F4 7.4 Tf 0.12 0.18 0.28 rg 50.0 301.1 Td (CREATE TYPE studio_artifact_kind AS ENUM \() Tj ET
+BT /F4 7.4 Tf 0.12 0.18 0.28 rg 50.0 291.7 Td (  'referral_letter',) Tj ET
+BT /F4 7.4 Tf 0.12 0.18 0.28 rg 50.0 282.3 Td (  'tumor_board_deck',) Tj ET
+BT /F4 7.4 Tf 0.12 0.18 0.28 rg 50.0 272.9 Td (  'academic_case_abstract',) Tj ET
+BT /F4 7.4 Tf 0.12 0.18 0.28 rg 50.0 263.5 Td (  'patient_info_sheet') Tj ET
+BT /F4 7.4 Tf 0.12 0.18 0.28 rg 50.0 254.1 Td (\);) Tj ET
+BT /F4 7.4 Tf 0.12 0.18 0.28 rg 50.0 244.7 Td () Tj ET
+BT /F4 7.4 Tf 0.12 0.18 0.28 rg 50.0 235.3 Td (CREATE TABLE IF NOT EXISTS studio_artifact \() Tj ET
+BT /F4 7.4 Tf 0.12 0.18 0.28 rg 50.0 225.9 Td (  id                   uuid PRIMARY KEY DEFAULT gen_random_uuid\(\),) Tj ET
+BT /F4 7.4 Tf 0.12 0.18 0.28 rg 50.0 216.5 Td (  org_id               uuid NOT NULL REFERENCES organization\(id\),) Tj ET
+BT /F4 7.4 Tf 0.12 0.18 0.28 rg 50.0 207.1 Td (  patient_id           uuid NOT NULL REFERENCES patient\(id\),) Tj ET
+BT /F4 7.4 Tf 0.12 0.18 0.28 rg 50.0 197.7 Td (  artifact_kind        studio_artifact_kind NOT NULL,) Tj ET
+BT /F4 7.4 Tf 0.12 0.18 0.28 rg 50.0 188.3 Td (  title                text NOT NULL,) Tj ET
+BT /F4 7.4 Tf 0.12 0.18 0.28 rg 50.0 178.9 Td (  locale               text NOT NULL DEFAULT 'en-IN',) Tj ET
+BT /F4 7.4 Tf 0.12 0.18 0.28 rg 50.0 169.5 Td (  markdown_body        text NOT NULL,) Tj ET
+BT /F4 7.4 Tf 0.12 0.18 0.28 rg 50.0 160.1 Td (  cited_fact_ids       uuid[] NOT NULL DEFAULT '{}',) Tj ET
+BT /F4 7.4 Tf 0.12 0.18 0.28 rg 50.0 150.7 Td (  cited_guideline_ids  uuid[] NOT NULL DEFAULT '{}',) Tj ET
+BT /F4 7.4 Tf 0.12 0.18 0.28 rg 50.0 141.3 Td (  is_deidentified      boolean NOT NULL DEFAULT false,) Tj ET
+BT /F4 7.4 Tf 0.12 0.18 0.28 rg 50.0 131.9 Td (  status               packet_status NOT NULL DEFAULT 'draft',) Tj ET
+BT /F4 7.4 Tf 0.12 0.18 0.28 rg 50.0 122.5 Td (  snapshot_sha256      bytea,) Tj ET
+BT /F4 7.4 Tf 0.12 0.18 0.28 rg 50.0 113.1 Td (  created_by           uuid NOT NULL REFERENCES app_user\(id\),) Tj ET
+BT /F4 7.4 Tf 0.12 0.18 0.28 rg 50.0 103.7 Td (  created_at           timestamptz NOT NULL DEFAULT now\(\),) Tj ET
+BT /F4 7.4 Tf 0.12 0.18 0.28 rg 50.0 94.3 Td (  approved_by          uuid REFERENCES app_user\(id\),) Tj ET
+BT /F4 7.4 Tf 0.12 0.18 0.28 rg 50.0 84.9 Td (  approved_at          timestamptz,) Tj ET
+BT /F4 7.4 Tf 0.12 0.18 0.28 rg 50.0 75.5 Td (  UNIQUE \(org_id, id\)) Tj ET
+BT /F4 7.4 Tf 0.12 0.18 0.28 rg 50.0 66.1 Td (\);) Tj ET
+0.75 0.78 0.82 rg
+42.0 36.0 511.3 0.6 re f
+BT /F1 8 Tf 0.35 0.38 0.44 rg 42.0 24.0 Td (OncoBrief V4 Enhancement Plan -- Use Cases 02, 04, 05 & Design Principles) Tj ET
+BT /F2 8 Tf 0.35 0.38 0.44 rg 498.3 24.0 Td (Page 11 of 18) Tj ET
+endstream
+endobj
+27 0 obj
+<< /Type /Page /Parent 5 0 R /MediaBox [0 0 595.28 841.89] /Resources << /Font << /F1 1 0 R /F2 2 0 R /F3 3 0 R /F4 4 0 R >> >> /Contents 26 0 R >>
+endobj
+28 0 obj
+<< /Length 7062 >>
+stream
+0.15 0.22 0.36 rg
+42.0 805.9 511.3 1.2 re f
+BT /F2 8 Tf 0.25 0.30 0.40 rg 42.0 811.9 Td (ONCOBRIEF V4 -- MASTER ENHANCEMENT PLAN & ARCHITECTURAL BLUEPRINT) Tj ET
+BT /F4 7.4 Tf 0.12 0.18 0.28 rg 50.0 789.9 Td () Tj ET
+BT /F4 7.4 Tf 0.12 0.18 0.28 rg 50.0 780.5 Td (-- 5. Enable Forced Row-Level Security \(RLS\) & Grants on all new tables) Tj ET
+BT /F4 7.4 Tf 0.12 0.18 0.28 rg 50.0 771.1 Td (ALTER TABLE caregiver_contact ENABLE ROW LEVEL SECURITY;) Tj ET
+BT /F4 7.4 Tf 0.12 0.18 0.28 rg 50.0 761.7 Td (ALTER TABLE caregiver_contact FORCE ROW LEVEL SECURITY;) Tj ET
+BT /F4 7.4 Tf 0.12 0.18 0.28 rg 50.0 752.3 Td (CREATE POLICY tenant_isolation ON caregiver_contact) Tj ET
+BT /F4 7.4 Tf 0.12 0.18 0.28 rg 50.0 742.9 Td (  USING \(org_id = current_setting\('app.org_id', true\)::uuid\);) Tj ET
+BT /F4 7.4 Tf 0.12 0.18 0.28 rg 50.0 733.5 Td () Tj ET
+BT /F4 7.4 Tf 0.12 0.18 0.28 rg 50.0 724.1 Td (ALTER TABLE opd_appointment_slot ENABLE ROW LEVEL SECURITY;) Tj ET
+BT /F4 7.4 Tf 0.12 0.18 0.28 rg 50.0 714.7 Td (ALTER TABLE opd_appointment_slot FORCE ROW LEVEL SECURITY;) Tj ET
+BT /F4 7.4 Tf 0.12 0.18 0.28 rg 50.0 705.3 Td (CREATE POLICY tenant_isolation ON opd_appointment_slot) Tj ET
+BT /F4 7.4 Tf 0.12 0.18 0.28 rg 50.0 695.9 Td (  USING \(org_id = current_setting\('app.org_id', true\)::uuid\);) Tj ET
+BT /F4 7.4 Tf 0.12 0.18 0.28 rg 50.0 686.5 Td () Tj ET
+BT /F4 7.4 Tf 0.12 0.18 0.28 rg 50.0 677.1 Td (ALTER TABLE opd_waitlist_entry ENABLE ROW LEVEL SECURITY;) Tj ET
+BT /F4 7.4 Tf 0.12 0.18 0.28 rg 50.0 667.7 Td (ALTER TABLE opd_waitlist_entry FORCE ROW LEVEL SECURITY;) Tj ET
+BT /F4 7.4 Tf 0.12 0.18 0.28 rg 50.0 658.3 Td (CREATE POLICY tenant_isolation ON opd_waitlist_entry) Tj ET
+BT /F4 7.4 Tf 0.12 0.18 0.28 rg 50.0 648.9 Td (  USING \(org_id = current_setting\('app.org_id', true\)::uuid\);) Tj ET
+BT /F4 7.4 Tf 0.12 0.18 0.28 rg 50.0 639.5 Td () Tj ET
+BT /F4 7.4 Tf 0.12 0.18 0.28 rg 50.0 630.1 Td (ALTER TABLE guideline_document ENABLE ROW LEVEL SECURITY;) Tj ET
+BT /F4 7.4 Tf 0.12 0.18 0.28 rg 50.0 620.7 Td (ALTER TABLE guideline_document FORCE ROW LEVEL SECURITY;) Tj ET
+BT /F4 7.4 Tf 0.12 0.18 0.28 rg 50.0 611.3 Td (CREATE POLICY tenant_isolation ON guideline_document) Tj ET
+BT /F4 7.4 Tf 0.12 0.18 0.28 rg 50.0 601.9 Td (  USING \(org_id = current_setting\('app.org_id', true\)::uuid\);) Tj ET
+BT /F4 7.4 Tf 0.12 0.18 0.28 rg 50.0 592.5 Td () Tj ET
+BT /F4 7.4 Tf 0.12 0.18 0.28 rg 50.0 583.1 Td (ALTER TABLE guideline_span ENABLE ROW LEVEL SECURITY;) Tj ET
+BT /F4 7.4 Tf 0.12 0.18 0.28 rg 50.0 573.7 Td (ALTER TABLE guideline_span FORCE ROW LEVEL SECURITY;) Tj ET
+BT /F4 7.4 Tf 0.12 0.18 0.28 rg 50.0 564.3 Td (CREATE POLICY tenant_isolation ON guideline_span) Tj ET
+BT /F4 7.4 Tf 0.12 0.18 0.28 rg 50.0 554.9 Td (  USING \(org_id = current_setting\('app.org_id', true\)::uuid\);) Tj ET
+BT /F4 7.4 Tf 0.12 0.18 0.28 rg 50.0 545.5 Td () Tj ET
+BT /F4 7.4 Tf 0.12 0.18 0.28 rg 50.0 536.1 Td (ALTER TABLE studio_artifact ENABLE ROW LEVEL SECURITY;) Tj ET
+BT /F4 7.4 Tf 0.12 0.18 0.28 rg 50.0 526.7 Td (ALTER TABLE studio_artifact FORCE ROW LEVEL SECURITY;) Tj ET
+BT /F4 7.4 Tf 0.12 0.18 0.28 rg 50.0 517.3 Td (CREATE POLICY tenant_isolation ON studio_artifact) Tj ET
+BT /F4 7.4 Tf 0.12 0.18 0.28 rg 50.0 507.9 Td (  USING \(org_id = current_setting\('app.org_id', true\)::uuid\);) Tj ET
+BT /F4 7.4 Tf 0.12 0.18 0.28 rg 50.0 498.5 Td () Tj ET
+BT /F4 7.4 Tf 0.12 0.18 0.28 rg 50.0 489.1 Td (GRANT SELECT, INSERT, UPDATE ON caregiver_contact, opd_appointment_slot, opd_waitlist_entry, studio_artifact TO) Tj ET
+BT /F4 7.4 Tf 0.12 0.18 0.28 rg 50.0 479.7 Td (oncobrief_app;) Tj ET
+BT /F4 7.4 Tf 0.12 0.18 0.28 rg 50.0 470.3 Td (GRANT SELECT, INSERT ON guideline_document, guideline_span TO oncobrief_app;) Tj ET
+BT /F4 7.4 Tf 0.12 0.18 0.28 rg 50.0 460.9 Td () Tj ET
+BT /F4 7.4 Tf 0.12 0.18 0.28 rg 50.0 451.5 Td (RESET ROLE;) Tj ET
+0.75 0.78 0.82 rg
+42.0 429.1 511.3 0.75 re f
+0.93 0.95 0.99 rg
+38.0 388.1 519.3 24.0 re f
+BT /F2 12.2 Tf 0.10 0.22 0.44 rg 42.0 406.1 Td (7. Step-by-Step Implementation Plan \(File-by-File Tasks\)) Tj ET
+BT /F2 10.6 Tf 0.14 0.26 0.48 rg 42.0 374.1 Td (Phase 1: Foundation -- Database Migration, Domain Vocabularies & Longitudinal Comparators \(Use) Tj ET
+BT /F2 10.6 Tf 0.14 0.26 0.48 rg 42.0 359.9 Td (Case 02 Core\)) Tj ET
+BT /F2 9.6 Tf 0.18 0.22 0.30 rg 42.0 333.7 Td (Task 1.1: Apply 0009_v4_multi_usecase_enhancement.sql Migration) Tj ET
+BT /F1 8.9 Tf 0.12 0.13 0.16 rg 52.0 318.9 Td (* Files to Create/Modify:) Tj ET
+BT /F1 8.9 Tf 0.12 0.13 0.16 rg 60.0 306.7 Td (* Create packages/db/migrations/0009_v4_multi_usecase_enhancement.sql) Tj ET
+BT /F1 8.9 Tf 0.12 0.13 0.16 rg 60.0 294.5 Td (* Modify packages/db/src/seed.ts \(add new tables to TRUNCATE_TABLES\)) Tj ET
+BT /F1 8.9 Tf 0.12 0.13 0.16 rg 52.0 282.3 Td (* Verification Command: pnpm db:migrate && pnpm --filter @oncobrief/db test) Tj ET
+BT /F2 9.6 Tf 0.18 0.22 0.30 rg 42.0 260.1 Td (Task 1.2: Expand FACT_TYPES for Pending Investigations, Instructions & Chronic Care Vital Logs) Tj ET
+BT /F1 8.9 Tf 0.12 0.13 0.16 rg 52.0 245.3 Td (* Files to Modify:) Tj ET
+BT /F1 8.9 Tf 0.12 0.13 0.16 rg 60.0 233.1 Td (* packages/domain/src/vocab/fact-types.ts) Tj ET
+BT /F1 8.9 Tf 0.12 0.13 0.16 rg 60.0 220.9 Td (* packages/domain/src/vocab/fact-value.ts) Tj ET
+BT /F1 8.9 Tf 0.12 0.13 0.16 rg 60.0 208.7 Td (* packages/domain/src/packet/assemble.ts) Tj ET
+BT /F1 8.9 Tf 0.12 0.13 0.16 rg 52.0 196.5 Td (* Implementation Details:) Tj ET
+BT /F1 8.9 Tf 0.12 0.13 0.16 rg 60.0 184.3 Td (1. Add 'pending_investigation.recorded', 'instruction.recorded', and 'vital_sign.as_written' to FACT_TYPES.) Tj ET
+BT /F1 8.9 Tf 0.12 0.13 0.16 rg 60.0 172.1 Td (2. Update slotQualifier\(factType, value, observedOn?\) in packages/domain/src/vocab/fact-types.ts and) Tj ET
+BT /F1 8.9 Tf 0.12 0.13 0.16 rg 60.0 159.9 Td (COMPARATORS['lab_result.as_written'] / COMPARATORS['medication.recorded'] in) Tj ET
+BT /F1 8.9 Tf 0.12 0.13 0.16 rg 60.0 147.7 Td (packages/domain/src/conflict/comparators.ts:) Tj ET
+BT /F1 8.9 Tf 0.12 0.13 0.16 rg 72.0 135.5 Td (* When a.observedOn and b.observedOn are both present and differ by > 1 day,) Tj ET
+BT /F1 8.9 Tf 0.12 0.13 0.16 rg 72.0 123.3 Td (COMPARATORS['lab_result.as_written'] and COMPARATORS['medication.recorded'] return 'agree' \(indicating a) Tj ET
+BT /F1 8.9 Tf 0.12 0.13 0.16 rg 72.0 111.1 Td (valid longitudinal time series rather than a cross-document contradiction\).) Tj ET
+BT /F1 8.9 Tf 0.12 0.13 0.16 rg 72.0 98.9 Td (* When a.observedOn and b.observedOn are on the same date \(or both undated\) and values disagree, return) Tj ET
+BT /F1 8.9 Tf 0.12 0.13 0.16 rg 72.0 86.7 Td ('disagree' so genuine same-day lab/medication discrepancies still enter the Reconciliation Room.) Tj ET
+BT /F1 8.9 Tf 0.12 0.13 0.16 rg 52.0 74.5 Td (* Verification Command: pnpm --filter @oncobrief/domain test) Tj ET
+0.75 0.78 0.82 rg
+42.0 36.0 511.3 0.6 re f
+BT /F1 8 Tf 0.35 0.38 0.44 rg 42.0 24.0 Td (OncoBrief V4 Enhancement Plan -- Use Cases 02, 04, 05 & Design Principles) Tj ET
+BT /F2 8 Tf 0.35 0.38 0.44 rg 498.3 24.0 Td (Page 12 of 18) Tj ET
+endstream
+endobj
+29 0 obj
+<< /Type /Page /Parent 5 0 R /MediaBox [0 0 595.28 841.89] /Resources << /Font << /F1 1 0 R /F2 2 0 R /F3 3 0 R /F4 4 0 R >> >> /Contents 28 0 R >>
+endobj
+30 0 obj
+<< /Length 6900 >>
+stream
+0.15 0.22 0.36 rg
+42.0 805.9 511.3 1.2 re f
+BT /F2 8 Tf 0.25 0.30 0.40 rg 42.0 811.9 Td (ONCOBRIEF V4 -- MASTER ENHANCEMENT PLAN & ARCHITECTURAL BLUEPRINT) Tj ET
+BT /F2 9.6 Tf 0.18 0.22 0.30 rg 42.0 789.9 Td (Task 1.3: Build Longitudinal Lab Flowsheet & "Changes Since Last Visit" Delta Pure Domain Module) Tj ET
+BT /F1 8.9 Tf 0.12 0.13 0.16 rg 52.0 775.1 Td (* Files to Create:) Tj ET
+BT /F1 8.9 Tf 0.12 0.13 0.16 rg 60.0 762.9 Td (* packages/domain/src/journey/longitudinal-review.ts) Tj ET
+BT /F1 8.9 Tf 0.12 0.13 0.16 rg 60.0 750.7 Td (* packages/domain/test/longitudinal-review.test.ts) Tj ET
+BT /F1 8.9 Tf 0.12 0.13 0.16 rg 52.0 738.5 Td (* Exported Signatures:) Tj ET
+BT /F4 7.4 Tf 0.12 0.18 0.28 rg 50.0 722.3 Td (  export interface IntervalDeltaSummary {) Tj ET
+BT /F4 7.4 Tf 0.12 0.18 0.28 rg 50.0 712.9 Td (    baselineDate: string | null;) Tj ET
+BT /F4 7.4 Tf 0.12 0.18 0.28 rg 50.0 703.5 Td (    newDocumentsCount: number;) Tj ET
+BT /F4 7.4 Tf 0.12 0.18 0.28 rg 50.0 694.1 Td (    newFacts: TimelineFactInput[];) Tj ET
+BT /F4 7.4 Tf 0.12 0.18 0.28 rg 50.0 684.7 Td (    reopenedOrNewConflictsCount: number;) Tj ET
+BT /F4 7.4 Tf 0.12 0.18 0.28 rg 50.0 675.3 Td (    pendingInvestigations: TimelineFactInput[];) Tj ET
+BT /F4 7.4 Tf 0.12 0.18 0.28 rg 50.0 665.9 Td (    documentedInstructions: TimelineFactInput[];) Tj ET
+BT /F4 7.4 Tf 0.12 0.18 0.28 rg 50.0 656.5 Td (  }) Tj ET
+BT /F4 7.4 Tf 0.12 0.18 0.28 rg 50.0 647.1 Td () Tj ET
+BT /F4 7.4 Tf 0.12 0.18 0.28 rg 50.0 637.7 Td (  export interface LabSeriesRow {) Tj ET
+BT /F4 7.4 Tf 0.12 0.18 0.28 rg 50.0 628.3 Td (    testName: string;) Tj ET
+BT /F4 7.4 Tf 0.12 0.18 0.28 rg 50.0 618.9 Td (    unitText: string | null;) Tj ET
+BT /F4 7.4 Tf 0.12 0.18 0.28 rg 50.0 609.5 Td (    points: {) Tj ET
+BT /F4 7.4 Tf 0.12 0.18 0.28 rg 50.0 600.1 Td (      factId: string;) Tj ET
+BT /F4 7.4 Tf 0.12 0.18 0.28 rg 50.0 590.7 Td (      observedOn: string;) Tj ET
+BT /F4 7.4 Tf 0.12 0.18 0.28 rg 50.0 581.3 Td (      valueText: string;) Tj ET
+BT /F4 7.4 Tf 0.12 0.18 0.28 rg 50.0 571.9 Td (      numericValue: number | null;) Tj ET
+BT /F4 7.4 Tf 0.12 0.18 0.28 rg 50.0 562.5 Td (      state: EvidenceStateValue;) Tj ET
+BT /F4 7.4 Tf 0.12 0.18 0.28 rg 50.0 553.1 Td (      documentId: string;) Tj ET
+BT /F4 7.4 Tf 0.12 0.18 0.28 rg 50.0 543.7 Td (      documentName: string;) Tj ET
+BT /F4 7.4 Tf 0.12 0.18 0.28 rg 50.0 534.3 Td (      pageNumber: number | null;) Tj ET
+BT /F4 7.4 Tf 0.12 0.18 0.28 rg 50.0 524.9 Td (    }[];) Tj ET
+BT /F4 7.4 Tf 0.12 0.18 0.28 rg 50.0 515.5 Td (    deltaText: string | null; // Purely arithmetic difference e.g. "-1.2 g/dL since 02 Jun 2025", zero clinical) Tj ET
+BT /F4 7.4 Tf 0.12 0.18 0.28 rg 50.0 506.1 Td (interpretation) Tj ET
+BT /F4 7.4 Tf 0.12 0.18 0.28 rg 50.0 496.7 Td (  }) Tj ET
+BT /F4 7.4 Tf 0.12 0.18 0.28 rg 50.0 487.3 Td () Tj ET
+BT /F4 7.4 Tf 0.12 0.18 0.28 rg 50.0 477.9 Td (  export function computeIntervalDelta\() Tj ET
+BT /F4 7.4 Tf 0.12 0.18 0.28 rg 50.0 468.5 Td (    facts: readonly TimelineFactInput[],) Tj ET
+BT /F4 7.4 Tf 0.12 0.18 0.28 rg 50.0 459.1 Td (    documents: readonly DocumentMetaInput[],) Tj ET
+BT /F4 7.4 Tf 0.12 0.18 0.28 rg 50.0 449.7 Td (    baselineDate: string | null,) Tj ET
+BT /F4 7.4 Tf 0.12 0.18 0.28 rg 50.0 440.3 Td (  \): IntervalDeltaSummary;) Tj ET
+BT /F4 7.4 Tf 0.12 0.18 0.28 rg 50.0 430.9 Td () Tj ET
+BT /F4 7.4 Tf 0.12 0.18 0.28 rg 50.0 421.5 Td (  export function buildLongitudinalLabFlowsheet\() Tj ET
+BT /F4 7.4 Tf 0.12 0.18 0.28 rg 50.0 412.1 Td (    facts: readonly TimelineFactInput[],) Tj ET
+BT /F4 7.4 Tf 0.12 0.18 0.28 rg 50.0 402.7 Td (  \): LabSeriesRow[];) Tj ET
+BT /F1 8.9 Tf 0.12 0.13 0.16 rg 52.0 389.3 Td (* Verification Command: pnpm --filter @oncobrief/domain test -- longitudinal-review.test.ts) Tj ET
+BT /F2 9.6 Tf 0.18 0.22 0.30 rg 42.0 367.1 Td (Task 1.4: Enhance RuleBasedExtractor & SarvamVisionOcrAdapter + Fix Upload OCR Routing) Tj ET
+BT /F1 8.9 Tf 0.12 0.13 0.16 rg 52.0 352.3 Td (* Files to Modify:) Tj ET
+BT /F1 8.9 Tf 0.12 0.13 0.16 rg 60.0 340.1 Td (* packages/adapters/src/rule-based-extractor.ts) Tj ET
+BT /F1 8.9 Tf 0.12 0.13 0.16 rg 60.0 327.9 Td (* packages/adapters/src/sarvam-vision-ocr.ts) Tj ET
+BT /F1 8.9 Tf 0.12 0.13 0.16 rg 60.0 315.7 Td (* apps/web/src/lib/actions.ts) Tj ET
+BT /F1 8.9 Tf 0.12 0.13 0.16 rg 52.0 303.5 Td (* Implementation Details:) Tj ET
+BT /F1 8.9 Tf 0.12 0.13 0.16 rg 60.0 291.3 Td (1. In rule-based-extractor.ts:) Tj ET
+BT /F1 8.9 Tf 0.12 0.13 0.16 rg 72.0 279.1 Td (* Add regex rules for pending_investigation.recorded \(matching /\(?:pending|awaiting|advised|scheduled for|to) Tj ET
+BT /F1 8.9 Tf 0.12 0.13 0.16 rg 72.0 266.9 Td (undergo\)\\s+\(IHC|immunohistochemistry|PET-CT|MRI|CT scan|biopsy|OGTT|HbA1c|retinal) Tj ET
+BT /F1 8.9 Tf 0.12 0.13 0.16 rg 72.0 254.7 Td (exam|ultrasound|mammography|blood investigation[^.;\\n]{0,40}\)/i\).) Tj ET
+BT /F1 8.9 Tf 0.12 0.13 0.16 rg 72.0 242.5 Td (* Add regex rules for instruction.recorded \(matching /\(?:please bring|bring|return) Tj ET
+BT /F1 8.9 Tf 0.12 0.13 0.16 rg 72.0 230.3 Td (with|carry\)\\s+\([^.\\n]{5,90}\)/i\).) Tj ET
+BT /F1 8.9 Tf 0.12 0.13 0.16 rg 72.0 218.1 Td (* Add chronic-care medications \(Metformin, Glimepiride, Empagliflozin, Insulin Glargine, Folic Acid, Iron) Tj ET
+BT /F1 8.9 Tf 0.12 0.13 0.16 rg 72.0 205.9 Td (Sucrose, Calcium, Labetalol, Nifedipine\) and procedures \(TIFFA scan, Antenatal ultrasound, Fundus) Tj ET
+BT /F1 8.9 Tf 0.12 0.13 0.16 rg 72.0 193.7 Td (examination, Foot neuropathy screening, Oral glucose tolerance test\).) Tj ET
+BT /F1 8.9 Tf 0.12 0.13 0.16 rg 60.0 181.5 Td (2. In sarvam-vision-ocr.ts:) Tj ET
+BT /F1 8.9 Tf 0.12 0.13 0.16 rg 72.0 169.3 Td (* Fix splitPdfIntoBatches so it preserves real PDF page streams instead of overwriting >10-page PDFs with) Tj ET
+BT /F1 8.9 Tf 0.12 0.13 0.16 rg 72.0 157.1 Td (%BATCH placeholder text, and accept a dynamic language parameter \(hi-IN, ta-IN, te-IN, etc.\).) Tj ET
+BT /F1 8.9 Tf 0.12 0.13 0.16 rg 60.0 144.9 Td (3. In apps/web/src/lib/actions.ts \(ocrPort and extractorPort, lines 313-320\):) Tj ET
+BT /F1 8.9 Tf 0.12 0.13 0.16 rg 72.0 132.7 Td (* Route dynamically based on env.ocrDriver \(SarvamVisionOcrAdapter when SARVAM_API_KEY is configured,) Tj ET
+BT /F1 8.9 Tf 0.12 0.13 0.16 rg 72.0 120.5 Td (TextractOcrAdapter when AWS Textract is configured, and LocalMultimodalOcrAdapter as fallback\).) Tj ET
+BT /F1 8.9 Tf 0.12 0.13 0.16 rg 52.0 108.3 Td (* Verification Command: pnpm --filter @oncobrief/adapters test) Tj ET
+0.75 0.78 0.82 rg
+42.0 87.1 511.3 0.75 re f
+BT /F2 10.6 Tf 0.14 0.26 0.48 rg 42.0 67.1 Td (Phase 2: Use Case 02 UI Upgrades -- Interval Delta Banner, Lab Flowsheets, Batch Verify &) Tj ET
+0.75 0.78 0.82 rg
+42.0 36.0 511.3 0.6 re f
+BT /F1 8 Tf 0.35 0.38 0.44 rg 42.0 24.0 Td (OncoBrief V4 Enhancement Plan -- Use Cases 02, 04, 05 & Design Principles) Tj ET
+BT /F2 8 Tf 0.35 0.38 0.44 rg 498.3 24.0 Td (Page 13 of 18) Tj ET
+endstream
+endobj
+31 0 obj
+<< /Type /Page /Parent 5 0 R /MediaBox [0 0 595.28 841.89] /Resources << /Font << /F1 1 0 R /F2 2 0 R /F3 3 0 R /F4 4 0 R >> >> /Contents 30 0 R >>
+endobj
+32 0 obj
+<< /Length 6737 >>
+stream
+0.15 0.22 0.36 rg
+42.0 805.9 511.3 1.2 re f
+BT /F2 8 Tf 0.25 0.30 0.40 rg 42.0 811.9 Td (ONCOBRIEF V4 -- MASTER ENHANCEMENT PLAN & ARCHITECTURAL BLUEPRINT) Tj ET
+BT /F2 10.6 Tf 0.14 0.26 0.48 rg 42.0 789.9 Td (Multi-Track Seed) Tj ET
+BT /F2 9.6 Tf 0.18 0.22 0.30 rg 42.0 763.7 Td (Task 2.1: Seed Multi-Track Patients \(DEMO-MAT-004 & DEMO-DIA-005\), OPD Slots & Guideline Library) Tj ET
+BT /F1 8.9 Tf 0.12 0.13 0.16 rg 52.0 748.9 Td (* Files to Modify:) Tj ET
+BT /F1 8.9 Tf 0.12 0.13 0.16 rg 60.0 736.7 Td (* packages/db/src/fixtures.ts) Tj ET
+BT /F1 8.9 Tf 0.12 0.13 0.16 rg 60.0 724.5 Td (* packages/db/src/seed.ts) Tj ET
+BT /F1 8.9 Tf 0.12 0.13 0.16 rg 52.0 712.3 Td (* Implementation Details:) Tj ET
+BT /F1 8.9 Tf 0.12 0.13 0.16 rg 60.0 700.1 Td (1. Add DEMO-MAT-004 \("Priya Nair -- High-Risk ANC Trimester 2 \(FOGSI Track\)"\) with serial Hemoglobin \(11.2 g/dL) Tj ET
+BT /F1 8.9 Tf 0.12 0.13 0.16 rg 60.0 687.9 Td (-> 9.8 g/dL\), BP logs, OGTT report, and a missing required TIFFA Anomaly Scan report.) Tj ET
+BT /F1 8.9 Tf 0.12 0.13 0.16 rg 60.0 675.7 Td (2. Add DEMO-DIA-005 \("Rajesh Iyer -- Long-Term Type 2 Diabetes Follow-Up \(RSSDI Track\)"\) with 3 serial HbA1c) Tj ET
+BT /F1 8.9 Tf 0.12 0.13 0.16 rg 60.0 663.5 Td (reports \(8.9% -> 7.8% -> 7.1%\), Serum Creatinine/eGFR panel, Metformin + Empagliflozin prescriptions, and a) Tj ET
+BT /F1 8.9 Tf 0.12 0.13 0.16 rg 60.0 651.3 Td (missing required Annual Dilated Retinal Fundus Exam.) Tj ET
+BT /F1 8.9 Tf 0.12 0.13 0.16 rg 60.0 639.1 Td (3. Seed last_consultation_date on DEMO-001, DEMO-MAT-004, and DEMO-DIA-005 so the "Changes Since Last Visit") Tj ET
+BT /F1 8.9 Tf 0.12 0.13 0.16 rg 60.0 626.9 Td (delta banner is populated out of the box.) Tj ET
+BT /F1 8.9 Tf 0.12 0.13 0.16 rg 52.0 614.7 Td (* Verification Command: pnpm demo:reset) Tj ET
+BT /F2 9.6 Tf 0.18 0.22 0.30 rg 42.0 592.5 Td (Task 2.2: Add verifyEvidenceBatchAction & Guided "Next Step" Readiness Bar on /patients/[id]/evidence) Tj ET
+BT /F1 8.9 Tf 0.12 0.13 0.16 rg 52.0 577.7 Td (* Files to Modify:) Tj ET
+BT /F1 8.9 Tf 0.12 0.13 0.16 rg 60.0 565.5 Td (* packages/db/src/services/ledger.ts \(export verifyEvidenceBatch\)) Tj ET
+BT /F1 8.9 Tf 0.12 0.13 0.16 rg 60.0 553.3 Td (* apps/web/src/lib/actions.ts \(export verifyEvidenceBatchAction\)) Tj ET
+BT /F1 8.9 Tf 0.12 0.13 0.16 rg 60.0 541.1 Td (* apps/web/src/app/\(app\)/patients/[id]/evidence/page.tsx) Tj ET
+BT /F1 8.9 Tf 0.12 0.13 0.16 rg 60.0 528.9 Td (* apps/web/src/components/TimelineNodeView.tsx) Tj ET
+BT /F1 8.9 Tf 0.12 0.13 0.16 rg 52.0 516.7 Td (* Implementation Details:) Tj ET
+BT /F1 8.9 Tf 0.12 0.13 0.16 rg 60.0 504.5 Td (1. Add a top Consultation Readiness & Changes Since Last Visit Banner on evidence/page.tsx showing:) Tj ET
+BT /F1 8.9 Tf 0.12 0.13 0.16 rg 72.0 492.3 Td (* Current ReadinessBand + exact next actions to reach ready \(e.g., 1 Conflict to Resolve -> link to) Tj ET
+BT /F1 8.9 Tf 0.12 0.13 0.16 rg 72.0 480.1 Td (Reconciliation Room; 1 Required Document Missing -> link to Record Map; Batch Verify High-Confidence Facts\).) Tj ET
+BT /F1 8.9 Tf 0.12 0.13 0.16 rg 72.0 467.9 Td (* A Since Last Visit filter chip alongside All facts, Unverified, Conflicting, Verified, and Lab & Vitals) Tj ET
+BT /F1 8.9 Tf 0.12 0.13 0.16 rg 72.0 455.7 Td (Flowsheet.) Tj ET
+BT /F1 8.9 Tf 0.12 0.13 0.16 rg 60.0 443.5 Td (2. Remove the hardcoded 'Apollo Hospitals' and 'CT Scan \(Thorax\)' strings from TimelineNodeView.tsx, replacing) Tj ET
+BT /F1 8.9 Tf 0.12 0.13 0.16 rg 60.0 431.3 Td (them with row.issuingFacility ?? 'Facility not stated' and accurate modality labels for Oncology, Maternal) Tj ET
+BT /F1 8.9 Tf 0.12 0.13 0.16 rg 60.0 419.1 Td (Health, and Diabetes.) Tj ET
+BT /F1 8.9 Tf 0.12 0.13 0.16 rg 52.0 406.9 Td (* Verification Command: pnpm --filter @oncobrief/web test) Tj ET
+BT /F2 9.6 Tf 0.18 0.22 0.30 rg 42.0 384.7 Td (Task 2.3: Wire Real ABDM v6.5.0 & HL7 mCODE STU4 Bundle Import and Document Linking in) Tj ET
+BT /F2 9.6 Tf 0.18 0.22 0.30 rg 42.0 371.9 Td (DocumentUploadForm.tsx) Tj ET
+BT /F1 8.9 Tf 0.12 0.13 0.16 rg 52.0 357.1 Td (* Files to Modify:) Tj ET
+BT /F1 8.9 Tf 0.12 0.13 0.16 rg 60.0 344.9 Td (* apps/web/src/lib/actions.ts \(add importStandardBundleAction and linkExistingDocumentAction\)) Tj ET
+BT /F1 8.9 Tf 0.12 0.13 0.16 rg 60.0 332.7 Td (* apps/web/src/components/DocumentUploadForm.tsx) Tj ET
+BT /F1 8.9 Tf 0.12 0.13 0.16 rg 52.0 320.5 Td (* Implementation Details:) Tj ET
+BT /F1 8.9 Tf 0.12 0.13 0.16 rg 60.0 308.3 Td (* Replace the two alert\(...\) buttons in DocumentUploadForm.tsx \(lines 329-344\) with real <form) Tj ET
+BT /F1 8.9 Tf 0.12 0.13 0.16 rg 60.0 296.1 Td (action={importStandardBundleAction}> buttons that construct and ingest a full NRCeS ABDM v6.5.0) Tj ET
+BT /F1 8.9 Tf 0.12 0.13 0.16 rg 60.0 283.9 Td (OPConsultRecord / DiagnosticReportRecord bundle or HL7 mCODE STU4 bundle into the patient's Evidence Ledger.) Tj ET
+BT /F1 8.9 Tf 0.12 0.13 0.16 rg 52.0 271.7 Td (* Verification Command: pnpm --filter @oncobrief/web test) Tj ET
+0.75 0.78 0.82 rg
+42.0 250.5 511.3 0.75 re f
+BT /F2 10.6 Tf 0.14 0.26 0.48 rg 42.0 230.5 Td (Phase 3: Use Case 04 -- Smart OPD Clinic Flow, Slot Backfill & Care-Team Task Assignment) Tj ET
+BT /F2 9.6 Tf 0.18 0.22 0.30 rg 42.0 204.3 Td (Task 3.1: Build OPD Flow & Readiness-Gated Slot Backfill Service \(packages/db/src/services/opd-flow.ts\)) Tj ET
+BT /F1 8.9 Tf 0.12 0.13 0.16 rg 52.0 189.5 Td (* Files to Create:) Tj ET
+BT /F1 8.9 Tf 0.12 0.13 0.16 rg 60.0 177.3 Td (* packages/domain/src/flow/slot-optimizer.ts) Tj ET
+BT /F1 8.9 Tf 0.12 0.13 0.16 rg 60.0 165.1 Td (* packages/domain/test/slot-optimizer.test.ts) Tj ET
+BT /F1 8.9 Tf 0.12 0.13 0.16 rg 60.0 152.9 Td (* packages/db/src/services/opd-flow.ts) Tj ET
+BT /F1 8.9 Tf 0.12 0.13 0.16 rg 52.0 140.7 Td (* Exported Signatures \(slot-optimizer.ts\):) Tj ET
+BT /F4 7.4 Tf 0.12 0.18 0.28 rg 50.0 124.5 Td (  export interface BackfillCandidate {) Tj ET
+BT /F4 7.4 Tf 0.12 0.18 0.28 rg 50.0 115.1 Td (    waitlistEntryId: string;) Tj ET
+BT /F4 7.4 Tf 0.12 0.18 0.28 rg 50.0 105.7 Td (    patientId: string;) Tj ET
+BT /F4 7.4 Tf 0.12 0.18 0.28 rg 50.0 96.3 Td (    patientName: string;) Tj ET
+BT /F4 7.4 Tf 0.12 0.18 0.28 rg 50.0 86.9 Td (    careTrack: 'oncology' | 'maternal_health' | 'diabetes';) Tj ET
+BT /F4 7.4 Tf 0.12 0.18 0.28 rg 50.0 77.5 Td (    readinessBand: ReadinessBand;) Tj ET
+BT /F4 7.4 Tf 0.12 0.18 0.28 rg 50.0 68.1 Td (    priorityTag: string;) Tj ET
+BT /F4 7.4 Tf 0.12 0.18 0.28 rg 50.0 58.7 Td (    prioritySourceQuote: string | null;) Tj ET
+0.75 0.78 0.82 rg
+42.0 36.0 511.3 0.6 re f
+BT /F1 8 Tf 0.35 0.38 0.44 rg 42.0 24.0 Td (OncoBrief V4 Enhancement Plan -- Use Cases 02, 04, 05 & Design Principles) Tj ET
+BT /F2 8 Tf 0.35 0.38 0.44 rg 498.3 24.0 Td (Page 14 of 18) Tj ET
+endstream
+endobj
+33 0 obj
+<< /Type /Page /Parent 5 0 R /MediaBox [0 0 595.28 841.89] /Resources << /Font << /F1 1 0 R /F2 2 0 R /F3 3 0 R /F4 4 0 R >> >> /Contents 32 0 R >>
+endobj
+34 0 obj
+<< /Length 6862 >>
+stream
+0.15 0.22 0.36 rg
+42.0 805.9 511.3 1.2 re f
+BT /F2 8 Tf 0.25 0.30 0.40 rg 42.0 811.9 Td (ONCOBRIEF V4 -- MASTER ENHANCEMENT PLAN & ARCHITECTURAL BLUEPRINT) Tj ET
+BT /F4 7.4 Tf 0.12 0.18 0.28 rg 50.0 789.9 Td (    matchScore: number;) Tj ET
+BT /F4 7.4 Tf 0.12 0.18 0.28 rg 50.0 780.5 Td (    rationale: string; // e.g. "Record READY \(0 gaps, 0 conflicts\) - Documented post-op check") Tj ET
+BT /F4 7.4 Tf 0.12 0.18 0.28 rg 50.0 771.1 Td (  }) Tj ET
+BT /F4 7.4 Tf 0.12 0.18 0.28 rg 50.0 761.7 Td () Tj ET
+BT /F4 7.4 Tf 0.12 0.18 0.28 rg 50.0 752.3 Td (  export function rankWaitlistForVacantSlot\() Tj ET
+BT /F4 7.4 Tf 0.12 0.18 0.28 rg 50.0 742.9 Td (    vacantSlot: OpdSlotInput,) Tj ET
+BT /F4 7.4 Tf 0.12 0.18 0.28 rg 50.0 733.5 Td (    candidates: readonly WaitlistCandidateInput[],) Tj ET
+BT /F4 7.4 Tf 0.12 0.18 0.28 rg 50.0 724.1 Td (  \): BackfillCandidate[];) Tj ET
+BT /F1 8.9 Tf 0.12 0.13 0.16 rg 52.0 710.7 Td (* Verification Command: pnpm --filter @oncobrief/domain test -- slot-optimizer.test.ts) Tj ET
+BT /F2 9.6 Tf 0.18 0.22 0.30 rg 42.0 688.5 Td (Task 3.2: Upgrade /workspace with Live OPD Clinic Flow Board, Track Filter & Pilot Telemetry Bar) Tj ET
+BT /F1 8.9 Tf 0.12 0.13 0.16 rg 52.0 673.7 Td (* Files to Modify:) Tj ET
+BT /F1 8.9 Tf 0.12 0.13 0.16 rg 60.0 661.5 Td (* apps/web/src/app/\(app\)/workspace/page.tsx) Tj ET
+BT /F1 8.9 Tf 0.12 0.13 0.16 rg 60.0 649.3 Td (* apps/web/src/lib/actions.ts \(add updateOpdSlotStatusAction, backfillOpdSlotAction, registerWalkInAction\)) Tj ET
+BT /F1 8.9 Tf 0.12 0.13 0.16 rg 52.0 637.1 Td (* Implementation Details:) Tj ET
+BT /F1 8.9 Tf 0.12 0.13 0.16 rg 60.0 624.9 Td (1. Add a 60-90 Day Pilot Operational Telemetry Bar at the top of /workspace displaying live database metrics:) Tj ET
+BT /F1 8.9 Tf 0.12 0.13 0.16 rg 72.0 612.7 Td (* Consult-Ready Rate \(ready / total scheduled\)) Tj ET
+BT /F1 8.9 Tf 0.12 0.13 0.16 rg 72.0 600.5 Td (* Span-Validation Gate Pass Rate \(promoted / total candidates\)) Tj ET
+BT /F1 8.9 Tf 0.12 0.13 0.16 rg 72.0 588.3 Td (* Source Contradictions Caught Pre-Consult) Tj ET
+BT /F1 8.9 Tf 0.12 0.13 0.16 rg 72.0 576.1 Td (* OPD Slot Utilization & Backfill Count) Tj ET
+BT /F1 8.9 Tf 0.12 0.13 0.16 rg 60.0 563.9 Td (2. Add a view toggle on /workspace: Readiness Worklist View vs. Live OPD Clinic Flow & Slot Board \(showing) Tj ET
+BT /F1 8.9 Tf 0.12 0.13 0.16 rg 60.0 551.7 Td (time slots 09:00-12:30, Token #, Arrival/Check-In status, Delayed Lab blocker badges, and a 1-click "Backfill) Tj ET
+BT /F1 8.9 Tf 0.12 0.13 0.16 rg 60.0 539.5 Td (Vacant/Blocked Slot from Ready Waitlist" action\).) Tj ET
+BT /F1 8.9 Tf 0.12 0.13 0.16 rg 60.0 527.3 Td (3. Add Care Track filter pills \(All Tracks, Oncology \(NCG\), Maternal Health \(FOGSI\), Diabetes \(RSSDI\)\).) Tj ET
+BT /F1 8.9 Tf 0.12 0.13 0.16 rg 52.0 515.1 Td (* Verification Command: pnpm --filter @oncobrief/web test) Tj ET
+BT /F2 9.6 Tf 0.18 0.22 0.30 rg 42.0 492.9 Td (Task 3.3: Add In-Row Task Assignee Selector & Gap Waiver UI) Tj ET
+BT /F1 8.9 Tf 0.12 0.13 0.16 rg 52.0 478.1 Td (* Files to Modify:) Tj ET
+BT /F1 8.9 Tf 0.12 0.13 0.16 rg 60.0 465.9 Td (* apps/web/src/app/\(app\)/patients/[id]/tasks/page.tsx) Tj ET
+BT /F1 8.9 Tf 0.12 0.13 0.16 rg 60.0 453.7 Td (* apps/web/src/app/\(app\)/patients/[id]/record-map/page.tsx) Tj ET
+BT /F1 8.9 Tf 0.12 0.13 0.16 rg 52.0 441.5 Td (* Implementation Details:) Tj ET
+BT /F1 8.9 Tf 0.12 0.13 0.16 rg 60.0 429.3 Td (1. Query organization staff members \(listOrgMembers\(q, orgId\)\) and render an inline <form) Tj ET
+BT /F1 8.9 Tf 0.12 0.13 0.16 rg 60.0 417.1 Td (action={assignTaskAction}> dropdown on every task card in tasks/page.tsx so tasks can be assigned to Dr. Meera) Tj ET
+BT /F1 8.9 Tf 0.12 0.13 0.16 rg 60.0 404.9 Td (Rao \(clinician\), Anita Joseph \(coordinator\), or Deepak Nair \(records_officer\).) Tj ET
+BT /F1 8.9 Tf 0.12 0.13 0.16 rg 60.0 392.7 Td (2. Add a <details> waiver form on record-map/page.tsx wired to waiveGapAction so authorized staff) Tj ET
+BT /F1 8.9 Tf 0.12 0.13 0.16 rg 60.0 380.5 Td (\(checklist:author\) can waive non-applicable expected items with a mandatory audited reason.) Tj ET
+BT /F1 8.9 Tf 0.12 0.13 0.16 rg 52.0 368.3 Td (* Verification Command: pnpm --filter @oncobrief/web test) Tj ET
+0.75 0.78 0.82 rg
+42.0 347.1 511.3 0.75 re f
+BT /F2 10.6 Tf 0.14 0.26 0.48 rg 42.0 327.1 Td (Phase 4: Use Case 05 -- Doctor Productivity Studio & Span-Grounded Guideline Co-Pilot) Tj ET
+BT /F2 9.6 Tf 0.18 0.22 0.30 rg 42.0 300.9 Td (Task 4.1: Build Institutional Guideline & SOP Retrieval Engine \([G#] Citations\)) Tj ET
+BT /F1 8.9 Tf 0.12 0.13 0.16 rg 52.0 286.1 Td (* Files to Modify:) Tj ET
+BT /F1 8.9 Tf 0.12 0.13 0.16 rg 60.0 273.9 Td (* apps/web/src/lib/assistant/classify.ts) Tj ET
+BT /F1 8.9 Tf 0.12 0.13 0.16 rg 60.0 261.7 Td (* apps/web/src/lib/assistant/tools.ts) Tj ET
+BT /F1 8.9 Tf 0.12 0.13 0.16 rg 60.0 249.5 Td (* apps/web/src/lib/assistant/prompt.ts) Tj ET
+BT /F1 8.9 Tf 0.12 0.13 0.16 rg 60.0 237.3 Td (* apps/web/src/lib/assistant/orchestrator.ts) Tj ET
+BT /F1 8.9 Tf 0.12 0.13 0.16 rg 52.0 225.1 Td (* Implementation Details:) Tj ET
+BT /F1 8.9 Tf 0.12 0.13 0.16 rg 60.0 212.9 Td (1. In classify.ts: Add 'guideline_knowledge_question' intent. Route queries asking about NCG, FOGSI, RSSDI,) Tj ET
+BT /F1 8.9 Tf 0.12 0.13 0.16 rg 60.0 200.7 Td (institutional SOPs, standard workup checklists, or reference protocols to 'guideline_knowledge_question',) Tj ET
+BT /F1 8.9 Tf 0.12 0.13 0.16 rg 60.0 188.5 Td (while continuing to block patient-specific diagnostic/prescribing demands \("what dose should I prescribe for) Tj ET
+BT /F1 8.9 Tf 0.12 0.13 0.16 rg 60.0 176.3 Td (this patient" -> 'unsupported_medical_question'\).) Tj ET
+BT /F1 8.9 Tf 0.12 0.13 0.16 rg 60.0 164.1 Td (2. In tools.ts:) Tj ET
+BT /F1 8.9 Tf 0.12 0.13 0.16 rg 72.0 151.9 Td (* Fix the bug on line 301 where openTasksCount was computed from timeline instead of listTasks\(q,) Tj ET
+BT /F1 8.9 Tf 0.12 0.13 0.16 rg 72.0 139.7 Td (patientId\).) Tj ET
+BT /F1 8.9 Tf 0.12 0.13 0.16 rg 72.0 127.5 Td (* Add searchGuidelines\(q, query, careTrack?\) querying guideline_span + guideline_document and returning) Tj ET
+BT /F1 8.9 Tf 0.12 0.13 0.16 rg 72.0 115.3 Td (verbatim protocol spans with [G1], [G2] citations and bounding boxes.) Tj ET
+BT /F1 8.9 Tf 0.12 0.13 0.16 rg 60.0 103.1 Td (3. In orchestrator.ts and prompt.ts: Format [G#] guideline cards alongside [E#] patient evidence cards so) Tj ET
+BT /F1 8.9 Tf 0.12 0.13 0.16 rg 60.0 90.9 Td (clinicians can verify exact protocol passages with one click.) Tj ET
+BT /F1 8.9 Tf 0.12 0.13 0.16 rg 52.0 78.7 Td (* Verification Command: pnpm --filter @oncobrief/web test) Tj ET
+0.75 0.78 0.82 rg
+42.0 36.0 511.3 0.6 re f
+BT /F1 8 Tf 0.35 0.38 0.44 rg 42.0 24.0 Td (OncoBrief V4 Enhancement Plan -- Use Cases 02, 04, 05 & Design Principles) Tj ET
+BT /F2 8 Tf 0.35 0.38 0.44 rg 498.3 24.0 Td (Page 15 of 18) Tj ET
+endstream
+endobj
+35 0 obj
+<< /Type /Page /Parent 5 0 R /MediaBox [0 0 595.28 841.89] /Resources << /Font << /F1 1 0 R /F2 2 0 R /F3 3 0 R /F4 4 0 R >> >> /Contents 34 0 R >>
+endobj
+36 0 obj
+<< /Length 7228 >>
+stream
+0.15 0.22 0.36 rg
+42.0 805.9 511.3 1.2 re f
+BT /F2 8 Tf 0.25 0.30 0.40 rg 42.0 811.9 Td (ONCOBRIEF V4 -- MASTER ENHANCEMENT PLAN & ARCHITECTURAL BLUEPRINT) Tj ET
+BT /F2 9.6 Tf 0.18 0.22 0.30 rg 42.0 789.9 Td (Task 4.2: Build the Clinician Productivity & Content Studio \(/patients/[id]/packet & studio.ts\)) Tj ET
+BT /F1 8.9 Tf 0.12 0.13 0.16 rg 52.0 775.1 Td (* Files to Create/Modify:) Tj ET
+BT /F1 8.9 Tf 0.12 0.13 0.16 rg 60.0 762.9 Td (* Create packages/domain/src/studio/draft-generator.ts) Tj ET
+BT /F1 8.9 Tf 0.12 0.13 0.16 rg 60.0 750.7 Td (* Create packages/domain/test/draft-generator.test.ts) Tj ET
+BT /F1 8.9 Tf 0.12 0.13 0.16 rg 60.0 738.5 Td (* Modify apps/web/src/app/\(app\)/patients/[id]/packet/page.tsx) Tj ET
+BT /F1 8.9 Tf 0.12 0.13 0.16 rg 60.0 726.3 Td (* Modify apps/web/src/lib/actions.ts \(add createStudioArtifactAction, updateStudioArtifactAction,) Tj ET
+BT /F1 8.9 Tf 0.12 0.13 0.16 rg 60.0 714.1 Td (approveStudioArtifactAction\)) Tj ET
+BT /F1 8.9 Tf 0.12 0.13 0.16 rg 52.0 701.9 Td (* Implementation Details:) Tj ET
+BT /F1 8.9 Tf 0.12 0.13 0.16 rg 60.0 689.7 Td (* In draft-generator.ts, implement deterministic, source-cited template compilers \(with optional LLM phrasing) Tj ET
+BT /F1 8.9 Tf 0.12 0.13 0.16 rg 60.0 677.5 Td (refinement constrained to [E#]/[G#] tags\) for 4 deliverables:) Tj ET
+BT /F1 8.9 Tf 0.12 0.13 0.16 rg 68.0 665.3 Td (1. Specialist Referral / Transfer Letter \(structured clinical history as written, procedures, serial lab) Tj ET
+BT /F1 8.9 Tf 0.12 0.13 0.16 rg 68.0 653.1 Td (table, open tasks, and referring doctor sign-off\).) Tj ET
+BT /F1 8.9 Tf 0.12 0.13 0.16 rg 68.0 640.9 Td (2. Multidisciplinary Tumor Board / Case Presentation \(slide-by-slide Markdown deck: Slide 1 Case Identity &) Tj ET
+BT /F1 8.9 Tf 0.12 0.13 0.16 rg 68.0 628.7 Td (Readiness, Slide 2 Chronological Interventions [E#], Slide 3 Pathology & Imaging Spans [E#], Slide 4) Tj ET
+BT /F1 8.9 Tf 0.12 0.13 0.16 rg 68.0 616.5 Td (Reconciled Contradictions, Slide 5 Reference NCG Guideline Checklist [G#]\).) Tj ET
+BT /F1 8.9 Tf 0.12 0.13 0.16 rg 68.0 604.3 Td (3. De-Identified Academic Case Report Draft \(automatically redacts Patient Name, MRN, ABHA, and exact dates) Tj ET
+BT /F1 8.9 Tf 0.12 0.13 0.16 rg 68.0 592.1 Td (into relative day offsets Day 0, Day +14, Day +45 for research manuscripts and teaching\).) Tj ET
+BT /F1 8.9 Tf 0.12 0.13 0.16 rg 68.0 579.9 Td (4. Patient & Caregiver Visit Summary Handout \(plain-language administrative summary of verified appointments,) Tj ET
+BT /F1 8.9 Tf 0.12 0.13 0.16 rg 68.0 567.7 Td (documents to bring, and hospital contact numbers\).) Tj ET
+BT /F1 8.9 Tf 0.12 0.13 0.16 rg 60.0 555.5 Td (* Add a Print / Save as PDF view \(@media print stylesheet\) alongside Export ABDM v6.5.0 FHIR JSON and Export) Tj ET
+BT /F1 8.9 Tf 0.12 0.13 0.16 rg 60.0 543.3 Td (HL7 mCODE STU4 JSON buttons on packet/page.tsx.) Tj ET
+BT /F1 8.9 Tf 0.12 0.13 0.16 rg 52.0 531.1 Td (* Verification Command: pnpm --filter @oncobrief/domain test -- draft-generator.test.ts) Tj ET
+0.75 0.78 0.82 rg
+42.0 509.9 511.3 0.75 re f
+BT /F2 10.6 Tf 0.14 0.26 0.48 rg 42.0 489.9 Td (Phase 5: Design Principles -- Caregiver Voice Network, Accessibility \(WCAG 2.2 AA\) & Mobile) Tj ET
+BT /F2 10.6 Tf 0.14 0.26 0.48 rg 42.0 475.7 Td (Remediation) Tj ET
+BT /F2 9.6 Tf 0.18 0.22 0.30 rg 42.0 449.5 Td (Task 5.1: Upgrade /patients/[id]/continuity with Caregiver Registry & 11-Language Spoken Audio Preview) Tj ET
+BT /F1 8.9 Tf 0.12 0.13 0.16 rg 52.0 434.7 Td (* Files to Modify:) Tj ET
+BT /F1 8.9 Tf 0.12 0.13 0.16 rg 60.0 422.5 Td (* apps/web/src/app/\(app\)/patients/[id]/continuity/page.tsx) Tj ET
+BT /F1 8.9 Tf 0.12 0.13 0.16 rg 60.0 410.3 Td (* apps/web/src/components/ContinuityAudioPlayer.tsx \(new client component\)) Tj ET
+BT /F1 8.9 Tf 0.12 0.13 0.16 rg 60.0 398.1 Td (* packages/db/src/seed.ts \(seed templates across en, hi, ta, te, bn, mr, kn, ml, gu, pa, or\)) Tj ET
+BT /F1 8.9 Tf 0.12 0.13 0.16 rg 52.0 385.9 Td (* Implementation Details:) Tj ET
+BT /F1 8.9 Tf 0.12 0.13 0.16 rg 60.0 373.7 Td (1. Render the Consented Family Caregiver Card on continuity/page.tsx allowing coordinators to add/view a) Tj ET
+BT /F1 8.9 Tf 0.12 0.13 0.16 rg 60.0 361.5 Td (caregiver \(fullName, relationship, phoneNumber, preferredLocale\) and toggle Sync reminders to family) Tj ET
+BT /F1 8.9 Tf 0.12 0.13 0.16 rg 60.0 349.3 Td (caregiver.) Tj ET
+BT /F1 8.9 Tf 0.12 0.13 0.16 rg 60.0 337.1 Td (2. Add a "Listen / Preview Voice Note \(Sarvam Bulbul v3\)" button on every composed or approved patient message) Tj ET
+BT /F1 8.9 Tf 0.12 0.13 0.16 rg 60.0 324.9 Td (that calls /api/v1/assistant/voice/tts with the message's bodyRendered and locale \(falling back gracefully to) Tj ET
+BT /F1 8.9 Tf 0.12 0.13 0.16 rg 60.0 312.7 Td (browser window.speechSynthesis if offline\) so low-literacy voice outreach is demonstrable live.) Tj ET
+BT /F1 8.9 Tf 0.12 0.13 0.16 rg 52.0 300.5 Td (* Verification Command: pnpm --filter @oncobrief/web test) Tj ET
+BT /F2 9.6 Tf 0.18 0.22 0.30 rg 42.0 278.3 Td (Task 5.2: Remediate WCAG 2.2 AA Contrast, Form Labels, Landmarks & 375px Mobile Overflow) Tj ET
+BT /F1 8.9 Tf 0.12 0.13 0.16 rg 52.0 263.5 Td (* Files to Modify:) Tj ET
+BT /F1 8.9 Tf 0.12 0.13 0.16 rg 60.0 251.3 Td (* apps/web/src/app/globals.css) Tj ET
+BT /F1 8.9 Tf 0.12 0.13 0.16 rg 60.0 239.1 Td (* apps/web/src/app/\(app\)/layout.tsx) Tj ET
+BT /F1 8.9 Tf 0.12 0.13 0.16 rg 60.0 226.9 Td (* apps/web/src/app/\(app\)/patients/[id]/layout.tsx) Tj ET
+BT /F1 8.9 Tf 0.12 0.13 0.16 rg 60.0 214.7 Td (* apps/web/src/components/PatientTabs.tsx) Tj ET
+BT /F1 8.9 Tf 0.12 0.13 0.16 rg 60.0 202.5 Td (* apps/web/src/components/AssistantLauncher.tsx) Tj ET
+BT /F1 8.9 Tf 0.12 0.13 0.16 rg 52.0 190.3 Td (* Implementation Details \(accessibility-inclusive-design skill compliance\):) Tj ET
+BT /F1 8.9 Tf 0.12 0.13 0.16 rg 60.0 178.1 Td (1. Contrast Fixes \(globals.css\):) Tj ET
+BT /F1 8.9 Tf 0.12 0.13 0.16 rg 72.0 165.9 Td (* Darken --color-state-extracted from #9a6b12 \(4.26:1, fails AA\) to #7c530b \(6.12:1 on #f7f4ee, passes WCAG) Tj ET
+BT /F1 8.9 Tf 0.12 0.13 0.16 rg 72.0 153.7 Td (AA\).) Tj ET
+BT /F1 8.9 Tf 0.12 0.13 0.16 rg 72.0 141.5 Td (* Darken --color-rule-strong from #b9b0a0 \(1.96:1, fails WCAG 1.4.11\) to #857d6f \(3.45:1 on #f7f4ee, passes) Tj ET
+BT /F1 8.9 Tf 0.12 0.13 0.16 rg 72.0 129.3 Td (3:1 UI boundary contrast\).) Tj ET
+BT /F1 8.9 Tf 0.12 0.13 0.16 rg 60.0 117.1 Td (2. 375px Mobile Overflow Fixes:) Tj ET
+BT /F1 8.9 Tf 0.12 0.13 0.16 rg 72.0 104.9 Td (* Add flex-wrap to the authenticated header in apps/web/src/app/\(app\)/layout.tsx:12.) Tj ET
+BT /F1 8.9 Tf 0.12 0.13 0.16 rg 72.0 92.7 Td (* Wrap PatientTabs in an overflow-x-auto container with aria-label="Patient sections".) Tj ET
+BT /F1 8.9 Tf 0.12 0.13 0.16 rg 72.0 80.5 Td (* Add bottom padding \(pb-20\) to patient pages so the fixed Ask OncoBrief launcher \(AssistantLauncher.tsx\)) Tj ET
+BT /F1 8.9 Tf 0.12 0.13 0.16 rg 72.0 68.3 Td (never obscures Source B or bottom evidence rows.) Tj ET
+0.75 0.78 0.82 rg
+42.0 36.0 511.3 0.6 re f
+BT /F1 8 Tf 0.35 0.38 0.44 rg 42.0 24.0 Td (OncoBrief V4 Enhancement Plan -- Use Cases 02, 04, 05 & Design Principles) Tj ET
+BT /F2 8 Tf 0.35 0.38 0.44 rg 498.3 24.0 Td (Page 16 of 18) Tj ET
+endstream
+endobj
+37 0 obj
+<< /Type /Page /Parent 5 0 R /MediaBox [0 0 595.28 841.89] /Resources << /Font << /F1 1 0 R /F2 2 0 R /F3 3 0 R /F4 4 0 R >> >> /Contents 36 0 R >>
+endobj
+38 0 obj
+<< /Length 9113 >>
+stream
+0.15 0.22 0.36 rg
+42.0 805.9 511.3 1.2 re f
+BT /F2 8 Tf 0.25 0.30 0.40 rg 42.0 811.9 Td (ONCOBRIEF V4 -- MASTER ENHANCEMENT PLAN & ARCHITECTURAL BLUEPRINT) Tj ET
+BT /F1 8.9 Tf 0.12 0.13 0.16 rg 60.0 789.9 Td (3. Semantic Landmarks & Live Regions:) Tj ET
+BT /F1 8.9 Tf 0.12 0.13 0.16 rg 72.0 777.7 Td (* Change the wrapper <div> in apps/web/src/app/\(app\)/patients/[id]/layout.tsx:37 to <main id="main-content">) Tj ET
+BT /F1 8.9 Tf 0.12 0.13 0.16 rg 72.0 765.5 Td (and add a keyboard-accessible "Skip to main content" link in \(app\)/layout.tsx.) Tj ET
+BT /F1 8.9 Tf 0.12 0.13 0.16 rg 72.0 753.3 Td (* Add an aria-live="polite" status region for verification, conflict resolution, and task updates.) Tj ET
+BT /F1 8.9 Tf 0.12 0.13 0.16 rg 60.0 741.1 Td (4. Audit Redaction Hardening \(packages/db/src/services/audit.ts\):) Tj ET
+BT /F1 8.9 Tf 0.12 0.13 0.16 rg 72.0 728.9 Td (* Add 'reason' and 'filename' to REDACT_KEYS or hash free-text reasons so PHI can never leak into) Tj ET
+BT /F1 8.9 Tf 0.12 0.13 0.16 rg 72.0 716.7 Td (audit_event.metadata_json.) Tj ET
+BT /F1 8.9 Tf 0.12 0.13 0.16 rg 52.0 704.5 Td (* Verification Command: pnpm --filter @oncobrief/web test:e2e) Tj ET
+0.75 0.78 0.82 rg
+42.0 683.3 511.3 0.75 re f
+0.93 0.95 0.99 rg
+38.0 642.3 519.3 24.0 re f
+BT /F2 12.2 Tf 0.10 0.22 0.44 rg 42.0 660.3 Td (8. Risk & Dependency Matrix) Tj ET
+0.14 0.24 0.42 rg
+42.0 615.7 511.3 26.6 re f
+0.78 0.81 0.86 RG 0.5 w
+42.0 615.7 511.3 26.6 re S
+BT /F2 7.2 Tf 1.00 1.00 1.00 rg 46.0 632.5 Td (Risk ID) Tj ET
+BT /F2 7.2 Tf 1.00 1.00 1.00 rg 131.2 632.5 Td (Risk Description) Tj ET
+BT /F2 7.2 Tf 1.00 1.00 1.00 rg 216.4 632.5 Td (Prob.) Tj ET
+BT /F2 7.2 Tf 1.00 1.00 1.00 rg 301.6 632.5 Td (Impact) Tj ET
+BT /F2 7.2 Tf 1.00 1.00 1.00 rg 386.9 632.5 Td (Concrete Mitigation) Tj ET
+BT /F2 7.2 Tf 1.00 1.00 1.00 rg 386.9 622.7 Td (Strategy) Tj ET
+BT /F2 7.2 Tf 1.00 1.00 1.00 rg 472.1 632.5 Td (Contingency /) Tj ET
+BT /F2 7.2 Tf 1.00 1.00 1.00 rg 472.1 622.7 Td (Fallback Trigger) Tj ET
+0.96 0.97 0.99 rg
+42.0 475.5 511.3 144.2 re f
+0.78 0.81 0.86 RG 0.5 w
+42.0 475.5 511.3 144.2 re S
+BT /F2 7.2 Tf 0.12 0.14 0.18 rg 46.0 609.9 Td (R-01) Tj ET
+BT /F1 7.2 Tf 0.12 0.14 0.18 rg 131.2 609.9 Td (Clinical Boundary) Tj ET
+BT /F1 7.2 Tf 0.12 0.14 0.18 rg 131.2 600.1 Td (Violation: Adding) Tj ET
+BT /F1 7.2 Tf 0.12 0.14 0.18 rg 131.2 590.3 Td (guideline RAG \(UC 05\)) Tj ET
+BT /F1 7.2 Tf 0.12 0.14 0.18 rg 131.2 580.5 Td (or OPD priority tags) Tj ET
+BT /F1 7.2 Tf 0.12 0.14 0.18 rg 131.2 570.7 Td (\(UC 04\) trips check-c) Tj ET
+BT /F1 7.2 Tf 0.12 0.14 0.18 rg 131.2 560.9 Td (linical-boundary.ts) Tj ET
+BT /F1 7.2 Tf 0.12 0.14 0.18 rg 131.2 551.1 Td (or appears diagnostic) Tj ET
+BT /F1 7.2 Tf 0.12 0.14 0.18 rg 131.2 541.3 Td (to judges.) Tj ET
+BT /F1 7.2 Tf 0.12 0.14 0.18 rg 216.4 609.9 Td (Med) Tj ET
+BT /F1 7.2 Tf 0.12 0.14 0.18 rg 301.6 609.9 Td (High) Tj ET
+BT /F1 7.2 Tf 0.12 0.14 0.18 rg 386.9 609.9 Td (Keep all guideline) Tj ET
+BT /F1 7.2 Tf 0.12 0.14 0.18 rg 386.9 600.1 Td (retrieval strictly as) Tj ET
+BT /F1 7.2 Tf 0.12 0.14 0.18 rg 386.9 590.3 Td (verbatim source-span) Tj ET
+BT /F1 7.2 Tf 0.12 0.14 0.18 rg 386.9 580.5 Td (lookup \([G#]\) with a) Tj ET
+BT /F1 7.2 Tf 0.12 0.14 0.18 rg 386.9 570.7 Td (mandatory) Tj ET
+BT /F1 7.2 Tf 0.12 0.14 0.18 rg 386.9 560.9 Td (non-clinical header;) Tj ET
+BT /F1 7.2 Tf 0.12 0.14 0.18 rg 386.9 551.1 Td (restrict OPD priority) Tj ET
+BT /F1 7.2 Tf 0.12 0.14 0.18 rg 386.9 541.3 Td (tags to documented) Tj ET
+BT /F1 7.2 Tf 0.12 0.14 0.18 rg 386.9 531.5 Td (administrative) Tj ET
+BT /F1 7.2 Tf 0.12 0.14 0.18 rg 386.9 521.7 Td (categories \(post_op_c) Tj ET
+BT /F1 7.2 Tf 0.12 0.14 0.18 rg 386.9 511.9 Td (heck_documented, chem) Tj ET
+BT /F1 7.2 Tf 0.12 0.14 0.18 rg 386.9 502.1 Td (o_clearance_documente) Tj ET
+BT /F1 7.2 Tf 0.12 0.14 0.18 rg 386.9 492.3 Td (d\) anchored to a) Tj ET
+BT /F1 7.2 Tf 0.12 0.14 0.18 rg 386.9 482.5 Td (source span.) Tj ET
+BT /F1 7.2 Tf 0.12 0.14 0.18 rg 472.1 609.9 Td (Run pnpm) Tj ET
+BT /F1 7.2 Tf 0.12 0.14 0.18 rg 472.1 600.1 Td (boundary:check on) Tj ET
+BT /F1 7.2 Tf 0.12 0.14 0.18 rg 472.1 590.3 Td (every commit; any) Tj ET
+BT /F1 7.2 Tf 0.12 0.14 0.18 rg 472.1 580.5 Td (forbidden token fails) Tj ET
+BT /F1 7.2 Tf 0.12 0.14 0.18 rg 472.1 570.7 Td (CI immediately.) Tj ET
+0.78 0.81 0.86 RG 0.5 w
+42.0 315.7 511.3 163.8 re S
+BT /F2 7.2 Tf 0.12 0.14 0.18 rg 46.0 469.7 Td (R-02) Tj ET
+BT /F1 7.2 Tf 0.12 0.14 0.18 rg 131.2 469.7 Td (External API) Tj ET
+BT /F1 7.2 Tf 0.12 0.14 0.18 rg 131.2 459.9 Td (Unavailability During) Tj ET
+BT /F1 7.2 Tf 0.12 0.14 0.18 rg 131.2 450.1 Td (Live Judging:) Tj ET
+BT /F1 7.2 Tf 0.12 0.14 0.18 rg 131.2 440.3 Td (SARVAM_API_KEY,) Tj ET
+BT /F1 7.2 Tf 0.12 0.14 0.18 rg 131.2 430.5 Td (NVIDIA_API_KEY, or) Tj ET
+BT /F1 7.2 Tf 0.12 0.14 0.18 rg 131.2 420.7 Td (AWS Bedrock) Tj ET
+BT /F1 7.2 Tf 0.12 0.14 0.18 rg 131.2 410.9 Td (credentials hit rate) Tj ET
+BT /F1 7.2 Tf 0.12 0.14 0.18 rg 131.2 401.1 Td (limits \(429\) or) Tj ET
+BT /F1 7.2 Tf 0.12 0.14 0.18 rg 131.2 391.3 Td (network timeouts) Tj ET
+BT /F1 7.2 Tf 0.12 0.14 0.18 rg 131.2 381.5 Td (during the demo.) Tj ET
+BT /F1 7.2 Tf 0.12 0.14 0.18 rg 216.4 469.7 Td (Med) Tj ET
+BT /F1 7.2 Tf 0.12 0.14 0.18 rg 301.6 469.7 Td (High) Tj ET
+BT /F1 7.2 Tf 0.12 0.14 0.18 rg 386.9 469.7 Td (Maintain) Tj ET
+BT /F1 7.2 Tf 0.12 0.14 0.18 rg 386.9 459.9 Td (deterministic offline) Tj ET
+BT /F1 7.2 Tf 0.12 0.14 0.18 rg 386.9 450.1 Td (fallbacks across) Tj ET
+BT /F1 7.2 Tf 0.12 0.14 0.18 rg 386.9 440.3 Td (every port: LocalMult) Tj ET
+BT /F1 7.2 Tf 0.12 0.14 0.18 rg 386.9 430.5 Td (imodalOcrAdapter for) Tj ET
+BT /F1 7.2 Tf 0.12 0.14 0.18 rg 386.9 420.7 Td (PDFs/FHIR/DICOM,) Tj ET
+BT /F1 7.2 Tf 0.12 0.14 0.18 rg 386.9 410.9 Td (RuleBasedExtractor) Tj ET
+BT /F1 7.2 Tf 0.12 0.14 0.18 rg 386.9 401.1 Td (for) Tj ET
+BT /F1 7.2 Tf 0.12 0.14 0.18 rg 386.9 391.3 Td (facts/instructions, s) Tj ET
+BT /F1 7.2 Tf 0.12 0.14 0.18 rg 386.9 381.5 Td (ynthesizeDeterministi) Tj ET
+BT /F1 7.2 Tf 0.12 0.14 0.18 rg 386.9 371.7 Td (cGroundedAnswer for) Tj ET
+BT /F1 7.2 Tf 0.12 0.14 0.18 rg 386.9 361.9 Td (chat/guidelines, and) Tj ET
+BT /F1 7.2 Tf 0.12 0.14 0.18 rg 386.9 352.1 Td (Web Speech API /) Tj ET
+BT /F1 7.2 Tf 0.12 0.14 0.18 rg 386.9 342.3 Td (pre-generated WAV) Tj ET
+BT /F1 7.2 Tf 0.12 0.14 0.18 rg 386.9 332.5 Td (fallback for TTS) Tj ET
+BT /F1 7.2 Tf 0.12 0.14 0.18 rg 386.9 322.7 Td (audio preview.) Tj ET
+BT /F1 7.2 Tf 0.12 0.14 0.18 rg 472.1 469.7 Td (Automatic fallback on) Tj ET
+BT /F1 7.2 Tf 0.12 0.14 0.18 rg 472.1 459.9 Td (timeout \(>8s\) or) Tj ET
+BT /F1 7.2 Tf 0.12 0.14 0.18 rg 472.1 450.1 Td (missing API key with) Tj ET
+BT /F1 7.2 Tf 0.12 0.14 0.18 rg 472.1 440.3 Td (zero UI crash.) Tj ET
+0.96 0.97 0.99 rg
+42.0 204.9 511.3 114.8 re f
+0.78 0.81 0.86 RG 0.5 w
+42.0 204.9 511.3 114.8 re S
+BT /F2 7.2 Tf 0.12 0.14 0.18 rg 46.0 309.9 Td (R-03) Tj ET
+BT /F1 7.2 Tf 0.12 0.14 0.18 rg 131.2 309.9 Td (False Suppression of) Tj ET
+BT /F1 7.2 Tf 0.12 0.14 0.18 rg 131.2 300.1 Td (Real Same-Day Lab) Tj ET
+BT /F1 7.2 Tf 0.12 0.14 0.18 rg 131.2 290.3 Td (Conflicts: Relaxing) Tj ET
+BT /F1 7.2 Tf 0.12 0.14 0.18 rg 131.2 280.5 Td (the lab comparator to) Tj ET
+BT /F1 7.2 Tf 0.12 0.14 0.18 rg 131.2 270.7 Td (allow longitudinal) Tj ET
+BT /F1 7.2 Tf 0.12 0.14 0.18 rg 131.2 260.9 Td (trends accidentally) Tj ET
+BT /F1 7.2 Tf 0.12 0.14 0.18 rg 131.2 251.1 Td (hides two conflicting) Tj ET
+BT /F1 7.2 Tf 0.12 0.14 0.18 rg 131.2 241.3 Td (lab reports from the) Tj ET
+BT /F1 7.2 Tf 0.12 0.14 0.18 rg 131.2 231.5 Td (same day.) Tj ET
+BT /F1 7.2 Tf 0.12 0.14 0.18 rg 216.4 309.9 Td (Low) Tj ET
+BT /F1 7.2 Tf 0.12 0.14 0.18 rg 301.6 309.9 Td (High) Tj ET
+BT /F1 7.2 Tf 0.12 0.14 0.18 rg 386.9 309.9 Td (Scope COMPARATORS['la) Tj ET
+BT /F1 7.2 Tf 0.12 0.14 0.18 rg 386.9 300.1 Td (b_result.as_written']) Tj ET
+BT /F1 7.2 Tf 0.12 0.14 0.18 rg 386.9 290.3 Td (strictly by date) Tj ET
+BT /F1 7.2 Tf 0.12 0.14 0.18 rg 386.9 280.5 Td (distance: only treat) Tj ET
+BT /F1 7.2 Tf 0.12 0.14 0.18 rg 386.9 270.7 Td (differing values as a) Tj ET
+BT /F1 7.2 Tf 0.12 0.14 0.18 rg 386.9 260.9 Td (longitudinal series) Tj ET
+BT /F1 7.2 Tf 0.12 0.14 0.18 rg 386.9 251.1 Td (when abs\(dateA -) Tj ET
+BT /F1 7.2 Tf 0.12 0.14 0.18 rg 386.9 241.3 Td (dateB\) >= 1 day;) Tj ET
+BT /F1 7.2 Tf 0.12 0.14 0.18 rg 386.9 231.5 Td (same-day or undated) Tj ET
+BT /F1 7.2 Tf 0.12 0.14 0.18 rg 386.9 221.7 Td (disagreements still) Tj ET
+BT /F1 7.2 Tf 0.12 0.14 0.18 rg 386.9 211.9 Td (trigger conflicting.) Tj ET
+BT /F1 7.2 Tf 0.12 0.14 0.18 rg 472.1 309.9 Td (Unit test both) Tj ET
+BT /F1 7.2 Tf 0.12 0.14 0.18 rg 472.1 300.1 Td (same-day conflict) Tj ET
+BT /F1 7.2 Tf 0.12 0.14 0.18 rg 472.1 290.3 Td (\(DOM-LAB-CONFLICT\)) Tj ET
+BT /F1 7.2 Tf 0.12 0.14 0.18 rg 472.1 280.5 Td (and multi-day series) Tj ET
+BT /F1 7.2 Tf 0.12 0.14 0.18 rg 472.1 270.7 Td (\(DOM-LAB-SERIES\) in) Tj ET
+BT /F1 7.2 Tf 0.12 0.14 0.18 rg 472.1 260.9 Td (conflict.test.ts.) Tj ET
+0.75 0.78 0.82 rg
+42.0 36.0 511.3 0.6 re f
+BT /F1 8 Tf 0.35 0.38 0.44 rg 42.0 24.0 Td (OncoBrief V4 Enhancement Plan -- Use Cases 02, 04, 05 & Design Principles) Tj ET
+BT /F2 8 Tf 0.35 0.38 0.44 rg 498.3 24.0 Td (Page 17 of 18) Tj ET
+endstream
+endobj
+39 0 obj
+<< /Type /Page /Parent 5 0 R /MediaBox [0 0 595.28 841.89] /Resources << /Font << /F1 1 0 R /F2 2 0 R /F3 3 0 R /F4 4 0 R >> >> /Contents 38 0 R >>
+endobj
+40 0 obj
+<< /Length 8614 >>
+stream
+0.15 0.22 0.36 rg
+42.0 805.9 511.3 1.2 re f
+BT /F2 8 Tf 0.25 0.30 0.40 rg 42.0 811.9 Td (ONCOBRIEF V4 -- MASTER ENHANCEMENT PLAN & ARCHITECTURAL BLUEPRINT) Tj ET
+0.78 0.81 0.86 RG 0.5 w
+42.0 633.1 511.3 163.8 re S
+BT /F2 7.2 Tf 0.12 0.14 0.18 rg 46.0 787.1 Td (R-04) Tj ET
+BT /F1 7.2 Tf 0.12 0.14 0.18 rg 131.2 787.1 Td (Clinician) Tj ET
+BT /F1 7.2 Tf 0.12 0.14 0.18 rg 131.2 777.3 Td (Rubber-Stamping in) Tj ET
+BT /F1 7.2 Tf 0.12 0.14 0.18 rg 131.2 767.5 Td (Batch Verification: A) Tj ET
+BT /F1 7.2 Tf 0.12 0.14 0.18 rg 131.2 757.7 Td (user clicks "Batch) Tj ET
+BT /F1 7.2 Tf 0.12 0.14 0.18 rg 131.2 747.9 Td (Verify" on) Tj ET
+BT /F1 7.2 Tf 0.12 0.14 0.18 rg 131.2 738.1 Td (low-quality OCR spans) Tj ET
+BT /F1 7.2 Tf 0.12 0.14 0.18 rg 131.2 728.3 Td (without reviewing) Tj ET
+BT /F1 7.2 Tf 0.12 0.14 0.18 rg 131.2 718.5 Td (them.) Tj ET
+BT /F1 7.2 Tf 0.12 0.14 0.18 rg 216.4 787.1 Td (Med) Tj ET
+BT /F1 7.2 Tf 0.12 0.14 0.18 rg 301.6 787.1 Td (Med) Tj ET
+BT /F1 7.2 Tf 0.12 0.14 0.18 rg 386.9 787.1 Td (Restrict verifyEviden) Tj ET
+BT /F1 7.2 Tf 0.12 0.14 0.18 rg 386.9 777.3 Td (ceBatchAction) Tj ET
+BT /F1 7.2 Tf 0.12 0.14 0.18 rg 386.9 767.5 Td (strictly to facts) Tj ET
+BT /F1 7.2 Tf 0.12 0.14 0.18 rg 386.9 757.7 Td (where confidence_band) Tj ET
+BT /F1 7.2 Tf 0.12 0.14 0.18 rg 386.9 747.9 Td (=== 'high') Tj ET
+BT /F1 7.2 Tf 0.12 0.14 0.18 rg 386.9 738.1 Td (\(ocr_confidence >=) Tj ET
+BT /F1 7.2 Tf 0.12 0.14 0.18 rg 386.9 728.3 Td (0.85\), state ===) Tj ET
+BT /F1 7.2 Tf 0.12 0.14 0.18 rg 386.9 718.5 Td ('extracted', and) Tj ET
+BT /F1 7.2 Tf 0.12 0.14 0.18 rg 386.9 708.7 Td (conflict_count === 0.) Tj ET
+BT /F1 7.2 Tf 0.12 0.14 0.18 rg 386.9 698.9 Td (Low-confidence) Tj ET
+BT /F1 7.2 Tf 0.12 0.14 0.18 rg 386.9 689.1 Td (\(needs_review\) and) Tj ET
+BT /F1 7.2 Tf 0.12 0.14 0.18 rg 386.9 679.3 Td (conflicting facts are) Tj ET
+BT /F1 7.2 Tf 0.12 0.14 0.18 rg 386.9 669.5 Td (excluded from batch) Tj ET
+BT /F1 7.2 Tf 0.12 0.14 0.18 rg 386.9 659.7 Td (verify and require) Tj ET
+BT /F1 7.2 Tf 0.12 0.14 0.18 rg 386.9 649.9 Td (individual) Tj ET
+BT /F1 7.2 Tf 0.12 0.14 0.18 rg 386.9 640.1 Td (inspection.) Tj ET
+BT /F1 7.2 Tf 0.12 0.14 0.18 rg 472.1 787.1 Td (Modal lists every) Tj ET
+BT /F1 7.2 Tf 0.12 0.14 0.18 rg 472.1 777.3 Td (fact and quote) Tj ET
+BT /F1 7.2 Tf 0.12 0.14 0.18 rg 472.1 767.5 Td (included in the batch) Tj ET
+BT /F1 7.2 Tf 0.12 0.14 0.18 rg 472.1 757.7 Td (before commit.) Tj ET
+0.75 0.78 0.82 rg
+42.0 615.1 511.3 0.75 re f
+0.93 0.95 0.99 rg
+38.0 574.1 519.3 24.0 re f
+BT /F2 12.2 Tf 0.10 0.22 0.44 rg 42.0 592.1 Td (9. Master Verification & Testing Matrix) Tj ET
+BT /F1 9.0 Tf 0.12 0.13 0.16 rg 42.0 567.1 Td (Every phase is gated by automated tests across all 5 architectural layers:) Tj ET
+0.14 0.24 0.42 rg
+42.0 530.0 511.3 26.6 re f
+0.78 0.81 0.86 RG 0.5 w
+42.0 530.0 511.3 26.6 re S
+BT /F2 7.8 Tf 1.00 1.00 1.00 rg 46.0 546.8 Td (Layer) Tj ET
+BT /F2 7.8 Tf 1.00 1.00 1.00 rg 173.8 546.8 Td (Test Suite / Command) Tj ET
+BT /F2 7.8 Tf 1.00 1.00 1.00 rg 301.6 546.8 Td (New Verification Scenarios) Tj ET
+BT /F2 7.8 Tf 1.00 1.00 1.00 rg 301.6 537.0 Td (Added in V4) Tj ET
+BT /F2 7.8 Tf 1.00 1.00 1.00 rg 429.5 546.8 Td (Pass Criteria) Tj ET
+0.96 0.97 0.99 rg
+42.0 458.4 511.3 75.6 re f
+0.78 0.81 0.86 RG 0.5 w
+42.0 458.4 511.3 75.6 re S
+BT /F2 7.8 Tf 0.12 0.14 0.18 rg 46.0 524.2 Td (Layer 1: Database & RLS) Tj ET
+BT /F1 7.8 Tf 0.12 0.14 0.18 rg 173.8 524.2 Td (pnpm --filter @oncobrief/db) Tj ET
+BT /F1 7.8 Tf 0.12 0.14 0.18 rg 173.8 514.4 Td (test) Tj ET
+BT /F1 7.8 Tf 0.12 0.14 0.18 rg 301.6 524.2 Td (Tenant isolation on) Tj ET
+BT /F1 7.8 Tf 0.12 0.14 0.18 rg 301.6 514.4 Td (caregiver_contact,) Tj ET
+BT /F1 7.8 Tf 0.12 0.14 0.18 rg 301.6 504.6 Td (opd_appointment_slot,) Tj ET
+BT /F1 7.8 Tf 0.12 0.14 0.18 rg 301.6 494.8 Td (opd_waitlist_entry,) Tj ET
+BT /F1 7.8 Tf 0.12 0.14 0.18 rg 301.6 485.0 Td (guideline_document,) Tj ET
+BT /F1 7.8 Tf 0.12 0.14 0.18 rg 301.6 475.2 Td (studio_artifact; immutability) Tj ET
+BT /F1 7.8 Tf 0.12 0.14 0.18 rg 301.6 465.4 Td (of text_span and ledger_entry.) Tj ET
+BT /F1 7.8 Tf 0.12 0.14 0.18 rg 429.5 524.2 Td (100% pass, 0 cross-tenant) Tj ET
+BT /F1 7.8 Tf 0.12 0.14 0.18 rg 429.5 514.4 Td (leaks) Tj ET
+0.78 0.81 0.86 RG 0.5 w
+42.0 357.4 511.3 105.0 re S
+BT /F2 7.8 Tf 0.12 0.14 0.18 rg 46.0 452.6 Td (Layer 2: Pure Domain) Tj ET
+BT /F1 7.8 Tf 0.12 0.14 0.18 rg 173.8 452.6 Td (pnpm --filter) Tj ET
+BT /F1 7.8 Tf 0.12 0.14 0.18 rg 173.8 442.8 Td (@oncobrief/domain test) Tj ET
+BT /F1 7.8 Tf 0.12 0.14 0.18 rg 301.6 452.6 Td (longitudinal-review.test.ts) Tj ET
+BT /F1 7.8 Tf 0.12 0.14 0.18 rg 301.6 442.8 Td (\(interval deltas & serial lab) Tj ET
+BT /F1 7.8 Tf 0.12 0.14 0.18 rg 301.6 433.0 Td (flowsheets\);) Tj ET
+BT /F1 7.8 Tf 0.12 0.14 0.18 rg 301.6 423.2 Td (slot-optimizer.test.ts) Tj ET
+BT /F1 7.8 Tf 0.12 0.14 0.18 rg 301.6 413.4 Td (\(readiness-gated slot backfill) Tj ET
+BT /F1 7.8 Tf 0.12 0.14 0.18 rg 301.6 403.6 Td (ranking\);) Tj ET
+BT /F1 7.8 Tf 0.12 0.14 0.18 rg 301.6 393.8 Td (draft-generator.test.ts) Tj ET
+BT /F1 7.8 Tf 0.12 0.14 0.18 rg 301.6 384.0 Td (\(de-identified case report &) Tj ET
+BT /F1 7.8 Tf 0.12 0.14 0.18 rg 301.6 374.2 Td (referral letter citations\);) Tj ET
+BT /F1 7.8 Tf 0.12 0.14 0.18 rg 301.6 364.4 Td (check-clinical-boundary.ts.) Tj ET
+BT /F1 7.8 Tf 0.12 0.14 0.18 rg 429.5 452.6 Td (100% pass, 0 boundary) Tj ET
+BT /F1 7.8 Tf 0.12 0.14 0.18 rg 429.5 442.8 Td (violations) Tj ET
+0.96 0.97 0.99 rg
+42.0 285.8 511.3 75.6 re f
+0.78 0.81 0.86 RG 0.5 w
+42.0 285.8 511.3 75.6 re S
+BT /F2 7.8 Tf 0.12 0.14 0.18 rg 46.0 351.6 Td (Layer 3: Multi-Modal Adapters) Tj ET
+BT /F1 7.8 Tf 0.12 0.14 0.18 rg 173.8 351.6 Td (pnpm --filter) Tj ET
+BT /F1 7.8 Tf 0.12 0.14 0.18 rg 173.8 341.8 Td (@oncobrief/adapters test) Tj ET
+BT /F1 7.8 Tf 0.12 0.14 0.18 rg 301.6 351.6 Td (Pending investigation &) Tj ET
+BT /F1 7.8 Tf 0.12 0.14 0.18 rg 301.6 341.8 Td (instruction extraction in) Tj ET
+BT /F1 7.8 Tf 0.12 0.14 0.18 rg 301.6 332.0 Td (rule-based-extractor;) Tj ET
+BT /F1 7.8 Tf 0.12 0.14 0.18 rg 301.6 322.2 Td (multi-page PDF batching &) Tj ET
+BT /F1 7.8 Tf 0.12 0.14 0.18 rg 301.6 312.4 Td (Indic language codes in) Tj ET
+BT /F1 7.8 Tf 0.12 0.14 0.18 rg 301.6 302.6 Td (sarvam-vision-ocr; ABDM v6.5.0) Tj ET
+BT /F1 7.8 Tf 0.12 0.14 0.18 rg 301.6 292.8 Td (& mCODE round-trip ingestion.) Tj ET
+BT /F1 7.8 Tf 0.12 0.14 0.18 rg 429.5 351.6 Td (100% pass) Tj ET
+0.78 0.81 0.86 RG 0.5 w
+42.0 233.8 511.3 56.0 re S
+BT /F2 7.8 Tf 0.12 0.14 0.18 rg 46.0 280.0 Td (Layer 4: Web & Assistant) Tj ET
+BT /F1 7.8 Tf 0.12 0.14 0.18 rg 173.8 280.0 Td (pnpm --filter @oncobrief/web) Tj ET
+BT /F1 7.8 Tf 0.12 0.14 0.18 rg 173.8 270.2 Td (test) Tj ET
+BT /F1 7.8 Tf 0.12 0.14 0.18 rg 301.6 280.0 Td ([G#] guideline retrieval) Tj ET
+BT /F1 7.8 Tf 0.12 0.14 0.18 rg 301.6 270.2 Td (grounding; batch verification) Tj ET
+BT /F1 7.8 Tf 0.12 0.14 0.18 rg 301.6 260.4 Td (RBAC & audit logging; OPD slot) Tj ET
+BT /F1 7.8 Tf 0.12 0.14 0.18 rg 301.6 250.6 Td (status mutations & task) Tj ET
+BT /F1 7.8 Tf 0.12 0.14 0.18 rg 301.6 240.8 Td (assignment actions.) Tj ET
+BT /F1 7.8 Tf 0.12 0.14 0.18 rg 429.5 280.0 Td (100% pass) Tj ET
+0.96 0.97 0.99 rg
+42.0 132.8 511.3 105.0 re f
+0.78 0.81 0.86 RG 0.5 w
+42.0 132.8 511.3 105.0 re S
+BT /F2 7.8 Tf 0.12 0.14 0.18 rg 46.0 228.0 Td (Layer 5: Browser E2E & Mobile) Tj ET
+BT /F1 7.8 Tf 0.12 0.14 0.18 rg 173.8 228.0 Td (pnpm --filter @oncobrief/web) Tj ET
+BT /F1 7.8 Tf 0.12 0.14 0.18 rg 173.8 218.2 Td (test:e2e) Tj ET
+BT /F1 7.8 Tf 0.12 0.14 0.18 rg 301.6 228.0 Td (Full walkthrough of UC 02) Tj ET
+BT /F1 7.8 Tf 0.12 0.14 0.18 rg 301.6 218.2 Td (\(Interval Delta + Lab) Tj ET
+BT /F1 7.8 Tf 0.12 0.14 0.18 rg 301.6 208.4 Td (Flowsheet + Batch Verify\), UC) Tj ET
+BT /F1 7.8 Tf 0.12 0.14 0.18 rg 301.6 198.6 Td (04 \(OPD Slot Board + Ready) Tj ET
+BT /F1 7.8 Tf 0.12 0.14 0.18 rg 301.6 188.8 Td (Waitlist Backfill\), UC 05) Tj ET
+BT /F1 7.8 Tf 0.12 0.14 0.18 rg 301.6 179.0 Td (\(Guideline Query +) Tj ET
+BT /F1 7.8 Tf 0.12 0.14 0.18 rg 301.6 169.2 Td (Referral/Tumor Board Studio\),) Tj ET
+BT /F1 7.8 Tf 0.12 0.14 0.18 rg 301.6 159.4 Td (Caregiver Voice TTS preview,) Tj ET
+BT /F1 7.8 Tf 0.12 0.14 0.18 rg 301.6 149.6 Td (and scrollWidth <= 375 mobile) Tj ET
+BT /F1 7.8 Tf 0.12 0.14 0.18 rg 301.6 139.8 Td (check.) Tj ET
+BT /F1 7.8 Tf 0.12 0.14 0.18 rg 429.5 228.0 Td (100% E2E pass at 1440px and) Tj ET
+BT /F1 7.8 Tf 0.12 0.14 0.18 rg 429.5 218.2 Td (375px) Tj ET
+0.75 0.78 0.82 rg
+42.0 36.0 511.3 0.6 re f
+BT /F1 8 Tf 0.35 0.38 0.44 rg 42.0 24.0 Td (OncoBrief V4 Enhancement Plan -- Use Cases 02, 04, 05 & Design Principles) Tj ET
+BT /F2 8 Tf 0.35 0.38 0.44 rg 498.3 24.0 Td (Page 18 of 18) Tj ET
+endstream
+endobj
+41 0 obj
+<< /Type /Page /Parent 5 0 R /MediaBox [0 0 595.28 841.89] /Resources << /Font << /F1 1 0 R /F2 2 0 R /F3 3 0 R /F4 4 0 R >> >> /Contents 40 0 R >>
+endobj
+42 0 obj
+<< /Type /Catalog /Pages 5 0 R >>
+endobj
+xref
+0 43
+0000000000 65535 f 
+0000000015 00000 n 
+0000000112 00000 n 
+0000000214 00000 n 
+0000000319 00000 n 
+0000000414 00000 n 
+0000000590 00000 n 
+0000008531 00000 n 
+0000008693 00000 n 
+0000019391 00000 n 
+0000019553 00000 n 
+0000034650 00000 n 
+0000034814 00000 n 
+0000046371 00000 n 
+0000046535 00000 n 
+0000057899 00000 n 
+0000058063 00000 n 
+0000066213 00000 n 
+0000066377 00000 n 
+0000073765 00000 n 
+0000073929 00000 n 
+0000081843 00000 n 
+0000082007 00000 n 
+0000091002 00000 n 
+0000091166 00000 n 
+0000099034 00000 n 
+0000099198 00000 n 
+0000107628 00000 n 
+0000107792 00000 n 
+0000114907 00000 n 
+0000115071 00000 n 
+0000122024 00000 n 
+0000122188 00000 n 
+0000128978 00000 n 
+0000129142 00000 n 
+0000136057 00000 n 
+0000136221 00000 n 
+0000143502 00000 n 
+0000143666 00000 n 
+0000152832 00000 n 
+0000152996 00000 n 
+0000161663 00000 n 
+0000161827 00000 n 
+trailer
+<< /Size 43 /Root 42 0 R >>
+startxref
+161877
+%%EOF

@@ -113,3 +113,11 @@ describe('handleOcrResult', () => {
     expect(d.store.audits.map((a) => a.action)).toContain('ocr.failed');
   });
 });
+
+it('does not report partial OCR success as a complete source record',async()=>{
+  const d=setup();
+  d.ocr.status='PARTIAL_SUCCESS';
+  await handleOcrResult(notification,d);
+  expect(d.store.documents.get('DOC')?.ingest_status).toBe('failed');
+  expect(d.store.ingestCalls).toBe(0);
+});

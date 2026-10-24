@@ -66,7 +66,11 @@ export interface AbdmExportOptions {
   patientId: string;
   patientName?: string;
   abhaNumber?: string;
+  abhaAddress?: string;
+  facilityId?: string;
   facilityName?: string;
+  practitionerId?: string;
+  practitionerSystem?: string;
   practitionerName?: string;
   now?: Date | string;
 }
@@ -208,22 +212,30 @@ export function exportToAbdmDocumentBundle(
   const targetResourceUuids: string[] = [compositionUuid];
 
   // 1. Patient Resource
+  const patientIdentifiers: Array<{ system: string; value: string }> = [
+    {
+      system: 'https://healthid.abdm.gov.in',
+      value: options.abhaNumber ?? '91-0000-0000-0000',
+    },
+  ];
+  if (options.abhaAddress) {
+    patientIdentifiers.push({
+      system: 'https://healthid.ndhm.gov.in',
+      value: options.abhaAddress,
+    });
+  }
+  patientIdentifiers.push({
+    system: 'https://oncobrief.org/patients',
+    value: options.patientId,
+  });
+
   const patientResource = {
     resourceType: 'Patient',
     id: patientUuid,
     meta: {
       profile: ['https://nrces.in/ndhm/fhir/r4/StructureDefinition/Patient'],
     },
-    identifier: [
-      {
-        system: 'https://healthid.abdm.gov.in',
-        value: options.abhaNumber ?? '91-0000-0000-0000',
-      },
-      {
-        system: 'https://oncobrief.org/patients',
-        value: options.patientId,
-      },
-    ],
+    identifier: patientIdentifiers,
     name: [
       {
         text: options.patientName ?? 'Oncology Patient',
@@ -241,7 +253,7 @@ export function exportToAbdmDocumentBundle(
     identifier: [
       {
         system: 'https://facility.ndhm.gov.in',
-        value: 'IN-HOSP-001',
+        value: options.facilityId ?? 'IN-HOSP-001',
       },
     ],
     name: options.facilityName ?? 'National Cancer Grid Hospital',
@@ -254,6 +266,12 @@ export function exportToAbdmDocumentBundle(
     meta: {
       profile: ['https://nrces.in/ndhm/fhir/r4/StructureDefinition/Practitioner'],
     },
+    identifier: [
+      {
+        system: options.practitionerSystem ?? 'https://doctor.ndhm.gov.in',
+        value: options.practitionerId ?? 'HPR-DEMO-1001',
+      },
+    ],
     name: [
       {
         text: options.practitionerName ?? 'Consulting Oncologist, MD',

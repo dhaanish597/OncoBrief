@@ -33,3 +33,10 @@ export * from './textract-ocr';
 export * from './bedrock-llm';
 export * from './llm-extractor';
 export * from './secrets-manager';
+export * from './abdm-crypto';
+export * from './abdm-gateway';
+export * from './simulated-abdm-gateway';
+
+
+
+export * from './ocr-routing';

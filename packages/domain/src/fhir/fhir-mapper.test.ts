@@ -54,7 +54,10 @@ describe('Layer 2: Standards-Based FHIR R4 Import/Export Mapper (DOM-09)', () =>
       patientId: 'patient-123',
       patientName: 'Kavita Sharma',
       abhaNumber: '91-1234-5678-9012',
+      abhaAddress: 'kavita@sbx',
+      facilityId: 'TMH-FACILITY-001',
       facilityName: 'Tata Memorial Hospital',
+      practitionerId: 'HPR-98765',
       practitionerName: 'Dr. S. Nair, MD',
     });
 
@@ -100,7 +103,24 @@ describe('Layer 2: Standards-Based FHIR R4 Import/Export Mapper (DOM-09)', () =>
       }
     }
 
-    // 5. Verify unverified fact-3 was filtered out (only verified & corrected are included)
+    // 5. Verify Patient, Organization, and Practitioner identifiers
+    const patientEntry = bundle.entry.find((e) => e.resource.resourceType === 'Patient');
+    expect(patientEntry).toBeDefined();
+    const patientRes = patientEntry!.resource as { identifier: Array<{ system: string; value: string }> };
+    expect(patientRes.identifier.some((id) => id.system === 'https://healthid.abdm.gov.in' && id.value === '91-1234-5678-9012')).toBe(true);
+    expect(patientRes.identifier.some((id) => id.system === 'https://healthid.ndhm.gov.in' && id.value === 'kavita@sbx')).toBe(true);
+
+    const orgEntry = bundle.entry.find((e) => e.resource.resourceType === 'Organization');
+    expect(orgEntry).toBeDefined();
+    const orgRes = orgEntry!.resource as { identifier: Array<{ system: string; value: string }> };
+    expect(orgRes.identifier.some((id) => id.system === 'https://facility.ndhm.gov.in' && id.value === 'TMH-FACILITY-001')).toBe(true);
+
+    const practitionerEntry = bundle.entry.find((e) => e.resource.resourceType === 'Practitioner');
+    expect(practitionerEntry).toBeDefined();
+    const pracRes = practitionerEntry!.resource as { identifier: Array<{ system: string; value: string }> };
+    expect(pracRes.identifier.some((id) => id.value === 'HPR-98765')).toBe(true);
+
+    // 6. Verify unverified fact-3 was filtered out (only verified & corrected are included)
     const resourceTypes = bundle.entry.map((e) => e.resource.resourceType);
     expect(resourceTypes).toContain('Observation'); // Hemoglobin
     expect(resourceTypes).toContain('Procedure'); // Mastectomy

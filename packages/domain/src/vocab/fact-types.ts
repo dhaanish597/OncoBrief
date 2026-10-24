@@ -1,3 +1,4 @@
+import { toIsoDate } from './observation-date';
 import type { FactValue } from './fact-value';
 
 /**
@@ -21,6 +22,9 @@ export const FACT_TYPES = [
   'diagnosis_text.as_written',
   'stage_text.as_written',
   'lab_result.as_written',
+  'pending_investigation.recorded',
+  'instruction.recorded',
+  'vital_sign.as_written',
   'imaging.recorded',
   'radiation.recorded',
   'chemotherapy_cycle.recorded',
@@ -61,6 +65,9 @@ export const FACT_TYPE_VALUE_KIND: Record<FactType, FactValue['kind']> = {
   'diagnosis_text.as_written': 'text',
   'stage_text.as_written': 'text',
   'lab_result.as_written': 'lab',
+  'pending_investigation.recorded': 'text',
+  'instruction.recorded': 'text',
+  'vital_sign.as_written': 'lab',
   'imaging.recorded': 'procedure',
   'radiation.recorded': 'procedure',
   'chemotherapy_cycle.recorded': 'cycle',
@@ -85,6 +92,9 @@ export const FACT_TYPE_LABEL: Record<FactType, string> = {
   'diagnosis_text.as_written': 'Diagnosis text (as written)',
   'stage_text.as_written': 'Stage text (as written)',
   'lab_result.as_written': 'Lab result (as written)',
+  'pending_investigation.recorded': 'Pending investigation (as documented)',
+  'instruction.recorded': 'Instruction (as documented)',
+  'vital_sign.as_written': 'Vital sign (as written)',
   'imaging.recorded': 'Imaging recorded',
   'radiation.recorded': 'Radiation recorded',
   'chemotherapy_cycle.recorded': 'Chemotherapy cycle recorded',
@@ -103,7 +113,7 @@ export const FACT_TYPE_LABEL: Record<FactType, string> = {
  * specific. Facts that share `(patient_id, slot_key)` are comparison
  * candidates; nothing else is ever compared.
  */
-export function slotQualifier(factType: FactType, value: FactValue): string {
+export function slotQualifier(factType: FactType, value: FactValue, observedOn?: string | Date | null): string {
   switch (factType) {
     case 'document.date':
     case 'followup.recorded':
@@ -118,7 +128,7 @@ export function slotQualifier(factType: FactType, value: FactValue): string {
         ? `proc:${value.code ?? normalizeKey(value.name)}`
         : 'procedure';
     case 'medication.recorded':
-      return value.kind === 'medication' ? `drug:${normalizeKey(value.name)}` : 'medication';
+      return value.kind === 'medication' ? `drug:${normalizeKey(value.name)}${dateSuffix(observedOn)}` : 'medication';
     case 'appointment.recorded':
       return 'appointment';
     case 'diagnosis_text.as_written':
@@ -126,7 +136,12 @@ export function slotQualifier(factType: FactType, value: FactValue): string {
     case 'stage_text.as_written':
       return 'stage';
     case 'lab_result.as_written':
-      return value.kind === 'lab' ? `lab:${normalizeKey(value.name)}` : 'lab';
+      return value.kind === 'lab' ? `lab:${normalizeKey(value.name)}${dateSuffix(observedOn)}` : 'lab';
+    case 'vital_sign.as_written':
+      return value.kind === 'lab' ? `vital:${normalizeKey(value.name)}${dateSuffix(observedOn)}` : 'vital';
+    case 'pending_investigation.recorded':
+    case 'instruction.recorded':
+      return value.kind === 'text' ? `text:${normalizeKey(value.text)}` : 'text';
     case 'imaging.recorded':
       return value.kind === 'procedure' ? `imaging:${normalizeKey(value.name)}` : 'imaging';
     case 'radiation.recorded':
@@ -146,10 +161,15 @@ export function slotQualifier(factType: FactType, value: FactValue): string {
   }
 }
 
-export function makeSlotKey(factType: FactType, value: FactValue): string {
-  return `${factType}|${slotQualifier(factType, value)}`;
+export function makeSlotKey(factType: FactType, value: FactValue, observedOn?: string | Date | null): string {
+  return `${factType}|${slotQualifier(factType, value, observedOn)}`;
 }
 
 function normalizeKey(input: string): string {
   return input.trim().toLowerCase().replace(/\s+/g, ' ');
+}
+
+function dateSuffix(date?: string | Date | null): string {
+  const iso = toIsoDate(date);
+  return iso ? `@${iso}` : '';
 }

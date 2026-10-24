@@ -64,7 +64,7 @@ export interface UseVoiceResult {
   error: string | null;
   startListening: () => Promise<void>;
   stopListening: () => void;
-  speak: (text: string) => Promise<void>;
+  speak: (text: string, conversationId?: string) => Promise<void>;
   stopSpeaking: () => void;
   isSpeaking: boolean;
 }
@@ -342,7 +342,14 @@ export function useVoice({ languageCode, onTranscript }: UseVoiceOptions): UseVo
       setState('error');
       return;
     }
+    const voice = window.speechSynthesis.getVoices().find((candidate) => candidate.localService && candidate.lang.toLowerCase().split('-')[0] === languageCode.toLowerCase().split('-')[0]);
+    if (!voice) {
+      setError('No installed local browser voice matches this locale.');
+      setState('error');
+      return;
+    }
     const utterance = new SpeechSynthesisUtterance(text);
+    utterance.voice = voice;
     utterance.lang = languageCode;
     utterance.onend = () => {
       setIsSpeaking(false);
@@ -357,17 +364,21 @@ export function useVoice({ languageCode, onTranscript }: UseVoiceOptions): UseVo
     setState('speaking');
   }, [languageCode]);
 
-  const speak = useCallback(async (text: string) => {
+  const speak = useCallback(async (text: string, conversationId?: string) => {
     if (!text.trim()) return;
     setError(null);
     try {
       const response = await fetch('/api/v1/assistant/voice/tts', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ text, languageCode }),
+        body: JSON.stringify({ text, languageCode, conversationId }),
       });
-      if (!response.ok) throw new Error('sarvam_tts_failed');
       const data = await response.json();
+      if (response.status === 503 && typeof data.fallbackText === 'string') {
+        speakWithBrowser(data.fallbackText);
+        return;
+      }
+      if (!response.ok) throw new Error('speech_access_or_source_unavailable');
       if (typeof data.audioBase64 === 'string' && data.audioBase64) {
         const audio = new Audio(`data:audio/wav;base64,${data.audioBase64}`);
         audioRef.current = audio;
@@ -382,8 +393,8 @@ export function useVoice({ languageCode, onTranscript }: UseVoiceOptions): UseVo
       }
       throw new Error('empty_audio');
     } catch {
-      // Fall back to the browser voice.
-      speakWithBrowser(text);
+      setError('Cannot validate access to this saved answer. Reconnect or reload the conversation.');
+      setState('error');
     }
   }, [languageCode, speakWithBrowser]);
 

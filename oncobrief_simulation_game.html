@@ -1,0 +1,1999 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>OncoBrief 3D Multi-Role Hospital Game — Team ICONIX</title>
+  <script src="https://cdn.tailwindcss.com/3.4.17"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@500;600;700&family=Inter:wght@500;600;700;800&family=Newsreader:ital,opsz,wght@0,6..72,500;0,6..72,600;1,6..72,400&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --paper-bg: #f7f4ee;
+      --paper-card: #efeae0;
+      --ink-primary: #171614;
+      --ink-secondary: #4a463f;
+      --rule-strong: #8c8273;
+      --state-extracted: #7c540b;
+      --tint-extracted: #fdf3df;
+      --state-verified: #1b5e3a;
+      --tint-verified: #e8f3ea;
+      --state-conflict: #9e2a2b;
+      --tint-conflict: #fbe9e8;
+    }
+    * { box-sizing: border-box; }
+    body, html {
+      margin: 0; padding: 0; width: 100%; height: 100%; overflow: hidden;
+      font-family: 'Inter', sans-serif; background: #0b111e; color: #f8fafc;
+      user-select: none;
+    }
+    .font-mono-code { font-family: 'IBM Plex Mono', monospace; }
+    .font-serif-source { font-family: 'Newsreader', Georgia, serif; }
+
+    /* Authentic OncoBrief Visual Paper & Ink Theme */
+    .oncobrief-paper {
+      background-color: var(--paper-bg);
+      color: var(--ink-primary);
+      user-select: none;
+    }
+    .ob-card {
+      background-color: #fbf9f5;
+      border: 1.5px solid var(--rule-strong);
+      border-radius: 6px;
+    }
+    .ob-stamp {
+      font-family: 'IBM Plex Mono', monospace;
+      font-size: 11px;
+      font-weight: 700;
+      padding: 3px 8px;
+      text-transform: uppercase;
+      border: 2px solid currentColor;
+      border-radius: 4px;
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+    }
+
+    /* Held Device Slide-Up */
+    #held-device-modal {
+      transition: transform 0.32s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.24s ease-out;
+      transform: translateY(105%) scale(0.95);
+      opacity: 0;
+      pointer-events: none;
+    }
+    #held-device-modal.open {
+      transform: translateY(0%) scale(1);
+      opacity: 1;
+      pointer-events: auto;
+    }
+
+    /* GTA Sky-Cam Flash */
+    #gta-flash {
+      pointer-events: none;
+      transition: opacity 0.25s ease-out;
+      opacity: 0;
+    }
+    #gta-flash.active { opacity: 0.72; }
+
+    /* Bouncing Golden Tutorial Arrow & Spotlight Ring */
+    @keyframes bounce-arrow {
+      0%, 100% { transform: translateY(0px) scale(1); }
+      50% { transform: translateY(-9px) scale(1.06); }
+    }
+    @keyframes tutorial-glow {
+      0%, 100% { box-shadow: 0 0 0 0 rgba(250, 204, 21, 0.85), 0 0 18px rgba(250, 204, 21, 0.65); }
+      50% { box-shadow: 0 0 0 9px rgba(250, 204, 21, 0), 0 0 26px rgba(250, 204, 21, 0.95); }
+    }
+    .tutorial-target {
+      animation: tutorial-glow 1.5s infinite !important;
+      border-color: #facc15 !important;
+      position: relative;
+    }
+    #floating-tutorial-pointer {
+      pointer-events: none;
+      transition: top 0.22s ease-out, left 0.22s ease-out, opacity 0.2s;
+      animation: bounce-arrow 1.1s infinite ease-in-out;
+    }
+  </style>
+</head>
+<body class="relative w-screen h-screen overflow-hidden bg-slate-950">
+
+  <!-- 3D WebGL Hospital Canvas -->
+  <div id="canvas-container" class="absolute inset-0 w-full h-full z-0"></div>
+
+  <!-- 3D Floating Character & Station Badges -->
+  <div id="labels-container" class="absolute inset-0 pointer-events-none z-10 overflow-hidden"></div>
+
+  <!-- GTA Sky-Cam Flash -->
+  <div id="gta-flash" class="fixed inset-0 bg-sky-200 mix-blend-screen z-40"></div>
+
+  <!-- FLOATING GOLDEN TUTORIAL POINTER ARROW (Points directly at what to click next!) -->
+  <div id="floating-tutorial-pointer" class="fixed z-50 hidden flex-col items-center">
+    <div id="tutorial-pointer-label" class="px-2.5 py-1 bg-amber-400 text-slate-950 font-extrabold text-[11px] font-mono-code rounded-full shadow-xl border-2 border-white whitespace-nowrap">
+      👇 CLICK HERE!
+    </div>
+    <div class="text-2xl leading-none drop-shadow-[0_4px_6px_rgba(0,0,0,0.9)]">⬇️</div>
+  </div>
+
+  <!-- =========================================================================
+       TOP GAME BAR: VISUAL QUEST TRACKER + SCORE + AUTOPLAY VIDEO + TUTORIAL TOGGLE
+       ========================================================================= -->
+  <header class="fixed top-0 left-0 right-0 z-30 bg-slate-950/90 backdrop-blur-md border-b border-slate-800 px-3.5 py-2 flex flex-wrap items-center justify-between gap-2">
+    <!-- Left: Game Logo & Visual Step-by-Step Tutorial Quest Banner -->
+    <div class="flex items-center gap-2.5">
+      <div class="px-2.5 py-1 bg-amber-400 text-slate-950 font-extrabold text-xs tracking-wider uppercase font-mono-code rounded">
+        🏥 ONCOBRIEF TYCOON
+      </div>
+      <div class="bg-slate-900/95 border border-amber-400/60 rounded-lg px-3 py-1 flex items-center gap-2.5">
+        <span id="quest-step-badge" class="px-2 py-0.5 bg-amber-400 text-slate-950 font-mono-code font-extrabold text-[11px] rounded">
+          STEP 1 / 5
+        </span>
+        <span id="quest-banner-text" class="text-xs sm:text-sm font-bold text-amber-200">
+          📱 Patient Role: Press [E] to snap & upload your 9 hospital reports!
+        </span>
+      </div>
+    </div>
+
+    <!-- Center: Visual Hospital Scoreboard -->
+    <div class="flex items-center gap-3 bg-slate-900/95 px-3 py-1 border border-slate-700 rounded-lg text-xs font-mono-code">
+      <div title="Patient Cases Solved">🏆 Cases: <span id="hud-cases" class="font-bold text-amber-400">0/3</span></div>
+      <div class="h-3.5 w-px bg-slate-700"></div>
+      <div title="Hospital Trust">❤️ Trust: <span id="hud-trust" class="font-bold text-emerald-400">100%</span></div>
+      <div class="h-3.5 w-px bg-slate-700"></div>
+      <div title="Clinic Time Saved">⚡ Saved: <span id="hud-saved" class="font-bold text-sky-400">0m</span></div>
+    </div>
+
+    <!-- Right: Tutorial Toggle, Auto-Play Video Mode, Chaos Lab, Audio -->
+    <div class="flex items-center gap-1.5">
+      <button id="btn-toggle-tutorial" class="px-2.5 py-1.5 text-xs font-bold bg-amber-500/20 hover:bg-amber-500/30 text-amber-300 border border-amber-400/60 rounded-lg transition" title="Toggle Bouncing Tutorial Arrows & 3D Floor Waypoints">
+        🎓 Guide Arrows: ON
+      </button>
+      <button id="btn-autoplay-video" class="px-3 py-1.5 text-xs font-bold bg-emerald-600 hover:bg-emerald-500 text-white rounded-lg flex items-center gap-1.5 transition shadow">
+        <span id="autoplay-icon">▶</span>
+        <span id="autoplay-text">Auto-Play Video</span>
+      </button>
+      <button id="btn-audio-mute" class="px-2.5 py-1.5 text-xs font-mono-code bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-600 rounded-lg">
+        🔊 Voice: ON
+      </button>
+    </div>
+  </header>
+
+  <!-- =========================================================================
+       LEFT HUD: 5 PLAYABLE HOSPITAL ROLES (GTA SWITCHER — EVERY ROLE HAS A JOB!)
+       ========================================================================= -->
+  <aside class="fixed top-14 left-3 z-20 w-60 flex flex-col gap-2 pointer-events-auto">
+    <!-- 5-Role Relay Switcher -->
+    <div class="bg-slate-950/90 backdrop-blur-md border border-slate-800 rounded-xl p-2.5 shadow-xl space-y-1.5">
+      <div class="flex items-center justify-between text-[11px] font-mono-code uppercase text-sky-400 font-bold px-1">
+        <span>🎮 5 Hospital Roles [Keys 1–5]</span>
+        <span class="text-[10px] text-slate-400">[C] Cycle</span>
+      </div>
+
+      <button id="role-btn-patient" data-role="patient" class="role-card-btn w-full p-2 rounded-lg bg-amber-500/20 border-2 border-amber-400 text-left transition flex items-center justify-between">
+        <div class="flex items-center gap-2">
+          <span class="text-lg">🎒</span>
+          <div>
+            <div class="text-xs font-bold text-white">1. Patient</div>
+            <div class="text-[10px] text-amber-300 font-mono-code">Upload & Voice App</div>
+          </div>
+        </div>
+        <span id="role-check-patient" class="text-xs font-mono-code px-1.5 py-0.5 bg-amber-400 text-slate-950 font-extrabold rounded">NOW</span>
+      </button>
+
+      <button id="role-btn-records" data-role="records" class="role-card-btn w-full p-2 rounded-lg bg-slate-900 hover:bg-slate-800 border border-slate-700 text-left transition flex items-center justify-between">
+        <div class="flex items-center gap-2">
+          <span class="text-lg">🗂️</span>
+          <div>
+            <div class="text-xs font-bold text-white">2. Records Mgr</div>
+            <div class="text-[10px] text-sky-300 font-mono-code">ABHA & OCR Scan</div>
+          </div>
+        </div>
+        <span id="role-check-records" class="text-[10px] font-mono-code px-1.5 py-0.5 bg-slate-800 text-slate-400 rounded">STEP 2</span>
+      </button>
+
+      <button id="role-btn-coordinator" data-role="coordinator" class="role-card-btn w-full p-2 rounded-lg bg-slate-900 hover:bg-slate-800 border border-slate-700 text-left transition flex items-center justify-between">
+        <div class="flex items-center gap-2">
+          <span class="text-lg">⚖️</span>
+          <div>
+            <div class="text-xs font-bold text-white">3. Coordinator</div>
+            <div class="text-[10px] text-teal-300 font-mono-code">Fix Date & Tasks</div>
+          </div>
+        </div>
+        <span id="role-check-coordinator" class="text-[10px] font-mono-code px-1.5 py-0.5 bg-slate-800 text-slate-400 rounded">STEP 3</span>
+      </button>
+
+      <button id="role-btn-doctor" data-role="doctor" class="role-card-btn w-full p-2 rounded-lg bg-slate-900 hover:bg-slate-800 border border-slate-700 text-left transition flex items-center justify-between">
+        <div class="flex items-center gap-2">
+          <span class="text-lg">🩺</span>
+          <div>
+            <div class="text-xs font-bold text-white">4. Clinician</div>
+            <div class="text-[10px] text-emerald-300 font-mono-code">Treat 3 Patients</div>
+          </div>
+        </div>
+        <span id="role-check-doctor" class="text-[10px] font-mono-code px-1.5 py-0.5 bg-slate-800 text-slate-400 rounded">STEP 4</span>
+      </button>
+
+      <button id="role-btn-admin" data-role="admin" class="role-card-btn w-full p-2 rounded-lg bg-slate-900 hover:bg-slate-800 border border-slate-700 text-left transition flex items-center justify-between">
+        <div class="flex items-center gap-2">
+          <span class="text-lg">⚡</span>
+          <div>
+            <div class="text-xs font-bold text-white">5. Admin / Chaos</div>
+            <div class="text-[10px] text-purple-300 font-mono-code">Charts & Break Lab</div>
+          </div>
+        </div>
+        <span id="role-check-admin" class="text-[10px] font-mono-code px-1.5 py-0.5 bg-slate-800 text-slate-400 rounded">STEP 5</span>
+      </button>
+    </div>
+
+    <!-- 3 Patient Rooms Quick Switcher (For Doctor Consultations) -->
+    <div class="bg-slate-950/90 backdrop-blur-md border border-slate-800 rounded-xl p-2.5 shadow-xl space-y-1.5">
+      <div class="text-[10px] font-mono-code uppercase text-amber-400 font-bold px-1">
+        🚪 3 Patient Consultation Rooms
+      </div>
+      <div class="grid grid-cols-3 gap-1">
+        <button id="room-btn-1" data-room="1" class="room-pill-btn py-1.5 px-1 rounded bg-amber-500 text-slate-950 font-mono-code font-bold text-[10px] text-center">
+          Room 1<br/>Meenakshi
+        </button>
+        <button id="room-btn-2" data-room="2" class="room-pill-btn py-1.5 px-1 rounded bg-slate-900 text-slate-300 border border-slate-700 font-mono-code font-bold text-[10px] text-center">
+          Room 2<br/>Karthik
+        </button>
+        <button id="room-btn-3" data-room="3" class="room-pill-btn py-1.5 px-1 rounded bg-slate-900 text-slate-300 border border-slate-700 font-mono-code font-bold text-[10px] text-center">
+          Room 3<br/>Lakshmi
+        </button>
+      </div>
+    </div>
+  </aside>
+
+  <!-- =========================================================================
+       RIGHT HUD: VISUAL DOCTOR CONSULTATION & EVIDENCE POCKET CARD (NO CHEATCODE!)
+       Shows visual icons/stamps from OncoBrief (or a messy Paper Pile if skipped)
+       ========================================================================= -->
+  <section id="doctor-consult-hud" class="fixed top-14 right-3 z-20 w-full max-w-md bg-slate-950/95 backdrop-blur-md border-2 border-slate-700 rounded-xl p-3.5 shadow-2xl space-y-2.5">
+    <!-- Top Bar: Active Room + Mode Toggle (With OncoBrief Visual Card vs Without OncoBrief Paper Pile) -->
+    <div class="flex items-center justify-between border-b border-slate-800 pb-2">
+      <div>
+        <span id="hud-room-badge" class="text-[10px] font-mono-code uppercase px-2 py-0.5 bg-amber-400 text-slate-950 font-extrabold rounded">
+          ROOM 1 · MEENAKSHI (DEMO-001)
+        </span>
+        <div id="hud-patient-sub" class="text-xs font-bold text-white mt-0.5">
+          Breast Surgery Referral · 9 Reports from 4 Hospitals
+        </div>
+      </div>
+      <!-- Toggle to compare Doctor WITH OncoBrief vs Doctor WITHOUT OncoBrief live! -->
+      <button id="btn-toggle-paper-mode" class="px-2 py-1 rounded text-[10px] font-mono-code font-bold bg-slate-800 hover:bg-slate-700 text-amber-300 border border-slate-600" title="Switch between messy Paper Bag Mode and OncoBrief Visual Card">
+        🔄 Compare: Paper Mode vs OncoBrief
+      </button>
+    </div>
+
+    <!-- VISUAL CLUE BOARD (Replaces walls of text with visual stamp icons or messy paper pile!) -->
+    <div id="visual-clue-board" class="p-2.5 rounded-lg bg-slate-900 border border-slate-700"></div>
+
+    <!-- Patient Question Bubble (Short, punchy, spoken aloud) -->
+    <div class="p-2.5 rounded-lg bg-slate-900/90 border-l-4 border-sky-400 flex items-start justify-between gap-2">
+      <div>
+        <div class="text-[10px] font-mono-code font-bold text-sky-300 uppercase">🗣️ PATIENT ASKS DOCTOR:</div>
+        <p id="hud-patient-question" class="text-xs font-semibold text-white mt-0.5 leading-snug">
+          "Doctor, which surgery date is true, and what is still missing before you approve my packet?"
+        </p>
+      </div>
+      <button id="btn-replay-voice" class="px-2 py-1 bg-slate-800 hover:bg-slate-700 text-[10px] font-mono-code rounded text-slate-300 shrink-0">🔈</button>
+    </div>
+
+    <!-- 3 Neutral Visual Story Choices (NO green "cheatcode" highlight—you deduce from the visual cards!) -->
+    <div class="space-y-1.5">
+      <div class="text-[10px] font-mono-code uppercase text-slate-400 font-bold flex items-center justify-between">
+        <span>Choose Doctor's Decision (Look at your Visual Card above!):</span>
+      </div>
+      <div id="hud-choices-list" class="space-y-1.5"></div>
+    </div>
+
+    <!-- Instant Visual Result Toast -->
+    <div id="hud-choice-feedback" class="hidden p-2.5 rounded-lg text-xs"></div>
+  </section>
+
+  <!-- =========================================================================
+       BOTTOM BAR: VOICE PROGRESS + BIG "OPEN HELD DEVICE [E]" BUTTON
+       ========================================================================= -->
+  <div class="fixed bottom-3 left-1/2 -translate-x-1/2 z-20 flex flex-col items-center gap-2 w-full max-w-xl px-3 pointer-events-none">
+    <!-- Compact Subtitle + Audio Progress Bar -->
+    <div class="w-full bg-slate-950/95 backdrop-blur-md border border-slate-700 rounded-lg px-3 py-1.5 shadow-xl pointer-events-auto">
+      <div class="flex items-center justify-between text-[10px] font-mono-code">
+        <span id="sub-speaker" class="font-bold text-amber-400">🎓 INTERACTIVE TUTORIAL</span>
+        <span id="sub-status" class="text-emerald-400">● Ready</span>
+      </div>
+      <p id="sub-text" class="text-xs text-slate-200 truncate">
+        Follow the bouncing golden arrow! Press [E] or click the yellow button below to open your character's held device.
+      </p>
+      <div class="w-full h-1 bg-slate-800 rounded overflow-hidden mt-1">
+        <div id="sub-progress" class="h-full bg-emerald-400 transition-all duration-150" style="width: 0%"></div>
+      </div>
+    </div>
+
+    <!-- Movement + Open Held Device [E] -->
+    <div class="flex items-center gap-2.5 bg-slate-950/95 backdrop-blur-md border border-slate-700 rounded-xl px-3.5 py-1.5 shadow-2xl pointer-events-auto">
+      <div class="flex items-center gap-1">
+        <button data-dir="left" class="dpad-btn w-7 h-7 bg-slate-800 hover:bg-slate-700 rounded text-xs font-bold">◀</button>
+        <div class="flex flex-col gap-1">
+          <button data-dir="up" class="dpad-btn w-7 h-7 bg-slate-800 hover:bg-slate-700 rounded text-xs font-bold">▲</button>
+          <button data-dir="down" class="dpad-btn w-7 h-7 bg-slate-800 hover:bg-slate-700 rounded text-xs font-bold">▼</button>
+        </div>
+        <button data-dir="right" class="dpad-btn w-7 h-7 bg-slate-800 hover:bg-slate-700 rounded text-xs font-bold">▶</button>
+      </div>
+
+      <button id="btn-open-held-device" class="px-4 py-2 bg-amber-400 hover:bg-amber-300 text-slate-950 font-extrabold text-xs sm:text-sm rounded-lg font-mono-code uppercase tracking-wide flex items-center gap-2 shadow-lg transition">
+        <span id="held-btn-icon">📱</span>
+        <span id="held-btn-label">Open Patient Phone [E]</span>
+      </button>
+
+      <button id="btn-next-role-step" class="px-3 py-2 bg-sky-600 hover:bg-sky-500 text-white font-bold text-xs rounded-lg font-mono-code transition">
+        Next Role Step →
+      </button>
+    </div>
+  </div>
+
+  <!-- =========================================================================
+       HELD DEVICE OVERLAY (VISUAL-FIRST ROLE SCREEN FOR ALL 5 ROLES!)
+       Opens when pressing [E] — shows the exact visual mini-game for your role!
+       ========================================================================= -->
+  <div id="held-device-modal" class="fixed inset-0 z-30 flex items-center justify-center p-3 sm:p-6 bg-slate-950/75 backdrop-blur-sm">
+    <div class="w-full max-w-4xl h-[82vh] bg-[#1a1917] p-3 border-4 border-[#3a3630] rounded-2xl shadow-2xl flex flex-col">
+      <!-- Top Device Bezel -->
+      <div class="flex items-center justify-between px-3 py-1.5 bg-[#121110] text-[#d5cfc2] text-xs font-mono-code rounded-t-lg border-b border-[#3a3630]">
+        <div class="flex items-center gap-2">
+          <span class="w-2.5 h-2.5 rounded-full bg-emerald-400 inline-block"></span>
+          <span id="device-header-title" class="font-bold text-amber-300">ONCOBRIEF PATIENT SMARTPHONE · ROLE 1: PATIENT</span>
+        </div>
+        <div class="flex items-center gap-2">
+          <!-- Role Switcher Tabs right inside the device too so you can test all 5 role views -->
+          <div class="hidden sm:flex items-center gap-1">
+            <button data-dev-role="patient" class="dev-role-tab px-2 py-0.5 rounded text-[10px] bg-amber-400 text-slate-950 font-bold">1.Patient</button>
+            <button data-dev-role="records" class="dev-role-tab px-2 py-0.5 rounded text-[10px] bg-slate-800 text-slate-300">2.Records</button>
+            <button data-dev-role="coordinator" class="dev-role-tab px-2 py-0.5 rounded text-[10px] bg-slate-800 text-slate-300">3.Coord</button>
+            <button data-dev-role="doctor" class="dev-role-tab px-2 py-0.5 rounded text-[10px] bg-slate-800 text-slate-300">4.Doctor</button>
+            <button data-dev-role="admin" class="dev-role-tab px-2 py-0.5 rounded text-[10px] bg-slate-800 text-slate-300">5.Admin/Break</button>
+          </div>
+          <button id="btn-close-held-device" class="px-3 py-1 bg-amber-400 hover:bg-amber-300 text-slate-950 font-extrabold uppercase rounded text-xs">
+            ⬇ Put Down Device [E]
+          </button>
+        </div>
+      </div>
+
+      <!-- Visual-First OncoBrief Paper Screen -->
+      <div id="device-screen-body" class="oncobrief-paper flex-1 overflow-y-auto p-4 sm:p-5"></div>
+    </div>
+  </div>
+
+  <script>
+    /* =========================================================================
+       PART 1: GAME STATE, SOUND EFFECTS & PROMISE-BASED VOICE SEQUENCER
+       ========================================================================= */
+    const State = {
+      audioEnabled: true,
+      tutorialEnabled: true,
+      deviceOpen: false,
+      paperModeForced: false, // Toggle to let player see messy Paper Mode vs OncoBrief Visual Card
+      activeRole: 'patient',  // 'patient' | 'records' | 'coordinator' | 'doctor' | 'admin'
+      activeRoom: 1,          // 1 | 2 | 3
+      trust: 100,
+      savedMins: 0,
+      autoPlayRunning: false,
+      autoPlayAbort: false,
+
+      // Role Relay Progress (True Multi-Role Integration!)
+      roleTasks: {
+        patientUploaded: false,
+        patientVoiceTested: false,
+        recordsLinked: false,
+        recordsScanned: false,
+        recordsDupTrashed: false,
+        coordConflictFixed: false,
+        coordTaskSent: false,
+        doctorPacketFrozen: false
+      },
+
+      // 3 Patient Consultation Rooms Solved State
+      roomsSolved: { 1: false, 2: false, 3: false },
+
+      // 5 Visual Chaos Circuit-Breaker Switches (false = healthy, true = broken)
+      chaosBroken: {
+        C1_fakeSurgery: false,
+        C2_blankWhiteBox: false,
+        C3_tiffCrash: false,
+        C4_rbacLeak: false,
+        C5_aiDosing: false
+      }
+    };
+
+    let audioCtx = null;
+    function sfx(type) {
+      if (!State.audioEnabled) return;
+      try {
+        const AC = window.AudioContext || window.webkitAudioContext;
+        if (!audioCtx && AC) audioCtx = new AC();
+        if (!audioCtx) return;
+        if (audioCtx.state === 'suspended') audioCtx.resume();
+        const now = audioCtx.currentTime;
+        const osc = audioCtx.createOscillator();
+        const gain = audioCtx.createGain();
+        osc.connect(gain); gain.connect(audioCtx.destination);
+
+        if (type === 'tap') {
+          osc.type = 'triangle';
+          osc.frequency.setValueAtTime(540, now);
+          osc.frequency.exponentialRampToValueAtTime(880, now + 0.06);
+          gain.gain.setValueAtTime(0.08, now);
+          gain.gain.exponentialRampToValueAtTime(0.001, now + 0.06);
+          osc.start(now); osc.stop(now + 0.06);
+        } else if (type === 'open') {
+          osc.type = 'sine';
+          osc.frequency.setValueAtTime(340, now);
+          osc.frequency.exponentialRampToValueAtTime(720, now + 0.14);
+          gain.gain.setValueAtTime(0.11, now);
+          gain.gain.exponentialRampToValueAtTime(0.001, now + 0.15);
+          osc.start(now); osc.stop(now + 0.15);
+        } else if (type === 'gta') {
+          osc.type = 'sawtooth';
+          osc.frequency.setValueAtTime(160, now);
+          osc.frequency.setValueAtTime(260, now + 0.1);
+          osc.frequency.setValueAtTime(390, now + 0.2);
+          gain.gain.setValueAtTime(0.12, now);
+          gain.gain.exponentialRampToValueAtTime(0.001, now + 0.35);
+          osc.start(now); osc.stop(now + 0.35);
+        } else if (type === 'win') {
+          osc.type = 'triangle';
+          osc.frequency.setValueAtTime(440, now);
+          osc.frequency.setValueAtTime(659, now + 0.08);
+          osc.frequency.setValueAtTime(880, now + 0.16);
+          gain.gain.setValueAtTime(0.13, now);
+          gain.gain.exponentialRampToValueAtTime(0.001, now + 0.32);
+          osc.start(now); osc.stop(now + 0.32);
+        } else if (type === 'fail') {
+          osc.type = 'square';
+          osc.frequency.setValueAtTime(250, now);
+          osc.frequency.setValueAtTime(180, now + 0.14);
+          gain.gain.setValueAtTime(0.12, now);
+          gain.gain.exponentialRampToValueAtTime(0.001, now + 0.3);
+          osc.start(now); osc.stop(now + 0.3);
+        }
+      } catch (e) {}
+    }
+
+    let progTimer = null;
+    function speakAndWait(speaker, text, lang) {
+      return new Promise((resolve) => {
+        const sp = document.getElementById('sub-speaker');
+        const tx = document.getElementById('sub-text');
+        const st = document.getElementById('sub-status');
+        const bar = document.getElementById('sub-progress');
+
+        if (sp) sp.textContent = speaker;
+        if (tx) tx.textContent = text;
+        if (progTimer) clearInterval(progTimer);
+        if (bar) bar.style.width = '0%';
+
+        const clean = text.replace(/[`*_#]/g, '');
+        const words = clean.split(/\s+/).length;
+        const estMs = Math.max(3000, words * 380);
+        const t0 = performance.now();
+
+        progTimer = setInterval(() => {
+          const pct = Math.min(96, ((performance.now() - t0) / estMs) * 100);
+          if (bar) bar.style.width = pct.toFixed(1) + '%';
+        }, 80);
+
+        let done = false;
+        const finish = () => {
+          if (done) return;
+          done = true;
+          if (progTimer) clearInterval(progTimer);
+          if (bar) bar.style.width = '100%';
+          if (st) st.textContent = '● Complete';
+          setTimeout(resolve, 850);
+        };
+
+        if (!State.audioEnabled || !('speechSynthesis' in window)) {
+          if (st) st.textContent = '🔇 Muted';
+          setTimeout(finish, estMs);
+          return;
+        }
+
+        try {
+          window.speechSynthesis.cancel();
+          if (st) st.textContent = '🔊 Speaking...';
+          const u = new SpeechSynthesisUtterance(clean);
+          u.lang = lang || 'en-IN';
+          u.rate = 1.02;
+          const guard = setTimeout(finish, estMs + 6000);
+          u.onend = () => { clearTimeout(guard); finish(); };
+          u.onerror = () => { clearTimeout(guard); finish(); };
+          window.speechSynthesis.speak(u);
+        } catch (e) {
+          setTimeout(finish, estMs);
+        }
+      });
+    }
+
+    /* =========================================================================
+       PART 2: BOUNCING GOLDEN TUTORIAL ARROW & QUEST ENGINE
+       ========================================================================= */
+    function computeCurrentTutorialQuest() {
+      const t = State.roleTasks;
+      if (!t.patientUploaded) {
+        return {
+          stepLabel: 'STEP 1 / 5 · PATIENT',
+          banner: '🎒 Role 1 (Patient): Press [E] & tap the Camera to upload your 9 reports!',
+          targetRole: 'patient',
+          targetSelector: State.deviceOpen ? '#btn-act-patient-upload' : '#btn-open-held-device',
+          pointerText: State.deviceOpen ? '👇 TAP TO SNAP & UPLOAD!' : '👇 PRESS [E] TO OPEN PHONE!'
+        };
+      }
+      if (!t.recordsLinked || !t.recordsScanned || !t.recordsDupTrashed) {
+        if (State.activeRole !== 'records') {
+          return {
+            stepLabel: 'STEP 2 / 5 · RECORDS MGR',
+            banner: '🗂️ Switch to Role 2 (Records Mgr Deepak) to scan & clean the uploaded files!',
+            targetRole: 'records',
+            targetSelector: '#role-btn-records',
+            pointerText: '👇 SWITCH TO RECORDS MGR [2]'
+          };
+        }
+        if (!State.deviceOpen) {
+          return {
+            stepLabel: 'STEP 2 / 5 · RECORDS MGR',
+            banner: '🗂️ Records Mgr: Press [E] to open the Multi-Modal Scanner Slate!',
+            targetRole: 'records',
+            targetSelector: '#btn-open-held-device',
+            pointerText: '👇 OPEN SCANNER SLATE [E]'
+          };
+        }
+        const nextBtn = !t.recordsLinked
+          ? '#btn-act-records-link'
+          : (!t.recordsScanned ? '#btn-act-records-scan' : '#btn-act-records-dup');
+        return {
+          stepLabel: 'STEP 2 / 5 · RECORDS MGR',
+          banner: '🗂️ Click the highlighted scanner steps to link ABHA, run Sarvam OCR, & trash the duplicate fax!',
+          targetRole: 'records',
+          targetSelector: nextBtn,
+          pointerText: '👇 CLICK THIS STEP!'
+        };
+      }
+      if (!t.coordConflictFixed || !t.coordTaskSent) {
+        if (State.activeRole !== 'coordinator') {
+          return {
+            stepLabel: 'STEP 3 / 5 · COORDINATOR',
+            banner: '⚖️ Switch to Role 3 (Coordinator Anita) to resolve the date conflict & missing insurance!',
+            targetRole: 'coordinator',
+            targetSelector: '#role-btn-coordinator',
+            pointerText: '👇 SWITCH TO COORDINATOR [3]'
+          };
+        }
+        if (!State.deviceOpen) {
+          return {
+            stepLabel: 'STEP 3 / 5 · COORDINATOR',
+            banner: '⚖️ Coordinator Anita: Press [E] to open the Visual Reconciliation Room!',
+            targetRole: 'coordinator',
+            targetSelector: '#btn-open-held-device',
+            pointerText: '👇 OPEN TRIAGE SLATE [E]'
+          };
+        }
+        const nextBtn = !t.coordConflictFixed ? '#btn-act-coord-june12' : '#btn-act-coord-task';
+        return {
+          stepLabel: 'STEP 3 / 5 · COORDINATOR',
+          banner: !t.coordConflictFixed
+            ? '⚖️ Spot the formalin stamp! Click the TRUE June 12 Lab Report card to fix the conflict!'
+            : '📤 Now click to assign the missing Insurance task & send the Tamil voice reminder!',
+          targetRole: 'coordinator',
+          targetSelector: nextBtn,
+          pointerText: !t.coordConflictFixed ? '👇 CLICK JUNE 12 STAMP!' : '👇 SEND TASK & VOICE!'
+        };
+      }
+      const allRoomsSolved = State.roomsSolved[1] && State.roomsSolved[2] && State.roomsSolved[3];
+      if (!allRoomsSolved) {
+        if (State.activeRole !== 'doctor') {
+          return {
+            stepLabel: 'STEP 4 / 5 · CLINICIAN',
+            banner: '🩺 Switch to Role 4 (Dr. Meera Rao) to enter Rooms 1, 2, & 3 and treat the patients!',
+            targetRole: 'doctor',
+            targetSelector: '#role-btn-doctor',
+            pointerText: '👇 SWITCH TO DOCTOR [4]'
+          };
+        }
+        const nextRoom = !State.roomsSolved[1] ? 1 : (!State.roomsSolved[2] ? 2 : 3);
+        if (State.activeRoom !== nextRoom) {
+          return {
+            stepLabel: `STEP 4 / 5 · ROOM ${nextRoom}`,
+            banner: `🚪 Walk into Room ${nextRoom} (or click Room ${nextRoom}) to consult the next patient!`,
+            targetRole: 'doctor',
+            targetSelector: `#room-btn-${nextRoom}`,
+            pointerText: `👇 ENTER ROOM ${nextRoom}!`
+          };
+        }
+        return {
+          stepLabel: `STEP 4 / 5 · ROOM ${nextRoom} CONSULT`,
+          banner: `🩺 Read the Visual OncoBrief Card on the right (📅 Date & 🛡️ Gaps) and pick the matching answer!`,
+          targetRole: 'doctor',
+          targetSelector: '#visual-clue-board',
+          pointerText: '👀 READ CLUES, THEN ANSWER BELOW!'
+        };
+      }
+      return {
+        stepLabel: 'STEP 5 / 5 · ADMIN & CHAOS LAB',
+        banner: '⚡ All 3 Patients Treated! Switch to Role 5 (Admin) & press [E] to test the Chaos Break Lab!',
+        targetRole: 'admin',
+        targetSelector: State.activeRole !== 'admin' ? '#role-btn-admin' : '#btn-open-held-device',
+        pointerText: State.activeRole !== 'admin' ? '👇 SWITCH TO ADMIN [5]' : '👇 OPEN CHAOS LAB [E]'
+      };
+    }
+
+    function updateTutorialUI() {
+      // Clear previous highlights
+      document.querySelectorAll('.tutorial-target').forEach((el) => el.classList.remove('tutorial-target'));
+      const pointer = document.getElementById('floating-tutorial-pointer');
+      const pointerLbl = document.getElementById('tutorial-pointer-label');
+
+      const q = computeCurrentTutorialQuest();
+      document.getElementById('quest-step-badge').textContent = q.stepLabel;
+      document.getElementById('quest-banner-text').textContent = q.banner;
+
+      // Update Role Sidebar checkmarks
+      const roleDone = {
+        patient: State.roleTasks.patientUploaded,
+        records: State.roleTasks.recordsLinked && State.roleTasks.recordsScanned && State.roleTasks.recordsDupTrashed,
+        coordinator: State.roleTasks.coordConflictFixed && State.roleTasks.coordTaskSent,
+        doctor: State.roomsSolved[1] && State.roomsSolved[2] && State.roomsSolved[3],
+        admin: false
+      };
+      ['patient', 'records', 'coordinator', 'doctor', 'admin'].forEach((r, idx) => {
+        const chk = document.getElementById(`role-check-${r}`);
+        if (!chk) return;
+        if (roleDone[r]) {
+          chk.textContent = '✓ DONE';
+          chk.className = 'text-[10px] font-mono-code px-1.5 py-0.5 bg-emerald-500 text-slate-950 font-extrabold rounded';
+        } else if (State.activeRole === r) {
+          chk.textContent = 'ACTIVE';
+          chk.className = 'text-[10px] font-mono-code px-1.5 py-0.5 bg-amber-400 text-slate-950 font-extrabold rounded';
+        } else {
+          chk.textContent = `STEP ${idx + 1}`;
+          chk.className = 'text-[10px] font-mono-code px-1.5 py-0.5 bg-slate-800 text-slate-400 rounded';
+        }
+      });
+
+      if (!State.tutorialEnabled || !q.targetSelector) {
+        if (pointer) pointer.classList.add('hidden');
+        return;
+      }
+
+      const targetEl = document.querySelector(q.targetSelector);
+      if (targetEl) {
+        targetEl.classList.add('tutorial-target');
+        const rect = targetEl.getBoundingClientRect();
+        if (rect.width > 0 && rect.height > 0 && pointer) {
+          pointer.classList.remove('hidden');
+          pointer.classList.add('flex');
+          pointerLbl.textContent = q.pointerText;
+          const topPos = Math.max(8, rect.top - 48);
+          const leftPos = Math.min(window.innerWidth - 150, Math.max(20, rect.left + rect.width / 2 - 65));
+          pointer.style.top = `${topPos}px`;
+          pointer.style.left = `${leftPos}px`;
+          return;
+        }
+      }
+      if (pointer) pointer.classList.add('hidden');
+    }
+
+    /* =========================================================================
+       PART 3: VISUAL-FIRST HELD DEVICE SCREENS FOR ALL 5 ROLES + NO-CHEAT QUIZ
+       ========================================================================= */
+    const ROOM_QUIZZES = {
+      1: {
+        name: 'Room 1 · Meenakshi (DEMO-001)',
+        sub: 'Breast Ca Referral · 9 Reports from 4 Hospitals',
+        question: '"Doctor, which surgery date is true on my chart, and what is still missing before my packet is complete?"',
+        // Visual Icon Badges shown when OncoBrief prep is used vs Messy Paper Stack when Without OncoBrief
+        visualClues: [
+          { icon: '📅', label: 'Verified Surgery Date', val: '12 JUN 2025', sub: 'Formalin Stamp: 13 Jun', color: 'bg-emerald-950 border-emerald-500 text-emerald-300' },
+          { icon: '❌', label: 'Superseded Typo',       val: '03 JUL 2025', sub: 'Discharge Clerical Error', color: 'bg-rose-950/60 border-rose-700 text-rose-300 line-through' },
+          { icon: '🛡️', label: 'Missing Checklist Doc', val: 'INSURANCE AUTH', sub: 'Task -> Coord Anita', color: 'bg-amber-950 border-amber-500 text-amber-300' },
+          { icon: '🗑️', label: 'Duplicate Filtered',    val: 'CT-CHEST-REFAX', sub: 'Auto-Flagged', color: 'bg-slate-800 border-slate-600 text-slate-300' }
+        ],
+        paperTrapTitle: '📄 Top Sheet of Messy 9-Paper Bag (`discharge-summary.pdf`):',
+        paperTrapSub: ' Handwritten/typed note on top says: "Surgery: 03 July 2025 — Discharged Stable." (Other 8 pages buried underneath!)',
+        choices: [
+          {
+            id: 'A',
+            text: '📅 Surgery was 03 July 2025 · All documents are complete (Approve Now)',
+            correct: false,
+            failMsg: '❌ PAPER-PILE TRAP! You read the top sheet (03 Jul 2025) and missed that Meridian Lab received the specimen in formalin on 13 June (proving surgery was 12 June 2025) and that Insurance Auth is missing!'
+          },
+          {
+            id: 'B',
+            text: '📅 Surgery was 12 June 2025 · 🛡️ Insurance Auth is missing (Task routed to Anita)',
+            correct: true,
+            winMsg: '🌟 SPOT ON! Reading your visual OncoBrief clues, you anchored surgery to 12 June 2025 and flagged the missing Insurance Authorization in 90 seconds!'
+          },
+          {
+            id: 'C',
+            text: '📅 Surgery was 20 June 2025 · 🩻 Repeat Thorax CT scan required today',
+            correct: false,
+            failMsg: '❌ WRONG DATE & UNNECESSARY SCAN! 20 June was the CT fax date, and her CT scan was already clear!'
+          }
+        ]
+      },
+      2: {
+        name: 'Room 2 · Karthik (DEMO-002)',
+        sub: 'Tamil Referral Scan + Thorax CT DICOM + Reopened Slot',
+        question: '"Doctor, did my July OPD note change my appointment date, and do I need to pay for a new CT scan?"',
+        visualClues: [
+          { icon: '🔄', label: 'Reopened Appointment', val: '22 JUL 2025', sub: 'Moved from 15 Jul (opd-note-july)', color: 'bg-amber-950 border-amber-400 text-amber-300' },
+          { icon: '🔠', label: 'Sarvam Vision 2.1 OCR', val: 'TAMIL -> ENGLISH', sub: '87.36% Indic BBox Verified', color: 'bg-sky-950 border-sky-500 text-sky-300' },
+          { icon: '🩻', label: 'DICOM Thorax CT CD',    val: 'CLEAR (0 NODULES)', sub: 'PHI Scrubbed: ANON^DEMO-002', color: 'bg-emerald-950 border-emerald-500 text-emerald-300' },
+          { icon: '🔊', label: 'OncoBrief Voice Alert', val: 'TAMIL / HINDI TTS', sub: 'Bulbul V4 Flash Queued', color: 'bg-purple-950 border-purple-500 text-purple-300' }
+        ],
+        paperTrapTitle: '📄 Old June Clipping on Desk (`opd-note-june.pdf` + Unreadable CD):',
+        paperTrapSub: 'Says: "Appointment on 15 July 2025." Raw DICOM CD cannot open without viewer; Tamil slip untranslated.',
+        choices: [
+          {
+            id: 'A',
+            text: '📅 Keep 15 July 2025 slot · 🩻 Order a repeat ₹8,000 CT scan since CD won\'t open',
+            correct: false,
+            failMsg: '❌ STALE RECORD TRAP! You missed that the July note reopened and moved his slot to 22 July 2025, and wasted ₹8,000 on a repeat CT scan!'
+          },
+          {
+            id: 'B',
+            text: '🤖 Ask an open AI chatbot to guess his cancer stage and prescribe tablets',
+            correct: false,
+            failMsg: '❌ GUARDRAIL VIOLATION! Autonomous staging or prescribing violates Health-a-thon\'s non-clinical rule!'
+          },
+          {
+            id: 'C',
+            text: '🔄 Slot moved to 22 July 2025 · 🩻 DICOM CT is already clear (No repeat scan needed)',
+            correct: true,
+            winMsg: '🌟 SPOT ON! You used the visual staleness alert (15 Jul -> 22 Jul) and the DICOM viewer to save Karthik from a repeat CT scan!'
+          }
+        ]
+      },
+      3: {
+        name: 'Room 3 · Lakshmi (DEMO-003)',
+        sub: 'All 6 Docs Verified (READY-1001) · Post-Chemo Fever Guardrail',
+        question: '"Doctor, is my packet frozen for 15 May? And what happens if I tell the OncoBrief phone app I have a 102°F fever?"',
+        visualClues: [
+          { icon: '✅', label: 'Checklist Readiness', val: '6 / 6 VERIFIED', sub: 'readiness_band = ready', color: 'bg-emerald-950 border-emerald-500 text-emerald-300' },
+          { icon: '🔒', label: 'Packet Snapshot',     val: 'SHA-256 FROZEN', sub: 'Appointment: 15 May 2025', color: 'bg-sky-950 border-sky-500 text-sky-300' },
+          { icon: '🚫', label: 'Clinical Guardrail',  val: 'NO AI DOSING', sub: 'clinical-boundary.ts (0ms)', color: 'bg-rose-950 border-rose-500 text-rose-300' },
+          { icon: '📞', label: 'Fever Escalation',    val: 'HUMAN CALLBACK', sub: 'Alerts Coordinator Anita', color: 'bg-amber-950 border-amber-400 text-amber-300' }
+        ],
+        paperTrapTitle: '📄 Unsorted Folder of 6 Loose Pages + Generic Chatbot:',
+        paperTrapSub: 'Requires 40 mins of manual checking; generic AI wrapper chatbot tries to prescribe paracetamol doses.',
+        choices: [
+          {
+            id: 'A',
+            text: '🔒 Packet is SHA-256 Frozen for 15 May · 🚫 Fever triggers Human Coordinator Callback (Zero AI Dosing)',
+            correct: true,
+            winMsg: '🏆 ALL 3 PATIENTS SOLVED! You verified the frozen SHA-256 packet and proved OncoBrief\'s non-clinical safety guardrail!'
+          },
+          {
+            id: 'B',
+            text: '🤖 Unsafe AI chatbot automatically diagnoses fever and prescribes antibiotic doses',
+            correct: false,
+            failMsg: '❌ UNSAFE AI ADVICE! OncoBrief strictly refuses autonomous medical advice and routes symptoms to a human coordinator!'
+          },
+          {
+            id: 'C',
+            text: '⏳ Hold consultation for 45 minutes to manually re-type all 6 reports into Word',
+            correct: false,
+            failMsg: '❌ 45 MINUTES WASTED! All 6 reports were already verified in the Evidence Ledger!'
+          }
+        ]
+      }
+    };
+
+    function isHospitalPipelineReady() {
+      const t = State.roleTasks;
+      return !State.paperModeForced && (t.patientUploaded || t.recordsScanned || t.coordConflictFixed || State.activeRole === 'doctor');
+    }
+
+    function renderDoctorConsultHUD() {
+      const rm = State.activeRoom;
+      const q = ROOM_QUIZZES[rm];
+      document.getElementById('hud-room-badge').textContent = q.name.toUpperCase();
+      document.getElementById('hud-patient-sub').textContent = q.sub;
+      document.getElementById('hud-patient-question').textContent = q.question;
+
+      // Highlight active room pill on left
+      [1, 2, 3].forEach((n) => {
+        const btn = document.getElementById(`room-btn-${n}`);
+        if (!btn) return;
+        const solved = State.roomsSolved[n];
+        if (n === rm) {
+          btn.className = 'room-pill-btn py-1.5 px-1 rounded bg-amber-400 text-slate-950 font-mono-code font-extrabold text-[10px] text-center shadow';
+        } else if (solved) {
+          btn.className = 'room-pill-btn py-1.5 px-1 rounded bg-emerald-900/70 text-emerald-300 border border-emerald-500 font-mono-code font-bold text-[10px] text-center';
+        } else {
+          btn.className = 'room-pill-btn py-1.5 px-1 rounded bg-slate-900 text-slate-300 border border-slate-700 font-mono-code font-bold text-[10px] text-center';
+        }
+      });
+
+      const board = document.getElementById('visual-clue-board');
+      const toggleBtn = document.getElementById('btn-toggle-paper-mode');
+
+      // Show either Messy Paper Mode (Without OncoBrief) OR Crisp Visual Icon Grid (With OncoBrief)
+      if (State.paperModeForced) {
+        toggleBtn.textContent = '📱 Switch to: WITH OncoBrief Visual Card';
+        toggleBtn.className = 'px-2 py-1 rounded text-[10px] font-mono-code font-bold bg-emerald-600 text-white';
+        board.innerHTML = `
+          <div class="p-2.5 bg-rose-950/70 border border-rose-600 rounded space-y-1.5">
+            <div class="flex items-center justify-between text-[10px] font-mono-code text-rose-300 font-bold uppercase">
+              <span>🚨 WITHOUT ONCOBRIEF (38m Paper Pile)</span>
+              <span>8 Files Buried!</span>
+            </div>
+            <div class="p-2 bg-[#f5ebd6] text-[#171614] font-serif-source text-xs rounded border border-amber-900 shadow-inner rotate-[-1deg]">
+              <strong>${q.paperTrapTitle}</strong><br/>
+              <span>${q.paperTrapSub}</span>
+            </div>
+          </div>
+        `;
+      } else {
+        toggleBtn.textContent = '📄 Compare: WITHOUT OncoBrief (Paper Bag)';
+        toggleBtn.className = 'px-2 py-1 rounded text-[10px] font-mono-code font-bold bg-slate-800 hover:bg-slate-700 text-amber-300 border border-slate-600';
+        let gridHtml = `
+          <div class="flex items-center justify-between text-[10px] font-mono-code text-emerald-400 font-bold uppercase mb-1.5">
+            <span>✅ ONCOBRIEF VISUAL POCKET CARD (90s Prep)</span>
+            <button id="btn-hud-zoom-slate" class="underline text-sky-300">🔎 Open Full Slate [E]</button>
+          </div>
+          <div class="grid grid-cols-2 gap-1.5">
+        `;
+        q.visualClues.forEach((c) => {
+          gridHtml += `
+            <div class="p-2 rounded border ${c.color} flex items-center gap-2">
+              <span class="text-lg shrink-0">${c.icon}</span>
+              <div class="min-w-0">
+                <div class="text-[9px] font-mono-code uppercase opacity-80 truncate">${c.label}</div>
+                <div class="text-xs font-extrabold font-mono-code truncate">${c.val}</div>
+                <div class="text-[10px] opacity-85 truncate">${c.sub}</div>
+              </div>
+            </div>
+          `;
+        });
+        gridHtml += `</div>`;
+        board.innerHTML = gridHtml;
+        const zoomBtn = document.getElementById('btn-hud-zoom-slate');
+        if (zoomBtn) zoomBtn.addEventListener('click', () => toggleHeldDevice(true));
+      }
+
+      // Render 3 Neutral Choices (NO cheatcode highlight! Player deduces from the visual card!)
+      const choicesEl = document.getElementById('hud-choices-list');
+      let chHtml = '';
+      q.choices.forEach((ch) => {
+        chHtml += `
+          <button data-choice="${ch.id}" class="doc-choice-btn w-full p-2.5 rounded-lg bg-slate-900 hover:bg-slate-800 border border-slate-700 hover:border-amber-400 text-left text-xs text-slate-100 font-medium transition flex items-center gap-2">
+            <span class="w-6 h-6 rounded bg-slate-800 border border-slate-600 font-mono-code font-bold text-amber-300 flex items-center justify-center shrink-0">${ch.id}</span>
+            <span class="leading-snug">${ch.text}</span>
+          </button>
+        `;
+      });
+      choicesEl.innerHTML = chHtml;
+
+      choicesEl.querySelectorAll('.doc-choice-btn').forEach((btn) => {
+        btn.addEventListener('click', () => evaluateDoctorChoice(btn.getAttribute('data-choice')));
+      });
+
+      // Update Top Scoreboard
+      const solvedCount = [1, 2, 3].filter((n) => State.roomsSolved[n]).length;
+      document.getElementById('hud-cases').textContent = `${solvedCount}/3`;
+      document.getElementById('hud-trust').textContent = `${State.trust}%`;
+      document.getElementById('hud-saved').textContent = `${State.savedMins}m`;
+      updateTutorialUI();
+    }
+
+    function evaluateDoctorChoice(choiceId) {
+      const rm = State.activeRoom;
+      const q = ROOM_QUIZZES[rm];
+      const ch = q.choices.find((c) => c.id === choiceId);
+      if (!ch) return;
+
+      const fb = document.getElementById('hud-choice-feedback');
+      fb.classList.remove('hidden');
+
+      if (ch.correct) {
+        sfx('win');
+        if (!State.roomsSolved[rm]) {
+          State.roomsSolved[rm] = true;
+          State.savedMins += 35;
+          State.trust = Math.min(100, State.trust + 10);
+        }
+        const nextRm = rm < 3 ? rm + 1 : null;
+        fb.className = 'p-2.5 rounded-lg text-xs bg-emerald-950 border-2 border-emerald-400 text-emerald-100 space-y-2';
+        fb.innerHTML = `
+          <div class="font-bold text-emerald-300">${ch.winMsg}</div>
+          ${nextRm ? `<button id="btn-advance-room" class="w-full py-1.5 bg-emerald-500 text-slate-950 font-mono-code font-extrabold rounded uppercase">🚶 Enter Room ${nextRm} (Next Patient) →</button>` : `<button id="btn-go-admin-lab" class="w-full py-1.5 bg-amber-400 text-slate-950 font-mono-code font-extrabold rounded uppercase">⚡ Switch to Role 5: Admin & Chaos Break Lab →</button>`}
+        `;
+        const advBtn = document.getElementById('btn-advance-room');
+        if (advBtn) advBtn.addEventListener('click', () => selectRoom(nextRm));
+        const admBtn = document.getElementById('btn-go-admin-lab');
+        if (admBtn) admBtn.addEventListener('click', () => { switchRole('admin'); toggleHeldDevice(true); });
+        renderDoctorConsultHUD();
+        speakAndWait('CORRECT CLINICAL DECISION', ch.winMsg);
+      } else {
+        sfx('fail');
+        State.trust = Math.max(20, State.trust - 20);
+        fb.className = 'p-2.5 rounded-lg text-xs bg-rose-950 border-2 border-rose-500 text-rose-100 space-y-1.5';
+        fb.innerHTML = `
+          <div class="font-bold text-rose-300">${ch.failMsg}</div>
+          <div class="text-[11px] text-amber-200">💡 Tip: Look at the 4 visual icon tiles on your OncoBrief Pocket Card above and try again!</div>
+        `;
+        renderDoctorConsultHUD();
+        speakAndWait('WRONG OPTION', ch.failMsg);
+      }
+    }
+
+    /* =========================================================================
+       PART 4: RENDER THE 5 VISUAL-FIRST HELD DEVICE SCREENS (MINIMAL TEXT!)
+       ========================================================================= */
+    let adminChart1 = null, adminChart2 = null;
+
+    function renderHeldDeviceScreen() {
+      const body = document.getElementById('device-screen-body');
+      const titleEl = document.getElementById('device-header-title');
+      if (!body) return;
+
+      // Sync top role mini-tabs inside device bezel
+      document.querySelectorAll('.dev-role-tab').forEach((b) => {
+        const act = b.getAttribute('data-dev-role') === State.activeRole;
+        b.className = act
+          ? 'dev-role-tab px-2 py-0.5 rounded text-[10px] bg-amber-400 text-slate-950 font-extrabold'
+          : 'dev-role-tab px-2 py-0.5 rounded text-[10px] bg-slate-800 text-slate-300 hover:bg-slate-700';
+      });
+
+      const t = State.roleTasks;
+
+      // -----------------------------------------------------------------------
+      // ROLE 1 SCREEN: PATIENT SMARTPHONE (VISUAL CAMERA + VOICE + FEVER SHIELD)
+      // -----------------------------------------------------------------------
+      if (State.activeRole === 'patient') {
+        titleEl.textContent = '📱 ONCOBRIEF PATIENT SMARTPHONE · ROLE 1: MEENAKSHI';
+        body.innerHTML = `
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <!-- Visual Step 1: Camera Viewfinder Upload -->
+            <div class="ob-card p-4 flex flex-col justify-between bg-[#fbf9f5]">
+              <div class="space-y-2">
+                <div class="flex items-center justify-between">
+                  <span class="ob-stamp ${t.patientUploaded ? 'text-[#1b5e3a] bg-[#e8f3ea]' : 'text-[#7c540b] bg-[#fdf3df]'}">
+                    ${t.patientUploaded ? '✓ 9 FILES UPLOADED' : 'STEP 1 · CAMERA UPLOAD'}
+                  </span>
+                  <span class="text-2xl">📸</span>
+                </div>
+                <h3 class="font-extrabold text-base">Snap & Upload Referral Bag</h3>
+                <!-- Visual Icon Grid of 9 Reports -->
+                <div class="grid grid-cols-3 gap-2 py-2">
+                  <div class="p-2 bg-[#efeae0] rounded border border-[#8c8273] text-center">
+                    <div class="text-xl">📄</div>
+                    <div class="text-[10px] font-mono-code font-bold mt-1">Referral Slip</div>
+                  </div>
+                  <div class="p-2 bg-[#efeae0] rounded border border-[#8c8273] text-center">
+                    <div class="text-xl">🔬</div>
+                    <div class="text-[10px] font-mono-code font-bold mt-1">Biopsy Lab</div>
+                  </div>
+                  <div class="p-2 bg-[#efeae0] rounded border border-[#8c8273] text-center">
+                    <div class="text-xl">💿</div>
+                    <div class="text-[10px] font-mono-code font-bold mt-1">Thorax CT CD</div>
+                  </div>
+                </div>
+              </div>
+              <button id="btn-act-patient-upload" class="w-full py-3 rounded-lg font-mono-code font-extrabold text-xs uppercase ${t.patientUploaded ? 'bg-emerald-700 text-white' : 'bg-[#171614] text-[#f7f4ee] hover:bg-slate-800'}">
+                ${t.patientUploaded ? '✓ Uploaded to Hospital Intake! (Click to Switch to Role 2 →)' : '📸 Tap to Snap & Upload 9 Reports'}
+              </button>
+            </div>
+
+            <!-- Visual Step 2: Sarvam Voice Companion & Fever Safety Shield -->
+            <div class="ob-card p-4 flex flex-col justify-between bg-[#fbf9f5]">
+              <div class="space-y-2">
+                <div class="flex items-center justify-between">
+                  <span class="ob-stamp text-[#1b5e3a] bg-[#e8f3ea]">SARVAM AI VOICE COMPANION</span>
+                  <span class="text-2xl">🔊</span>
+                </div>
+                <h3 class="font-extrabold text-base">Listen in Tamil/Hindi or Report Fever</h3>
+                <div id="patient-phone-visual-box" class="p-3 rounded-lg bg-slate-900 text-emerald-300 font-mono-code text-xs space-y-1">
+                  <div class="text-amber-300 font-bold">🔔 Verified Hospital Reminder:</div>
+                  <div>📅 Appointment: 05 Aug 2025 · Surgical Oncology OPD</div>
+                  <div>📦 Bring: Prior Biopsy Slides & Insurance Auth</div>
+                </div>
+              </div>
+              <div class="grid grid-cols-2 gap-2 mt-3">
+                <button id="btn-act-patient-tamil" class="py-2.5 px-2 bg-sky-700 hover:bg-sky-600 text-white font-mono-code font-bold text-xs rounded">
+                  🔊 Play Tamil Voice
+                </button>
+                <button id="btn-act-patient-fever" class="py-2.5 px-2 bg-rose-700 hover:bg-rose-600 text-white font-mono-code font-bold text-xs rounded">
+                  🌡️ Speak "102°F Fever"
+                </button>
+              </div>
+            </div>
+          </div>
+        `;
+
+        document.getElementById('btn-act-patient-upload').addEventListener('click', () => {
+          sfx('win');
+          if (!t.patientUploaded) {
+            t.patientUploaded = true;
+            State.savedMins += 10;
+            renderHeldDeviceScreen();
+            updateTutorialUI();
+            speakAndWait('PATIENT UPLOAD COMPLETE', '9 reports and Thorax CT CD uploaded! Now click again or press key 2 to switch to Records Manager Deepak.');
+          } else {
+            toggleHeldDevice(false);
+            switchRole('records');
+          }
+        });
+
+        document.getElementById('btn-act-patient-tamil').addEventListener('click', () => {
+          sfx('win');
+          t.patientVoiceTested = true;
+          document.getElementById('patient-phone-visual-box').innerHTML = `
+            <div class="text-amber-300 font-bold">🔊 Playing Sarvam Bulbul V4 (Tamil):</div>
+            <div>"வணக்கம் மீனாட்சி, 5 ஆகஸ்ட் அன்று புற்றுநோய் ओपीडी-க்கு பயாப்சி ஸ்லைடுகளுடன் வரவும்."</div>
+          `;
+          speakAndWait('SARVAM BULBUL V4 TAMIL VOICE', 'Vanakkam Meenakshi, your appointment is on August 5. Please bring your biopsy slides and insurance authorization.', 'ta-IN');
+        });
+
+        document.getElementById('btn-act-patient-fever').addEventListener('click', () => {
+          sfx('fail');
+          document.getElementById('patient-phone-visual-box').innerHTML = `
+            <div class="text-rose-300 font-bold">🛡️ NON-CLINICAL SHIELD TRIGGERED:</div>
+            <div>🚫 AI Dosing Blocked -> 📞 Coordinator Anita Alerted for Immediate Callback!</div>
+          `;
+          speakAndWait('CLINICAL GUARDRAIL', 'Fever reported! OncoBrief blocked AI medical advice and created an urgent callback task for Coordinator Anita.');
+        });
+        updateTutorialUI();
+        return;
+      }
+
+      // -----------------------------------------------------------------------
+      // ROLE 2 SCREEN: RECORDS MANAGER (VISUAL CONVEYOR + TRASH DUPLICATE)
+      // -----------------------------------------------------------------------
+      if (State.activeRole === 'records') {
+        titleEl.textContent = '🗂️ RECORDS SCANNER SLATE · ROLE 2: DEEPAK (records.deepak@rci.demo)';
+        body.innerHTML = `
+          <div class="space-y-4">
+            <!-- Visual 3-Step Horizontal Conveyor Cards -->
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-3">
+              <!-- Card 1: ABHA / MRN Federation -->
+              <div class="ob-card p-3.5 flex flex-col justify-between ${t.recordsLinked ? 'bg-[#e8f3ea] border-2 border-[#1b5e3a]' : ''}">
+                <div>
+                  <div class="text-2xl mb-1">🔗</div>
+                  <div class="font-mono-code text-[11px] font-bold uppercase text-[#4a463f]">Step 1 · Hospital ID Lookup</div>
+                  <div class="font-extrabold text-sm mt-0.5">Pull MRN: SUN-448120</div>
+                  <div class="grid grid-cols-2 gap-1 mt-2 text-[10px] font-mono-code">
+                    <span class="p-1 bg-white border rounded">🏥 Sunrise</span>
+                    <span class="p-1 bg-white border rounded">🔬 Meridian</span>
+                    <span class="p-1 bg-white border rounded">🩻 Northgate</span>
+                    <span class="p-1 bg-white border rounded">🏛️ RCI HIS</span>
+                  </div>
+                </div>
+                <button id="btn-act-records-link" class="mt-3 w-full py-2 rounded font-mono-code font-bold text-xs ${t.recordsLinked ? 'bg-emerald-700 text-white' : 'bg-[#171614] text-white'}">
+                  ${t.recordsLinked ? '✓ 4 Hospitals Linked' : '🔗 1. Link 4 Hospital Feeds'}
+                </button>
+              </div>
+
+              <!-- Card 2: Multi-Modal OCR & DICOM Pipeline -->
+              <div class="ob-card p-3.5 flex flex-col justify-between ${t.recordsScanned ? 'bg-[#e8f3ea] border-2 border-[#1b5e3a]' : ''}">
+                <div>
+                  <div class="text-2xl mb-1">⚡</div>
+                  <div class="font-mono-code text-[11px] font-bold uppercase text-[#4a463f]">Step 2 · Multi-Modal AI</div>
+                  <div class="font-extrabold text-sm mt-0.5">Sarvam OCR + LangExtract</div>
+                  <div class="space-y-1 mt-2 text-[10px] font-mono-code">
+                    <div class="p-1 bg-white border rounded">🔠 Sarvam Vision 2.1 (87.3%)</div>
+                    <div class="p-1 bg-white border rounded">🧬 LangExtract char_interval</div>
+                    <div class="p-1 bg-white border rounded">🩻 pydicom PHI Scrubbed</div>
+                  </div>
+                </div>
+                <button id="btn-act-records-scan" class="mt-3 w-full py-2 rounded font-mono-code font-bold text-xs ${t.recordsScanned ? 'bg-emerald-700 text-white' : 'bg-[#171614] text-white'}">
+                  ${t.recordsScanned ? '✓ All 9 Docs Extracted' : '⚡ 2. Run Multi-Modal Scan'}
+                </button>
+              </div>
+
+              <!-- Card 3: Spot & Trash Duplicate Fax + Flag Missing Insurance -->
+              <div class="ob-card p-3.5 flex flex-col justify-between ${t.recordsDupTrashed ? 'bg-[#e8f3ea] border-2 border-[#1b5e3a]' : ''}">
+                <div>
+                  <div class="text-2xl mb-1">🗑️</div>
+                  <div class="font-mono-code text-[11px] font-bold uppercase text-[#4a463f]">Step 3 · Clean Workspace</div>
+                  <div class="font-extrabold text-sm mt-0.5">Trash Re-Fax & Flag Gap</div>
+                  <div class="space-y-1 mt-2 text-[10px] font-mono-code">
+                    <div class="p-1 bg-rose-100 text-rose-900 border border-rose-400 rounded">📠 Duplicate: ct-chest-refax.pdf</div>
+                    <div class="p-1 bg-amber-100 text-amber-900 border border-amber-400 rounded">🛡️ Gap: Insurance Auth Missing</div>
+                  </div>
+                </div>
+                <button id="btn-act-records-dup" class="mt-3 w-full py-2 rounded font-mono-code font-bold text-xs ${t.recordsDupTrashed ? 'bg-emerald-700 text-white' : 'bg-rose-700 text-white'}">
+                  ${t.recordsDupTrashed ? '✓ Cleaned! (Go to Role 3 →)' : '🗑️ 3. Quarantine Dup & Flag Gap'}
+                </button>
+              </div>
+            </div>
+          </div>
+        `;
+
+        document.getElementById('btn-act-records-link').addEventListener('click', () => {
+          sfx('win'); t.recordsLinked = true; renderHeldDeviceScreen(); updateTutorialUI();
+        });
+        document.getElementById('btn-act-records-scan').addEventListener('click', () => {
+          sfx('win'); t.recordsScanned = true; renderHeldDeviceScreen(); updateTutorialUI();
+        });
+        document.getElementById('btn-act-records-dup').addEventListener('click', () => {
+          sfx('win');
+          if (!t.recordsDupTrashed) {
+            t.recordsDupTrashed = true;
+            State.savedMins += 12;
+            renderHeldDeviceScreen();
+            updateTutorialUI();
+            speakAndWait('RECORDS CLEANED', 'Duplicate fax quarantined and missing Insurance Authorization flagged! Now switch to Role 3, Coordinator Anita.');
+          } else {
+            toggleHeldDevice(false);
+            switchRole('coordinator');
+          }
+        });
+        updateTutorialUI();
+        return;
+      }
+
+      // -----------------------------------------------------------------------
+      // ROLE 3 SCREEN: COORDINATOR ANITA (CLICK THE TRUE STAMP MINI-GAME!)
+      // -----------------------------------------------------------------------
+      if (State.activeRole === 'coordinator') {
+        titleEl.textContent = '⚖️ RECONCILIATION & CONTINUITY SLATE · ROLE 3: ANITA (coord.anita@rci.demo)';
+        body.innerHTML = `
+          <div class="space-y-4">
+            <div class="ob-card p-3 bg-[#fbe9e8] border-2 border-[#9e2a2b] flex items-center justify-between">
+              <div class="flex items-center gap-2.5">
+                <span class="text-2xl">⚡</span>
+                <div>
+                  <div class="font-mono-code text-xs font-bold text-[#9e2a2b] uppercase">Visual Discrepancy Game: Click the Document with Proof!</div>
+                  <div class="text-xs text-[#171614]">Look at the stamps below: Which surgery date is physically proven by the lab formalin receipt?</div>
+                </div>
+              </div>
+              <span class="ob-stamp ${t.coordConflictFixed ? 'text-[#1b5e3a] bg-[#e8f3ea]' : 'text-[#9e2a2b] bg-white'}">
+                ${t.coordConflictFixed ? '✓ 12 JUN LOCKED' : 'CONFLICT OPEN'}
+              </span>
+            </div>
+
+            <!-- Two Visual Document Stamp Cards Side-by-Side -->
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <button id="btn-act-coord-june12" class="ob-card p-4 text-left transition hover:shadow-lg ${t.coordConflictFixed ? 'ring-4 ring-emerald-600 bg-[#e8f3ea]' : 'bg-[#fbf9f5]'}">
+                <div class="flex items-center justify-between border-b border-[#8c8273] pb-2">
+                  <span class="font-mono-code text-xs font-bold">🔬 DOCUMENT A: MERIDIAN LAB</span>
+                  <span class="px-2 py-0.5 bg-emerald-800 text-white font-mono-code text-xs font-bold rounded">📅 12 JUNE 2025</span>
+                </div>
+                <div class="my-3 p-3 bg-white border border-[#8c8273] rounded font-serif-source text-sm">
+                  "Modified radical mastectomy performed on <strong>12 June 2025</strong>."
+                  <div class="mt-2 inline-block px-2 py-1 border-2 border-blue-700 text-blue-800 font-mono-code text-[11px] font-bold rotate-[-2deg]">
+                    🧪 LAB STAMP: SPECIMEN IN FORMALIN 13 JUNE 2025
+                  </div>
+                </div>
+                <div class="font-mono-code text-xs font-bold text-emerald-800">
+                  ${t.coordConflictFixed ? '✓ VERIFIED WINNER (SHA-256 Anchored)' : '👆 Click This Document to Verify 12 June 2025'}
+                </div>
+              </button>
+
+              <button id="btn-act-coord-july3" class="ob-card p-4 text-left transition hover:shadow-lg bg-[#fbf9f5] opacity-90">
+                <div class="flex items-center justify-between border-b border-[#8c8273] pb-2">
+                  <span class="font-mono-code text-xs font-bold">📄 DOCUMENT B: DISCHARGE NOTE</span>
+                  <span class="px-2 py-0.5 bg-rose-800 text-white font-mono-code text-xs font-bold rounded">📅 03 JULY 2025</span>
+                </div>
+                <div class="my-3 p-3 bg-white border border-[#8c8273] rounded font-serif-source text-sm">
+                  "Modified radical mastectomy performed on <strong>3 July 2025</strong>."
+                  <div class="mt-2 inline-block px-2 py-1 border-2 border-rose-700 text-rose-800 font-mono-code text-[11px] font-bold">
+                    ⚠️ IMPOSSIBLE: Specimen was already in lab on 13 June!
+                  </div>
+                </div>
+                <div class="font-mono-code text-xs text-rose-800">
+                  Click to test what happens if you pick the wrong date
+                </div>
+              </button>
+            </div>
+
+            <!-- Step 2: Route Missing Doc Task & Send Tamil Voice Alert -->
+            <div class="ob-card p-3.5 bg-[#efeae0] flex flex-wrap items-center justify-between gap-2">
+              <div class="flex items-center gap-2">
+                <span class="text-xl">📤</span>
+                <div class="text-xs font-bold">
+                  Step 2: Route Missing Insurance Auth Task & Send Tamil Voice Reminder (Bulbul V4)
+                </div>
+              </div>
+              <button id="btn-act-coord-task" class="px-4 py-2 rounded font-mono-code font-extrabold text-xs uppercase ${t.coordTaskSent ? 'bg-emerald-700 text-white' : 'bg-[#171614] text-white'}">
+                ${t.coordTaskSent ? '✓ Ready for Doctor! (Switch to Role 4 →)' : '📤 Assign Task & Send Voice Alert'}
+              </button>
+            </div>
+          </div>
+        `;
+
+        document.getElementById('btn-act-coord-june12').addEventListener('click', () => {
+          sfx('win');
+          t.coordConflictFixed = true;
+          renderHeldDeviceScreen();
+          updateTutorialUI();
+          speakAndWait('CONFLICT RECONCILED', 'Great eye! The June 13th formalin lab stamp proves surgery was June 12th. July 3rd is marked superseded in the SHA-256 ledger.');
+        });
+
+        document.getElementById('btn-act-coord-july3').addEventListener('click', () => {
+          sfx('fail');
+          speakAndWait('IMPOSSIBLE DATE', 'Wait! Look at the blue lab stamp on Document A: the breast specimen was already in formalin on June 13th, so surgery could not be July 3rd! Click Document A.');
+        });
+
+        document.getElementById('btn-act-coord-task').addEventListener('click', () => {
+          sfx('win');
+          if (!t.coordTaskSent) {
+            t.coordTaskSent = true;
+            State.savedMins += 12;
+            renderHeldDeviceScreen();
+            updateTutorialUI();
+            speakAndWait('CHART READY FOR DOCTOR', 'Task assigned and Tamil voice reminder sent! Now switch to Role 4, Clinician Dr. Meera Rao, to treat the 3 patients.');
+          } else {
+            toggleHeldDevice(false);
+            switchRole('doctor');
+          }
+        });
+        updateTutorialUI();
+        return;
+      }
+
+      // -----------------------------------------------------------------------
+      // ROLE 4 SCREEN: CLINICIAN DR. RAO (VISUAL DICOM SLICE + PACKET FREEZE)
+      // -----------------------------------------------------------------------
+      if (State.activeRole === 'doctor') {
+        titleEl.textContent = '🩺 CLINICIAN CONSULTATION SLATE · ROLE 4: DR. MEERA RAO (dr.rao@rci.demo)';
+        const q = ROOM_QUIZZES[State.activeRoom];
+        body.innerHTML = `
+          <div class="space-y-4">
+            <div class="flex flex-wrap items-center justify-between gap-2 border-b border-[#8c8273] pb-2">
+              <div class="font-extrabold text-base">${q.name} — Visual Evidence Summary</div>
+              <button id="btn-doc-freeze-packet" class="px-3 py-1.5 rounded font-mono-code font-bold text-xs ${t.doctorPacketFrozen ? 'bg-emerald-700 text-white' : 'bg-[#171614] text-white'}">
+                ${t.doctorPacketFrozen ? '🔒 SHA-256 Packet Frozen & FHIR R4 Exported' : '🔒 Freeze SHA-256 Packet & Export ABDM FHIR R4'}
+              </button>
+            </div>
+
+            <!-- 4 Visual Evidence Icon Cards -->
+            <div class="grid grid-cols-2 md:grid-cols-4 gap-2.5">
+              ${q.visualClues.map((c) => `
+                <div class="ob-card p-3 bg-[#fbf9f5]">
+                  <div class="text-2xl">${c.icon}</div>
+                  <div class="text-[10px] font-mono-code uppercase text-[#4a463f] mt-1">${c.label}</div>
+                  <div class="text-sm font-extrabold font-mono-code text-[#171614] mt-0.5">${c.val}</div>
+                  <div class="text-[11px] text-[#1b5e3a] font-medium">${c.sub}</div>
+                </div>
+              `).join('')}
+            </div>
+
+            <!-- Visual Side-by-Side: Stamped Scan BBox + Interactive DICOM Thorax CT Slice -->
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+              <div class="ob-card p-3 space-y-1.5">
+                <div class="font-mono-code text-xs font-bold uppercase">🔎 Stamped Source Scan + Sarvam BBox</div>
+                <canvas id="doc-scan-canvas" width="380" height="150" class="w-full h-36 border border-[#8c8273] bg-[#f6f1e3]"></canvas>
+              </div>
+              <div class="ob-card p-3 space-y-1.5">
+                <div class="font-mono-code text-xs font-bold uppercase">🩻 Thorax CT DICOM Viewer (PHI Scrubbed)</div>
+                <canvas id="doc-dicom-canvas" width="380" height="150" class="w-full h-36 border border-[#8c8273] bg-slate-950"></canvas>
+              </div>
+            </div>
+          </div>
+        `;
+
+        document.getElementById('btn-doc-freeze-packet').addEventListener('click', () => {
+          sfx('win');
+          t.doctorPacketFrozen = true;
+          renderHeldDeviceScreen();
+          speakAndWait('PACKET FROZEN', 'Consultation packet frozen with SHA-256 hash and exported as an ABDM FHIR R4 bundle!');
+        });
+
+        drawDoctorMiniCanvases();
+        updateTutorialUI();
+        return;
+      }
+
+      // -----------------------------------------------------------------------
+      // ROLE 5 SCREEN: ADMIN & VISUAL CHAOS STRESS-TEST CIRCUIT BREAKERS
+      // -----------------------------------------------------------------------
+      titleEl.textContent = '⚡ HOSPITAL COMMAND, ANALYTICS & CHAOS LAB · ROLE 5: ADMIN / AUDITOR';
+      const chList = [
+        { id: 'C1_fakeSurgery', icon: '🎭', name: '1. Fake Surgery on Real Quote', file: 'span-validation.ts:37', desc: 'AI pairs "Chest X-ray" quote with fake "Whipple Surgery"' },
+        { id: 'C2_blankWhiteBox', icon: '📄', name: '2. Blank White OCR Box (404)', file: 'SourcePaneView.tsx', desc: 'Hides smudged fax stamp behind blank white div' },
+        { id: 'C3_tiffCrash', icon: '🖨️', name: '3. 35-Page .TIFF Scanner Crash', file: 'Sarvam 10-Page Cap', desc: 'Raw 35-page TIFF hits HTTP 415 & >10 page limit' },
+        { id: 'C4_rbacLeak', icon: '🔓', name: '4. Unchecked Packet Export RBAC', file: 'export/route.ts:10', desc: 'Missing can(role, "packet:export") leaks PHI JSON' },
+        { id: 'C5_aiDosing', icon: '🚫', name: '5. AI Chemo Dosing Guardrail', file: 'clinical-boundary.ts', desc: 'Blocks staging/chemo prompts in 0ms pre-LLM' }
+      ];
+
+      body.innerHTML = `
+        <div class="space-y-4">
+          <!-- Top Row: 2 Visual Analytics Charts -->
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+            <div class="ob-card p-3">
+              <div class="font-mono-code text-xs font-bold uppercase mb-1">⏱️ OPD Prep Time: Paper Bag (38m) vs OncoBrief (1.5m)</div>
+              <div class="relative h-40 w-full"><canvas id="adm-chart-time"></canvas></div>
+            </div>
+            <div class="ob-card p-3">
+              <div class="font-mono-code text-xs font-bold uppercase mb-1">📈 Serial Biomarker Trend (CA 15-3 U/mL)</div>
+              <div class="relative h-40 w-full"><canvas id="adm-chart-bio"></canvas></div>
+            </div>
+          </div>
+
+          <!-- Bottom Row: 5 Visual Chaos Circuit Breakers ("Break It vs Fix It") -->
+          <div class="ob-card p-3.5 bg-[#efeae0] space-y-2.5">
+            <div class="flex items-center justify-between">
+              <div class="font-mono-code text-xs font-bold uppercase text-[#9e2a2b]">⚡ Visual Stress-Test Circuit Breakers (Click to Break or Fix!)</div>
+              <span class="ob-stamp text-[#1b5e3a] bg-[#e8f3ea]">SHA-256 CHAIN: 43/43 BLOCKS VALID</span>
+            </div>
+            <div class="grid grid-cols-1 md:grid-cols-5 gap-2">
+              ${chList.map((c) => {
+                const brk = !!State.chaosBroken[c.id];
+                return `
+                  <div class="p-2.5 rounded border-2 flex flex-col justify-between ${brk ? 'bg-[#fbe9e8] border-[#9e2a2b]' : 'bg-white border-[#1b5e3a]'}">
+                    <div>
+                      <div class="flex items-center justify-between">
+                        <span class="text-xl">${c.icon}</span>
+                        <span class="text-[9px] font-mono-code font-bold px-1.5 py-0.5 rounded ${brk ? 'bg-rose-700 text-white' : 'bg-emerald-700 text-white'}">${brk ? 'BROKEN' : 'PROTECTED'}</span>
+                      </div>
+                      <div class="font-bold text-xs mt-1">${c.name}</div>
+                      <div class="text-[10px] font-mono-code text-[#4a463f] mt-0.5">${c.file}</div>
+                      <div class="text-[10px] text-[#171614] mt-1 leading-snug">${c.desc}</div>
+                    </div>
+                    <button data-chaos="${c.id}" class="chaos-toggle-btn mt-2 w-full py-1.5 rounded font-mono-code font-bold text-[10px] uppercase ${brk ? 'bg-emerald-700 text-white' : 'bg-rose-700 text-white'}">
+                      ${brk ? '🔧 Apply Fix' : '💥 Break It'}
+                    </button>
+                  </div>
+                `;
+              }).join('')}
+            </div>
+          </div>
+        </div>
+      `;
+
+      body.querySelectorAll('.chaos-toggle-btn').forEach((btn) => {
+        btn.addEventListener('click', () => {
+          const cid = btn.getAttribute('data-chaos');
+          State.chaosBroken[cid] = !State.chaosBroken[cid];
+          sfx(State.chaosBroken[cid] ? 'fail' : 'win');
+          renderHeldDeviceScreen();
+        });
+      });
+
+      setTimeout(renderAdminCharts, 50);
+      updateTutorialUI();
+    }
+
+    function drawDoctorMiniCanvases() {
+      const c1 = document.getElementById('doc-scan-canvas');
+      if (c1) {
+        const ctx = c1.getContext('2d');
+        ctx.clearRect(0, 0, c1.width, c1.height);
+        if (State.chaosBroken.C2_blankWhiteBox) {
+          ctx.fillStyle = '#ffffff'; ctx.fillRect(0, 0, c1.width, c1.height);
+          ctx.fillStyle = '#dc2626'; ctx.font = 'bold 11px IBM Plex Mono';
+          ctx.fillText('🚨 404 WHITE-BOX BUG: Original Stamp Hidden!', 14, 40);
+        } else {
+          ctx.fillStyle = '#f6f1e3'; ctx.fillRect(0, 0, c1.width, c1.height);
+          ctx.fillStyle = 'rgba(16,185,129,0.22)'; ctx.fillRect(14, 24, 350, 56);
+          ctx.strokeStyle = '#059669'; ctx.lineWidth = 2; ctx.strokeRect(14, 24, 350, 56);
+          ctx.fillStyle = '#171614'; ctx.font = '12px Newsreader, serif';
+          ctx.fillText('"Modified radical mastectomy on 12 June 2025"', 22, 48);
+          ctx.fillText('"Specimen in formalin on 13 June 2025"', 22, 68);
+          ctx.strokeStyle = '#1d4ed8'; ctx.strokeRect(210, 92, 145, 38);
+          ctx.fillStyle = '#1d4ed8'; ctx.font = 'bold 10px IBM Plex Mono';
+          ctx.fillText('MERIDIAN LAB STAMP', 222, 115);
+        }
+      }
+
+      const c2 = document.getElementById('doc-dicom-canvas');
+      if (c2) {
+        const ctx = c2.getContext('2d');
+        ctx.fillStyle = '#090d16'; ctx.fillRect(0, 0, c2.width, c2.height);
+        ctx.fillStyle = '#1e293b';
+        ctx.beginPath(); ctx.ellipse(190, 82, 95, 55, 0, 0, Math.PI * 2); ctx.fill();
+        ctx.fillStyle = '#0f172a';
+        ctx.beginPath(); ctx.ellipse(150, 78, 34, 40, 0.1, 0, Math.PI * 2); ctx.fill();
+        ctx.beginPath(); ctx.ellipse(230, 78, 34, 40, -0.1, 0, Math.PI * 2); ctx.fill();
+        ctx.strokeStyle = '#10b981'; ctx.lineWidth = 2; ctx.strokeRect(110, 32, 160, 92);
+        ctx.fillStyle = '#38bdf8'; ctx.font = '10px IBM Plex Mono';
+        ctx.fillText('DICOM WADO-RS · ANON^DEMO-001 · CLEAR', 14, 20);
+      }
+    }
+
+    function renderAdminCharts() {
+      if (typeof Chart === 'undefined') return;
+      const el1 = document.getElementById('adm-chart-time');
+      if (el1) {
+        if (adminChart1) adminChart1.destroy();
+        adminChart1 = new Chart(el1, {
+          type: 'bar',
+          data: {
+            labels: ['Without OncoBrief (Paper)', 'Naive AI Wrapper', 'With OncoBrief Ledger'],
+            datasets: [{ data: [38, 15, 1.5], backgroundColor: ['#9e2a2b', '#d97706', '#1b5e3a'] }]
+          },
+          options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } } }
+        });
+      }
+      const el2 = document.getElementById('adm-chart-bio');
+      if (el2) {
+        if (adminChart2) adminChart2.destroy();
+        adminChart2 = new Chart(el2, {
+          type: 'line',
+          data: {
+            labels: ['May', 'Jun', 'Jul', 'Aug', 'Oct'],
+            datasets: [{ label: 'CA 15-3 (U/mL)', data: [48.2, 39.0, 31.0, 22.4, 18.1], borderColor: '#1b5e3a', fill: true, backgroundColor: 'rgba(27,94,58,0.15)' }]
+          },
+          options: { responsive: true, maintainAspectRatio: false }
+        });
+      }
+    }
+
+    /* =========================================================================
+       PART 5: THREE.JS 3D HOSPITAL WORLD + 3D GOLDEN TUTORIAL WAYPOINT ARROW
+       ========================================================================= */
+    let scene, camera, renderer, raycaster, mouse, groundPlane;
+    const roleMeshes = {};
+    const floatingLabels = [];
+    const moveKeys = { up: false, down: false, left: false, right: false };
+    let walkTarget = null;
+    let camSwoop = null;
+    let waypointCone = null;
+    let waypointLine = null;
+
+    // 5 Role Stations + 3 Patient Rooms Coordinates
+    const ROLE_STATIONS = {
+      patient:     { x: -13, z: 9,  title: '🎒 1. PATIENT LOUNGE (Upload & Voice)' },
+      records:     { x: -5,  z: 9,  title: '🗂️ 2. RECORDS SCANNER BAY (Deepak)' },
+      coordinator: { x: 4,   z: 9,  title: '⚖️ 3. RECONCILIATION DESK (Anita)' },
+      doctor:      { x: -12, z: -4, title: '🩺 4. OPD CONSULT ROOMS (Dr. Rao)' },
+      admin:       { x: 13,  z: 9,  title: '⚡ 5. ADMIN & CHAOS VAULT (Vikram)' }
+    };
+
+    const ROOM_POS = {
+      1: { x: -13, z: -7, standX: -11.5, standZ: -4.2 },
+      2: { x: 0,   z: -8, standX: 1.5,   standZ: -5.2 },
+      3: { x: 13,  z: -7, standX: 11.5,  standZ: -4.2 }
+    };
+
+    function createRobloxRig(cfg) {
+      const g = new THREE.Group();
+      const torso = new THREE.Mesh(
+        new THREE.BoxGeometry(1.4, 1.7, 0.75),
+        new THREE.MeshLambertMaterial({ color: cfg.color })
+      );
+      torso.position.y = 2.3;
+      g.add(torso);
+
+      // Face canvas
+      const c = document.createElement('canvas');
+      c.width = 128; c.height = 128;
+      const ctx = c.getContext('2d');
+      ctx.fillStyle = '#fde047'; ctx.fillRect(0, 0, 128, 128);
+      ctx.fillStyle = '#171614';
+      ctx.fillRect(34, 42, 14, 18); ctx.fillRect(80, 42, 14, 18);
+      ctx.strokeStyle = '#171614'; ctx.lineWidth = 5;
+      ctx.beginPath(); ctx.arc(64, 78, 15, Math.PI * 0.15, Math.PI * 0.85); ctx.stroke();
+      const faceTex = new THREE.CanvasTexture(c);
+
+      const sMat = new THREE.MeshLambertMaterial({ color: 0xfde047 });
+      const fMat = new THREE.MeshLambertMaterial({ map: faceTex });
+      const head = new THREE.Mesh(new THREE.BoxGeometry(1.1, 1.1, 1.1), [sMat, sMat, sMat, sMat, fMat, sMat]);
+      head.position.y = 3.82;
+      g.add(head);
+
+      const hair = new THREE.Mesh(new THREE.BoxGeometry(1.16, 0.3, 1.16), new THREE.MeshLambertMaterial({ color: 0x1e293b }));
+      hair.position.y = 4.45;
+      g.add(hair);
+
+      const armGeo = new THREE.BoxGeometry(0.5, 1.55, 0.5);
+      const armMat = new THREE.MeshLambertMaterial({ color: cfg.color });
+      const lArm = new THREE.Group(); lArm.position.set(-1.0, 3.0, 0);
+      const laM = new THREE.Mesh(armGeo, armMat); laM.position.y = -0.65; lArm.add(laM);
+      g.add(lArm);
+
+      const rArm = new THREE.Group(); rArm.position.set(1.0, 3.0, 0);
+      const raM = new THREE.Mesh(armGeo, armMat); raM.position.y = -0.65; rArm.add(raM);
+      const slate = new THREE.Mesh(new THREE.BoxGeometry(0.72, 0.9, 0.08), new THREE.MeshLambertMaterial({ color: 0xf7f4ee }));
+      slate.position.set(0, -1.35, 0.4); slate.rotation.x = -0.4;
+      rArm.add(slate);
+      g.add(rArm);
+
+      const legGeo = new THREE.BoxGeometry(0.62, 1.5, 0.68);
+      const legMat = new THREE.MeshLambertMaterial({ color: 0x0f172a });
+      const lLeg = new THREE.Group(); lLeg.position.set(-0.36, 1.45, 0);
+      const llM = new THREE.Mesh(legGeo, legMat); llM.position.y = -0.7; lLeg.add(llM);
+      g.add(lLeg);
+
+      const rLeg = new THREE.Group(); rLeg.position.set(0.36, 1.45, 0);
+      const rlM = new THREE.Mesh(legGeo, legMat); rlM.position.y = -0.7; rLeg.add(rlM);
+      g.add(rLeg);
+
+      const ring = new THREE.Mesh(
+        new THREE.RingGeometry(1.05, 1.42, 28),
+        new THREE.MeshBasicMaterial({ color: 0xfacc15, side: THREE.DoubleSide })
+      );
+      ring.rotation.x = -Math.PI / 2; ring.position.y = 0.06;
+      ring.visible = !!cfg.active;
+      g.add(ring);
+
+      g.position.set(cfg.x || 0, 0, cfg.z || 0);
+      g.userData = { lArm, rArm, lLeg, rLeg, ring, phase: 0 };
+      return g;
+    }
+
+    function add3DLabel(obj, html, yOff) {
+      const container = document.getElementById('labels-container');
+      const div = document.createElement('div');
+      div.className = 'absolute -translate-x-1/2 -translate-y-full pointer-events-none transition-transform duration-75';
+      div.innerHTML = html;
+      container.appendChild(div);
+      floatingLabels.push({ obj, el: div, yOff: yOff || 5.1 });
+    }
+
+    function buildRoomBox(x, z, w, d, floorHex, wallHex, labelHtml) {
+      const grp = new THREE.Group();
+      const fl = new THREE.Mesh(new THREE.BoxGeometry(w, 0.16, d), new THREE.MeshLambertMaterial({ color: floorHex }));
+      fl.position.set(x, 0.08, z);
+      grp.add(fl);
+
+      const wMat = new THREE.MeshLambertMaterial({ color: wallHex });
+      const bw = new THREE.Mesh(new THREE.BoxGeometry(w, 2.8, 0.3), wMat);
+      bw.position.set(x, 1.4, z - d / 2);
+      grp.add(bw);
+
+      const desk = new THREE.Mesh(new THREE.BoxGeometry(3.0, 1.15, 1.5), new THREE.MeshLambertMaterial({ color: 0x475569 }));
+      desk.position.set(x, 0.65, z - d / 2 + 1.8);
+      grp.add(desk);
+
+      const anchor = new THREE.Object3D();
+      anchor.position.set(x, 3.8, z - d / 2 + 0.6);
+      grp.add(anchor);
+      add3DLabel(anchor, labelHtml, 0);
+      scene.add(grp);
+    }
+
+    function init3DWorld() {
+      const container = document.getElementById('canvas-container');
+      const w = container.clientWidth || window.innerWidth;
+      const h = container.clientHeight || window.innerHeight;
+
+      scene = new THREE.Scene();
+      scene.background = new THREE.Color(0x0b111e);
+
+      camera = new THREE.PerspectiveCamera(46, w / h, 0.1, 220);
+      camera.position.set(-13, 14, 21);
+
+      renderer = new THREE.WebGLRenderer({ antialias: true });
+      renderer.setSize(w, h);
+      renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+      container.innerHTML = '';
+      container.appendChild(renderer.domElement);
+
+      scene.add(new THREE.AmbientLight(0xffffff, 0.8));
+      const dLight = new THREE.DirectionalLight(0xfffbeb, 0.85);
+      dLight.position.set(14, 30, 18);
+      scene.add(dLight);
+
+      groundPlane = new THREE.Mesh(new THREE.PlaneGeometry(50, 38), new THREE.MeshLambertMaterial({ color: 0x1e293b }));
+      groundPlane.rotation.x = -Math.PI / 2;
+      scene.add(groundPlane);
+
+      const grid = new THREE.GridHelper(50, 25, 0x334155, 0x1e293b);
+      grid.position.y = 0.02;
+      scene.add(grid);
+
+      // Build Top Row: 3 Patient Consultation Rooms (Rooms 1, 2, 3)
+      buildRoomBox(-13, -7, 10, 8.5, 0x3b2510, 0xd97706, `<div class="px-2 py-0.5 bg-amber-950 border border-amber-400 text-amber-200 font-mono-code text-[10px] font-bold rounded shadow">🚪 ROOM 1: MEENAKSHI (DEMO-001)</div>`);
+      buildRoomBox(0,   -8, 10, 8.5, 0x172554, 0x0284c7, `<div class="px-2 py-0.5 bg-sky-950 border border-sky-400 text-sky-200 font-mono-code text-[10px] font-bold rounded shadow">🚪 ROOM 2: KARTHIK (DEMO-002)</div>`);
+      buildRoomBox(13,  -7, 10, 8.5, 0x133829, 0x059669, `<div class="px-2 py-0.5 bg-emerald-950 border border-emerald-400 text-emerald-200 font-mono-code text-[10px] font-bold rounded shadow">🚪 ROOM 3: LAKSHMI (DEMO-003)</div>`);
+
+      // Build Bottom Row: Patient Lounge, Records Scanner Bay, Coordinator Desk, Admin Chaos Lab
+      buildRoomBox(-13, 9, 7.5, 6.5, 0x451a03, 0xf59e0b, `<div class="px-2 py-0.5 bg-amber-950 border border-amber-400 text-amber-200 font-mono-code text-[10px] font-bold rounded">🎒 1. PATIENT LOUNGE</div>`);
+      buildRoomBox(-4.5, 9, 7.5, 6.5, 0x0c4a6e, 0x38bdf8, `<div class="px-2 py-0.5 bg-sky-950 border border-sky-400 text-sky-200 font-mono-code text-[10px] font-bold rounded">🗂️ 2. RECORDS SCAN BAY</div>`);
+      buildRoomBox(4.5,  9, 7.5, 6.5, 0x134e4a, 0x14b8a6, `<div class="px-2 py-0.5 bg-teal-950 border border-teal-400 text-teal-200 font-mono-code text-[10px] font-bold rounded">⚖️ 3. COORDINATOR DESK</div>`);
+      buildRoomBox(13.5, 9, 7.5, 6.5, 0x3b0764, 0xa855f7, `<div class="px-2 py-0.5 bg-purple-950 border border-purple-400 text-purple-200 font-mono-code text-[10px] font-bold rounded">⚡ 5. ADMIN / CHAOS LAB</div>`);
+
+      // Spawn the 5 Playable Role Characters + 3 Room Patients
+      const roleVisuals = {
+        patient:     { color: 0xf59e0b, x: -13, z: 9.8,  active: true,  badge: '1. Patient Meenakshi' },
+        records:     { color: 0x0284c7, x: -4.5, z: 9.8, active: false, badge: '2. Records Mgr Deepak' },
+        coordinator: { color: 0x14b8a6, x: 4.5,  z: 9.8, active: false, badge: '3. Coordinator Anita' },
+        doctor:      { color: 0xf8fafc, x: -11.5, z: -4.2, active: false, badge: '4. Dr. Meera Rao' },
+        admin:       { color: 0xa855f7, x: 13.5, z: 9.8, active: false, badge: '5. Admin Vikram' }
+      };
+
+      Object.keys(roleVisuals).forEach((rk) => {
+        const rv = roleVisuals[rk];
+        const m = createRobloxRig(rv);
+        scene.add(m);
+        roleMeshes[rk] = m;
+        add3DLabel(m, `<div class="px-2 py-0.5 bg-slate-950/90 border border-slate-500 text-white font-mono-code text-[10px] font-bold rounded">${rv.badge}</div>`, 5.2);
+      });
+
+      // Spawn waiting patients inside Rooms 1, 2, 3
+      [1, 2, 3].forEach((rn) => {
+        const rp = ROOM_POS[rn];
+        const pm = createRobloxRig({ color: rn === 1 ? 0xd97706 : (rn === 2 ? 0x38bdf8 : 0x10b981), x: rp.x, z: rp.z - 1.2 });
+        scene.add(pm);
+      });
+
+      // 3D Bouncing Golden Waypoint Cone in the Hospital
+      const coneGeo = new THREE.ConeGeometry(0.75, 1.8, 16);
+      coneGeo.rotateX(Math.PI); // Point downward!
+      waypointCone = new THREE.Mesh(coneGeo, new THREE.MeshBasicMaterial({ color: 0xfacc15 }));
+      waypointCone.position.set(-13, 6.2, 9.8);
+      scene.add(waypointCone);
+
+      // Click on floor to walk active character
+      raycaster = new THREE.Raycaster();
+      mouse = new THREE.Vector2();
+      renderer.domElement.addEventListener('pointerdown', (e) => {
+        if (State.deviceOpen) return;
+        const rect = renderer.domElement.getBoundingClientRect();
+        mouse.x = ((e.clientX - rect.left) / rect.width) * 2 - 1;
+        mouse.y = -((e.clientY - rect.top) / rect.height) * 2 + 1;
+        raycaster.setFromCamera(mouse, camera);
+        const hits = raycaster.intersectObject(groundPlane);
+        if (hits.length > 0) {
+          const p = hits[0].point;
+          walkTarget = { x: Math.max(-21, Math.min(21, p.x)), z: Math.max(-14, Math.min(14, p.z)) };
+          sfx('tap');
+        }
+      });
+
+      window.addEventListener('resize', () => {
+        const cw = container.clientWidth || window.innerWidth;
+        const ch = container.clientHeight || window.innerHeight;
+        camera.aspect = cw / ch;
+        camera.updateProjectionMatrix();
+        renderer.setSize(cw, ch);
+      });
+
+      requestAnimationFrame(animate3D);
+    }
+
+    function animate3D(ts) {
+      requestAnimationFrame(animate3D);
+      if (!scene || !camera || !renderer) return;
+
+      const m = roleMeshes[State.activeRole];
+      if (m) {
+        let dx = 0, dz = 0;
+        if (!State.deviceOpen) {
+          if (moveKeys.left)  dx -= 1;
+          if (moveKeys.right) dx += 1;
+          if (moveKeys.up)    dz -= 1;
+          if (moveKeys.down)  dz += 1;
+          if (dx !== 0 || dz !== 0) {
+            walkTarget = null;
+            const l = Math.hypot(dx, dz); dx /= l; dz /= l;
+          } else if (walkTarget) {
+            const tx = walkTarget.x - m.position.x;
+            const tz = walkTarget.z - m.position.z;
+            const dist = Math.hypot(tx, tz);
+            if (dist > 0.3) { dx = tx / dist; dz = tz / dist; }
+            else { walkTarget = null; }
+          }
+        }
+
+        if (dx !== 0 || dz !== 0) {
+          m.position.x = Math.max(-21, Math.min(21, m.position.x + dx * 0.19));
+          m.position.z = Math.max(-14, Math.min(14, m.position.z + dz * 0.19));
+          m.rotation.y = Math.atan2(dx, dz);
+          m.userData.phase += 0.25;
+          const sw = Math.sin(m.userData.phase) * 0.6;
+          m.userData.lLeg.rotation.x = sw; m.userData.rLeg.rotation.x = -sw;
+          m.userData.lArm.rotation.x = -sw * 0.6; m.userData.rArm.rotation.x = sw * 0.6;
+        } else {
+          m.userData.lLeg.rotation.x *= 0.8; m.userData.rLeg.rotation.x *= 0.8;
+          m.userData.lArm.rotation.x *= 0.8;
+          m.userData.rArm.rotation.x = State.deviceOpen ? -1.45 : -0.35;
+        }
+
+        // Bouncing 3D Golden Waypoint Cone above active target
+        if (waypointCone) {
+          waypointCone.visible = State.tutorialEnabled && !State.deviceOpen;
+          waypointCone.position.x = m.position.x;
+          waypointCone.position.z = m.position.z;
+          waypointCone.position.y = 6.3 + Math.sin(ts * 0.006) * 0.45;
+          waypointCone.rotation.y += 0.04;
+        }
+
+        if (camSwoop) {
+          const t = Math.min(1, (performance.now() - camSwoop.t0) / camSwoop.dur);
+          const arc = Math.sin(t * Math.PI) * 18;
+          camera.position.x = camSwoop.fx + (camSwoop.tx - camSwoop.fx) * t;
+          camera.position.z = camSwoop.fz + (camSwoop.tz - camSwoop.fz) * t;
+          camera.position.y = 12.5 + arc;
+          camera.lookAt(m.position.x, 2.4, m.position.z);
+          if (t >= 1) camSwoop = null;
+        } else {
+          const tx = m.position.x - 2.2;
+          const ty = State.deviceOpen ? 6.0 : 12.0;
+          const tz = m.position.z + (State.deviceOpen ? 5.0 : 11.5);
+          camera.position.x += (tx - camera.position.x) * 0.09;
+          camera.position.y += (ty - camera.position.y) * 0.09;
+          camera.position.z += (tz - camera.position.z) * 0.09;
+          camera.lookAt(m.position.x + 1.5, 2.3, m.position.z - 1.2);
+        }
+      }
+
+      const w = renderer.domElement.clientWidth;
+      const h = renderer.domElement.clientHeight;
+      floatingLabels.forEach((it) => {
+        const wp = new THREE.Vector3();
+        it.obj.getWorldPosition(wp);
+        wp.y += it.yOff;
+        wp.project(camera);
+        if (wp.z < 1 && !State.deviceOpen) {
+          const sx = (wp.x * 0.5 + 0.5) * w;
+          const sy = (-(wp.y * 0.5) + 0.5) * h;
+          it.el.style.display = 'block';
+          it.el.style.transform = `translate(-50%, -100%) translate(${sx.toFixed(1)}px, ${sy.toFixed(1)}px)`;
+        } else {
+          it.el.style.display = 'none';
+        }
+      });
+
+      renderer.render(scene, camera);
+    }
+
+    /* =========================================================================
+       PART 6: ROLE SWITCHING, ROOM SELECTION & FULL AUTO-PLAY VIDEO MODE
+       ========================================================================= */
+    const ROLE_BTN_LABELS = {
+      patient:     { icon: '📱', label: 'Open Patient Phone [E]' },
+      records:     { icon: '🗂️', label: 'Open Records Scanner [E]' },
+      coordinator: { icon: '⚖️', label: 'Open Coordinator Slate [E]' },
+      doctor:      { icon: '🩺', label: 'Open Clinician Slate [E]' },
+      admin:       { icon: '⚡', label: 'Open Admin & Chaos Lab [E]' }
+    };
+
+    function switchRole(roleKey) {
+      if (!roleMeshes[roleKey]) return;
+      const prev = roleMeshes[State.activeRole];
+      const next = roleMeshes[roleKey];
+      State.activeRole = roleKey;
+
+      Object.keys(roleMeshes).forEach((k) => {
+        roleMeshes[k].userData.ring.visible = (k === roleKey);
+      });
+
+      if (prev && next && prev !== next) {
+        sfx('gta');
+        const fl = document.getElementById('gta-flash');
+        fl.classList.add('active');
+        setTimeout(() => fl.classList.remove('active'), 250);
+        camSwoop = {
+          t0: performance.now(), dur: 650,
+          fx: camera.position.x, fz: camera.position.z,
+          tx: next.position.x - 2.2, tz: next.position.z + 11.5
+        };
+      }
+
+      document.querySelectorAll('.role-card-btn').forEach((b) => {
+        const act = b.getAttribute('data-role') === roleKey;
+        b.className = act
+          ? 'role-card-btn w-full p-2 rounded-lg bg-amber-500/20 border-2 border-amber-400 text-left transition flex items-center justify-between'
+          : 'role-card-btn w-full p-2 rounded-lg bg-slate-900 hover:bg-slate-800 border border-slate-700 text-left transition flex items-center justify-between';
+      });
+
+      const meta = ROLE_BTN_LABELS[roleKey] || ROLE_BTN_LABELS.patient;
+      document.getElementById('held-btn-icon').textContent = meta.icon;
+      document.getElementById('held-btn-label').textContent = State.deviceOpen ? 'Put Down Device [E]' : meta.label;
+
+      renderHeldDeviceScreen();
+      renderDoctorConsultHUD();
+      updateTutorialUI();
+    }
+
+    function selectRoom(roomNum) {
+      State.activeRoom = roomNum;
+      if (State.activeRole !== 'doctor') switchRole('doctor');
+      const rp = ROOM_POS[roomNum];
+      if (rp && roleMeshes.doctor) {
+        walkTarget = { x: rp.standX, z: rp.standZ };
+      }
+      document.getElementById('hud-choice-feedback').classList.add('hidden');
+      sfx('tap');
+      renderDoctorConsultHUD();
+      renderHeldDeviceScreen();
+    }
+
+    function toggleHeldDevice(force) {
+      const next = typeof force === 'boolean' ? force : !State.deviceOpen;
+      State.deviceOpen = next;
+      sfx('open');
+      const modal = document.getElementById('held-device-modal');
+      const meta = ROLE_BTN_LABELS[State.activeRole] || ROLE_BTN_LABELS.patient;
+      if (next) {
+        modal.classList.add('open');
+        document.getElementById('held-btn-label').textContent = '⬇ Put Down Device [E]';
+        renderHeldDeviceScreen();
+      } else {
+        modal.classList.remove('open');
+        document.getElementById('held-btn-label').textContent = meta.label;
+      }
+      updateTutorialUI();
+    }
+
+    async function runAutoPlayVideoMode() {
+      if (State.autoPlayRunning) {
+        State.autoPlayAbort = true;
+        State.autoPlayRunning = false;
+        if ('speechSynthesis' in window) window.speechSynthesis.cancel();
+        document.getElementById('autoplay-icon').textContent = '▶';
+        document.getElementById('autoplay-text').textContent = 'Auto-Play Video';
+        return;
+      }
+
+      State.autoPlayRunning = true;
+      State.autoPlayAbort = false;
+      document.getElementById('autoplay-icon').textContent = '⏹';
+      document.getElementById('autoplay-text').textContent = 'Stop Video';
+
+      const scenes = [
+        async () => {
+          switchRole('patient');
+          toggleHeldDevice(true);
+          await speakAndWait('ACT 1/5 · ROLE 1: PATIENT MEENAKSHI', 'Step 1 starts with Patient Meenakshi! She opens her OncoBrief smartphone and taps the camera to upload her 9 referral reports and Thorax CT CD.');
+          if (State.autoPlayAbort) return;
+          State.roleTasks.patientUploaded = true;
+          sfx('win');
+          renderHeldDeviceScreen();
+          await new Promise((r) => setTimeout(r, 700));
+        },
+        async () => {
+          if (State.autoPlayAbort) return;
+          toggleHeldDevice(false);
+          switchRole('records');
+          await new Promise((r) => setTimeout(r, 650));
+          toggleHeldDevice(true);
+          await speakAndWait('ACT 2/5 · ROLE 2: RECORDS MANAGER DEEPAK', 'Next, GTA-switching to Records Manager Deepak! He links all 4 hospital feeds via ABHA ID, runs Sarvam Vision OCR and LangExtract, and quarantines the duplicate CT fax.');
+          if (State.autoPlayAbort) return;
+          State.roleTasks.recordsLinked = true;
+          State.roleTasks.recordsScanned = true;
+          State.roleTasks.recordsDupTrashed = true;
+          sfx('win');
+          renderHeldDeviceScreen();
+          await new Promise((r) => setTimeout(r, 700));
+        },
+        async () => {
+          if (State.autoPlayAbort) return;
+          toggleHeldDevice(false);
+          switchRole('coordinator');
+          await new Promise((r) => setTimeout(r, 650));
+          toggleHeldDevice(true);
+          await speakAndWait('ACT 3/5 · ROLE 3: COORDINATOR ANITA', 'Now Coordinator Anita opens the Visual Reconciliation Room! She spots the June 13th formalin lab stamp proving surgery was June 12th, assigns the missing Insurance task, and sends a Tamil voice alert.');
+          if (State.autoPlayAbort) return;
+          State.roleTasks.coordConflictFixed = true;
+          State.roleTasks.coordTaskSent = true;
+          sfx('win');
+          renderHeldDeviceScreen();
+          await new Promise((r) => setTimeout(r, 700));
+        },
+        async () => {
+          if (State.autoPlayAbort) return;
+          toggleHeldDevice(false);
+          switchRole('doctor');
+          selectRoom(1);
+          State.paperModeForced = true;
+          renderDoctorConsultHUD();
+          await speakAndWait('ACT 4A/5 · CLINICIAN WITHOUT ONCOBRIEF (PAPER MODE)', 'First, see what happens when Dr. Meera Rao enters Room 1 WITHOUT OncoBrief: she only sees the top sheet saying July 3rd and picks the wrong option!');
+          if (State.autoPlayAbort) return;
+          evaluateDoctorChoice('A');
+          await new Promise((r) => setTimeout(r, 1200));
+          if (State.autoPlayAbort) return;
+          State.paperModeForced = false;
+          renderDoctorConsultHUD();
+          evaluateDoctorChoice('B');
+          await speakAndWait('ACT 4B/5 · CLINICIAN WITH ONCOBRIEF VISUAL CARD', 'Switching to OncoBrief Visual Card Mode: Dr. Rao reads the verified June 12th stamp and missing Insurance icon, solving Room 1, Room 2, and Room 3 in 90 seconds each!');
+          State.roomsSolved[2] = true;
+          State.roomsSolved[3] = true;
+          renderDoctorConsultHUD();
+        },
+        async () => {
+          if (State.autoPlayAbort) return;
+          switchRole('admin');
+          toggleHeldDevice(true);
+          await speakAndWait('ACT 5/5 · ROLE 5: ADMIN & CHAOS STRESS-TEST LAB', 'Finally, Admin Vikram inspects the Hospital Prep-Time & Biomarker Charts and tests the 5 Chaos Circuit Breakers to prove how OncoBrief blocks fake quotes, 404 boxes, and AI dosing!');
+        }
+      ];
+
+      for (let i = 0; i < scenes.length; i++) {
+        if (State.autoPlayAbort) break;
+        await scenes[i]();
+      }
+
+      State.autoPlayRunning = false;
+      document.getElementById('autoplay-icon').textContent = '▶';
+      document.getElementById('autoplay-text').textContent = 'Auto-Play Video';
+    }
+
+    function bindEvents() {
+      window.addEventListener('keydown', (e) => {
+        if (['INPUT', 'SELECT', 'TEXTAREA'].includes(document.activeElement?.tagName)) return;
+        const k = e.key.toLowerCase();
+        if (k === 'w' || e.key === 'ArrowUp')    moveKeys.up = true;
+        if (k === 's' || e.key === 'ArrowDown')  moveKeys.down = true;
+        if (k === 'a' || e.key === 'ArrowLeft')  moveKeys.left = true;
+        if (k === 'd' || e.key === 'ArrowRight') moveKeys.right = true;
+        if (k === 'e' || k === 'tab') { e.preventDefault(); toggleHeldDevice(); }
+        if (k === '1') switchRole('patient');
+        if (k === '2') switchRole('records');
+        if (k === '3') switchRole('coordinator');
+        if (k === '4') switchRole('doctor');
+        if (k === '5') switchRole('admin');
+        if (k === 'c') {
+          const order = ['patient', 'records', 'coordinator', 'doctor', 'admin'];
+          switchRole(order[(order.indexOf(State.activeRole) + 1) % order.length]);
+        }
+      });
+
+      window.addEventListener('keyup', (e) => {
+        const k = e.key.toLowerCase();
+        if (k === 'w' || e.key === 'ArrowUp')    moveKeys.up = false;
+        if (k === 's' || e.key === 'ArrowDown')  moveKeys.down = false;
+        if (k === 'a' || e.key === 'ArrowLeft')  moveKeys.left = false;
+        if (k === 'd' || e.key === 'ArrowRight') moveKeys.right = false;
+      });
+
+      document.querySelectorAll('.dpad-btn').forEach((b) => {
+        const d = b.getAttribute('data-dir');
+        b.addEventListener('pointerdown', () => { moveKeys[d] = true; });
+        b.addEventListener('pointerup',   () => { moveKeys[d] = false; });
+        b.addEventListener('pointerleave',() => { moveKeys[d] = false; });
+      });
+
+      document.querySelectorAll('.role-card-btn').forEach((b) => {
+        b.addEventListener('click', () => switchRole(b.getAttribute('data-role')));
+      });
+
+      document.querySelectorAll('.dev-role-tab').forEach((b) => {
+        b.addEventListener('click', () => switchRole(b.getAttribute('data-dev-role')));
+      });
+
+      document.querySelectorAll('.room-pill-btn').forEach((b) => {
+        b.addEventListener('click', () => selectRoom(parseInt(b.getAttribute('data-room'), 10)));
+      });
+
+      document.getElementById('btn-open-held-device').addEventListener('click', () => toggleHeldDevice());
+      document.getElementById('btn-close-held-device').addEventListener('click', () => toggleHeldDevice(false));
+
+      document.getElementById('btn-next-role-step').addEventListener('click', () => {
+        const order = ['patient', 'records', 'coordinator', 'doctor', 'admin'];
+        const next = order[(order.indexOf(State.activeRole) + 1) % order.length];
+        switchRole(next);
+      });
+
+      document.getElementById('btn-toggle-paper-mode').addEventListener('click', () => {
+        State.paperModeForced = !State.paperModeForced;
+        sfx('tap');
+        renderDoctorConsultHUD();
+      });
+
+      document.getElementById('btn-replay-voice').addEventListener('click', () => {
+        const q = ROOM_QUIZZES[State.activeRoom];
+        if (q) speakAndWait(q.name.toUpperCase(), q.question);
+      });
+
+      document.getElementById('btn-toggle-tutorial').addEventListener('click', (e) => {
+        State.tutorialEnabled = !State.tutorialEnabled;
+        e.currentTarget.textContent = State.tutorialEnabled ? '🎓 Guide Arrows: ON' : '🎓 Guide Arrows: OFF';
+        updateTutorialUI();
+      });
+
+      document.getElementById('btn-autoplay-video').addEventListener('click', () => runAutoPlayVideoMode());
+
+      document.getElementById('btn-audio-mute').addEventListener('click', (e) => {
+        State.audioEnabled = !State.audioEnabled;
+        if (!State.audioEnabled && 'speechSynthesis' in window) window.speechSynthesis.cancel();
+        e.currentTarget.textContent = State.audioEnabled ? '🔊 Voice: ON' : '🔇 Voice: OFF';
+      });
+    }
+
+    window.addEventListener('load', () => {
+      init3DWorld();
+      bindEvents();
+      renderDoctorConsultHUD();
+      renderHeldDeviceScreen();
+      setTimeout(updateTutorialUI, 200);
+    });
+  </script>
+</body>
+</html>

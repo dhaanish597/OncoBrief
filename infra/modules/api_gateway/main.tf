@@ -51,6 +51,25 @@ resource "aws_apigatewayv2_route" "default" {
   authorizer_id      = aws_apigatewayv2_authorizer.cognito.id
 }
 
+# ABDM V3 Webhook callback routes (publicly routable from ABDM Gateway, verified in-app)
+resource "aws_apigatewayv2_route" "abdm_v3" {
+  count = var.backend_uri == "" ? 0 : 1
+
+  api_id             = aws_apigatewayv2_api.this.id
+  route_key          = "POST /api/v3/{proxy+}"
+  target             = "integrations/${aws_apigatewayv2_integration.backend[0].id}"
+  authorization_type = "NONE"
+}
+
+resource "aws_apigatewayv2_route" "abdm_v1_alias" {
+  count = var.backend_uri == "" ? 0 : 1
+
+  api_id             = aws_apigatewayv2_api.this.id
+  route_key          = "POST /api/v1/abdm/{proxy+}"
+  target             = "integrations/${aws_apigatewayv2_integration.backend[0].id}"
+  authorization_type = "NONE"
+}
+
 resource "aws_cloudwatch_log_group" "access" {
   name              = "/aws/apigateway/${var.name_prefix}"
   retention_in_days = 30

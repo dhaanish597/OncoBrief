@@ -10,15 +10,21 @@ import {
   getContinuityItems,
   getConflictingEvidence,
   getLatestEvidenceByType,
+  searchGuidelines,
   type EvidenceSearchResult,
+  type GuidelineSearchResult,
 } from './tools';
 import { matchSection, buildNavigationTarget, ONCOBRIEF_SECTIONS, type NavigationTarget } from './navigation';
 import {
   ASSISTANT_SYSTEM_PROMPT,
+  GUIDELINE_HEADER,
   buildUserPrompt,
   isEvidenceAnswerGrounded,
   findCitedEvidenceItems,
+  findCitedGuidelineItems,
+  validateAnswerCitations,
   type PromptEvidence,
+  type PromptGuideline,
 } from './prompt';
 
 export interface SourceCard {
@@ -166,6 +172,27 @@ export function synthesizeDeterministicGroundedAnswer(
     lines.push(`- [E${idx + 1}] ${item.documentName}${page}: ${item.valueText}${date}${reviewer}`);
   });
   lines.push('\nYou can inspect the underlying document pages and provenance in Evidence Journey \u2192 Sources.');
+  return lines.join('\n');
+}
+
+export function synthesizeDeterministicGuidelineAnswer(
+  spans: GuidelineSearchResult[],
+): string {
+  const lines = [
+    GUIDELINE_HEADER,
+    '',
+    'Based on hospital-approved institutional guidelines and clinical protocols:',
+  ];
+
+  spans.forEach((span, idx) => {
+    lines.push(
+      `\n- [G${idx + 1}] **${span.sectionHeading}** (${span.guidelineTitle}, ${span.versionLabel}, p. ${span.pageNumber}):\n  > "${span.verbatimText}"`
+    );
+  });
+
+  lines.push(
+    '\n*This extract is provided for clinician reference only and does not constitute a patient-specific order or recommendation.*',
+  );
   return lines.join('\n');
 }
 
@@ -407,6 +434,138 @@ export async function runAssistant(
       intent,
       grounded: false,
       sources: [],
+      navigation: null,
+      conflict: false,
+      suggestedQuestions: suggestionsFor(context.route, intent),
+      requestId,
+    };
+  }
+
+  // Institutional oncology guideline & SOP query
+  if (intent === 'guideline_knowledge_question') {
+    let orgId = '';
+    try {
+      const orgRes = await q.query<{ org_id: string }>("SELECT current_setting('app.org_id', true) AS org_id");
+      orgId = orgRes.rows[0]?.org_id ?? '';
+    } catch {
+      // ignore
+    }
+
+    if (!orgId && context.patientId) {
+      const patient = await getPatient(q, context.patientId);
+      if (patient) {
+        const orgRes = await q.query<{ org_id: string }>('SELECT org_id FROM patient WHERE id = $1', [context.patientId]);
+        orgId = orgRes.rows[0]?.org_id ?? '';
+      }
+    }
+
+    const guidelineResults = await searchGuidelines(q, orgId, message);
+    const spans = guidelineResults.success && guidelineResults.data ? guidelineResults.data : [];
+
+    if (spans.length === 0) {
+      return {
+        answer: `${GUIDELINE_HEADER}\n\nI couldn't find relevant institutional oncology SOPs or guidelines matching that query in the active reference library.`,
+        intent,
+        grounded: false,
+        sources: [],
+        navigation: null,
+        conflict: false,
+        suggestedQuestions: suggestionsFor(context.route, intent),
+        requestId,
+      };
+    }
+
+    const promptGuidelines: PromptGuideline[] = [
+      {
+        label: 'Approved Institutional Oncology Guidelines',
+        items: spans.map((s) => ({
+          spanId: s.spanId,
+          guidelineDocumentId: s.guidelineDocumentId,
+          guidelineCode: s.guidelineCode,
+          guidelineTitle: s.guidelineTitle,
+          issuingBody: s.issuingBody,
+          versionLabel: s.versionLabel,
+          publicationDate: s.publicationDate,
+          pageNumber: s.pageNumber,
+          sectionHeading: s.sectionHeading,
+          spanIndex: s.spanIndex,
+          verbatimText: s.verbatimText,
+          bbox: s.bbox,
+          keywords: s.keywords,
+        })),
+      },
+    ];
+
+    let answerText: string;
+    let citedSpans: GuidelineSearchResult[] = [];
+
+    if (isLlmConfigured()) {
+      try {
+        const userPrompt = buildUserPrompt({
+          question: message,
+          evidence: [],
+          guidelines: promptGuidelines,
+          sections,
+          languageCode: context.languageCode,
+        });
+
+        const resp = await chatCompletionWithRetry(
+          {
+            messages: [
+              { role: 'system', content: ASSISTANT_SYSTEM_PROMPT },
+              { role: 'user', content: userPrompt },
+            ],
+            temperature: 0.1,
+            maxTokens: 500,
+            timeoutMs: 3000,
+          },
+          0,
+        );
+
+        const raw = resp.content.trim();
+        const citedItems = findCitedGuidelineItems(raw, promptGuidelines);
+        const validation = validateAnswerCitations(raw, [], promptGuidelines[0]!.items);
+
+        if (citedItems.length > 0 && validation.valid) {
+          citedSpans = spans.filter((s) => citedItems.some((ci) => ci.spanId === s.spanId));
+          answerText = raw.startsWith(GUIDELINE_HEADER) ? raw : `${GUIDELINE_HEADER}\n\n${raw}`;
+        } else {
+          answerText = synthesizeDeterministicGuidelineAnswer(spans);
+          citedSpans = spans;
+        }
+      } catch {
+        answerText = synthesizeDeterministicGuidelineAnswer(spans);
+        citedSpans = spans;
+      }
+    } else {
+      answerText = synthesizeDeterministicGuidelineAnswer(spans);
+      citedSpans = spans;
+    }
+
+    const guidelineCards: SourceCard[] = citedSpans.map((s) => ({
+      evidenceFactId: s.spanId,
+      documentId: s.guidelineDocumentId,
+      documentName: `${s.guidelineTitle} (${s.versionLabel})`,
+      pageNumber: s.pageNumber,
+      factType: 'guideline.span',
+      valueText: `${s.sectionHeading} (p. ${s.pageNumber})`,
+      verbatimQuote: s.verbatimText,
+      state: 'verified',
+      confidenceBand: 'high',
+      extractorKind: 'system',
+      extractorName: s.issuingBody,
+      reviewerName: 'Approved Institutional Reference',
+      reviewedAt: s.publicationDate,
+      href: context.patientId
+        ? `/patients/${context.patientId}/sources?guideline=${s.guidelineDocumentId}&page=${s.pageNumber}`
+        : `/sources?guideline=${s.guidelineDocumentId}&page=${s.pageNumber}`,
+    }));
+
+    return {
+      answer: sanitizeUserFacingProse(answerText),
+      intent,
+      grounded: true,
+      sources: guidelineCards,
       navigation: null,
       conflict: false,
       suggestedQuestions: suggestionsFor(context.route, intent),

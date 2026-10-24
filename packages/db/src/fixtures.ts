@@ -106,7 +106,8 @@ Modified radical mastectomy performed on 12 June 2025
 Diagnosis: Invasive ductal carcinoma, grade 2
 Stage as documented: pT2N1M0
 The specimen was received in formalin on 13 June 2025.
-Tamoxifen 20 mg daily advised to be started after review.`,
+Tamoxifen 20 mg daily advised to be started after review.
+Awaiting IHC report for ER, PR and HER2 receptor status.`,
     ],
   },
   {
@@ -125,6 +126,24 @@ Modified radical mastectomy performed on 3 July 2025
 Uneventful recovery, discharged in stable condition
 Follow-up on 20 August 2025 in Surgical Oncology OPD.
 Bring prior imaging and the histopathology slides at the next visit.`,
+    ],
+  },
+  {
+    filename: 'cbc-baseline.pdf',
+    mimeType: 'application/pdf',
+    recordOrigin: 'diagnostic_lab',
+    issuingFacility: 'Meridian Diagnostics Laboratory',
+    documentDate: '2025-06-02',
+    sourceKind: 'upload',
+    pages: [
+      `Meridian Diagnostics Laboratory
+Laboratory Report
+Date: 2 June 2025
+MRN: SUN-448120
+Haemoglobin: 11.4 g/dL
+Total leucocyte count: 5200 /uL
+Platelet count: 210000 /uL
+Baseline blood counts completed before treatment.`,
     ],
   },
   {
@@ -235,7 +254,7 @@ Consent form to be completed at the records desk before the visit.`,
 ];
 
 // ---------------------------------------------------------------------------
-// DEMO-002 — staleness: a settled fact reopened by a later document
+// DEMO-002 — medical oncology: chemotherapy administration & dated lab series
 // ---------------------------------------------------------------------------
 export const DEMO_002_DOCS: FixtureDoc[] = [
   {
@@ -252,6 +271,60 @@ Date: 10 June 2025
 MRN: RCI-2025-0044
 Appointment on 15 July 2025 with the medical oncology team.
 Patient advised to continue current medication.`,
+    ],
+  },
+  {
+    filename: 'cbc-pre-chemo.pdf',
+    mimeType: 'application/pdf',
+    recordOrigin: 'diagnostic_lab',
+    issuingFacility: 'Meridian Diagnostics Laboratory',
+    documentDate: '2025-06-24',
+    sourceKind: 'upload',
+    pages: [
+      `Meridian Diagnostics Laboratory
+Laboratory Report
+Date: 24 June 2025
+MRN: RCI-2025-0044
+Haemoglobin: 12.1 g/dL
+Total leucocyte count: 6800 /uL
+Platelet count: 240000 /uL
+Pre-chemotherapy baseline counts verified.`,
+    ],
+  },
+  {
+    filename: 'chemotherapy-administration.pdf',
+    mimeType: 'application/pdf',
+    recordOrigin: 'internal_hospital',
+    issuingFacility: 'Regional Cancer Institute',
+    documentDate: '2025-06-25',
+    sourceKind: 'scan',
+    pages: [
+      `Regional Cancer Institute
+Chemotherapy administration record
+Date: 25 June 2025
+MRN: RCI-2025-0044
+Cycle 1 chemotherapy administered.
+Paclitaxel and Carboplatin given.
+Next chemotherapy cycle scheduled on 16 July 2025.
+Review in Medical Oncology OPD.`,
+    ],
+  },
+  {
+    filename: 'cbc-cycle-review.pdf',
+    mimeType: 'application/pdf',
+    recordOrigin: 'diagnostic_lab',
+    issuingFacility: 'Meridian Diagnostics Laboratory',
+    documentDate: '2025-07-12',
+    sourceKind: 'upload',
+    pages: [
+      `Meridian Diagnostics Laboratory
+Laboratory Report
+Date: 12 July 2025
+MRN: RCI-2025-0044
+Haemoglobin: 10.8 g/dL
+Total leucocyte count: 3900 /uL
+Platelet count: 165000 /uL
+Please bring outside PET-CT report and previous imaging CD.`,
     ],
   },
   {
@@ -273,9 +346,19 @@ Previous appointment rescheduled at patient request.`,
 ];
 
 // ---------------------------------------------------------------------------
-// DEMO-003 — ready
+// DEMO-003 — radiation oncology: completed treatment, ready packet & reminder
 // ---------------------------------------------------------------------------
 export const DEMO_003_DOCS: FixtureDoc[] = [
+  {
+    filename: 'followup-laboratory-report.pdf', mimeType: 'application/pdf', recordOrigin: 'diagnostic_lab',
+    issuingFacility: 'Meridian Diagnostics Laboratory', documentDate: '2025-04-22', sourceKind: 'upload',
+    pages: ['Synthetic oncology fixture. Laboratory report\nDate: 22 April 2025\nMRN: READY-1001\nLaboratory report copy received for records review. No values are represented in this administrative receipt.'],
+  },
+  {
+    filename: 'followup-prescription-copy.pdf', mimeType: 'application/pdf', recordOrigin: 'internal_hospital',
+    issuingFacility: 'Regional Cancer Institute', documentDate: '2025-04-23', sourceKind: 'upload',
+    pages: ['Synthetic oncology fixture. Prescription copy\nDate: 23 April 2025\nMRN: READY-1001\nPrior prescription copy received for records review. No medication or dose is represented in this administrative receipt.'],
+  },
   {
     filename: 'referral-complete.pdf',
     mimeType: 'application/pdf',
@@ -321,6 +404,24 @@ Computed tomography report
 Date: 8 April 2025
 MRN: READY-1001
 Computed tomography of the thorax performed.`,
+    ],
+  },
+  {
+    filename: 'radiation-completion-summary.pdf',
+    mimeType: 'application/pdf',
+    recordOrigin: 'internal_hospital',
+    issuingFacility: 'Regional Cancer Institute',
+    documentDate: '2025-04-18',
+    sourceKind: 'upload',
+    pages: [
+      `Regional Cancer Institute
+Radiation Oncology Department
+Radiation completion summary
+Date: 18 April 2025
+MRN: READY-1001
+External beam radiotherapy completed.
+Total dose: 50 Gy in 25 fractions to chest wall and regional nodes.
+Follow-up review scheduled on 15 May 2025 in Radiation Oncology OPD.`,
     ],
   },
   {

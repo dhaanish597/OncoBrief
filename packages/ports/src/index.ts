@@ -51,10 +51,21 @@ export interface OcrPageResult {
   engineVersion: string;
 }
 
+export interface OcrDocumentInput {
+  documentId: string;
+  bytes: Buffer;
+  mimeType: string;
+  filename?: string;
+  language?: string;
+  s3Key?: string;
+  s3Bucket?: string;
+}
+
 export interface OcrPort {
   name: string;
   version: string;
   extract(page: OcrPageInput): Promise<OcrPageResult>;
+  extractDocument?(input: OcrDocumentInput): Promise<AsyncOcrPageResult[]>;
 }
 
 // --- extraction ------------------------------------------------------------
@@ -140,6 +151,10 @@ export interface PresignPutPort {
 
 // --- asynchronous OCR (Amazon Textract) ------------------------------------
 export interface AsyncOcrStartInput {
+  bytes?: Buffer;
+  mimeType?: string;
+  filename?: string;
+  language?: string;
   documentId: string;
   orgId: string;
   /** Tenant-prefixed key of the immutable original in object storage. */
@@ -297,3 +312,7 @@ export interface LLMProvider {
   generate_factual_packet(input: LlmPacketRequest): Promise<LlmPacketResponse>;
   search_records(input: LlmSearchRequest): Promise<LlmSearchResponse>;
 }
+
+// --- ABDM HIE-CM V3 Gateway Port (M2 HIP + M3 HIU) -------------------------
+export * from './abdm';
+

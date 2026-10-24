@@ -1,3 +1,4 @@
+import { getMigratorPool, closePools } from '@oncobrief/db';
 import { expect, test, type Page } from '@playwright/test';
 
 const CLINICIAN = { email: 'dr.rao@rci.demo', password: 'oncobrief-demo' };
@@ -53,14 +54,17 @@ test.describe('Phase 4 — Reconciliation Room UX & Permissions', () => {
     await page.getByTestId('tab-conflicts').click();
 
     await page.getByRole('link', { name: /open reconciliation room/i }).first().click();
-    await expect(page.getByText(/Reconciliation room/i)).toBeVisible();
+    await expect(page.getByText('Reconciliation room', { exact: true })).toBeVisible();
 
     // Check member cards and inspection links
     const members = page.getByTestId('conflict-member');
-    await expect(members).toHaveCount(2);
+    const conflictId = new URL(page.url()).pathname.split('/').at(-1)!;
+    const expectedMembers = Number((await getMigratorPool().query('SELECT count(*) n FROM conflict_member WHERE conflict_set_id=$1', [conflictId])).rows[0].n);
+    expect(expectedMembers).toBeGreaterThanOrEqual(2);
+    await expect(members).toHaveCount(expectedMembers);
 
     const inspectLinks = page.getByRole('link', { name: /inspect in source inspector/i });
-    await expect(inspectLinks).toHaveCount(2);
+    await expect(inspectLinks).toHaveCount(expectedMembers);
     await expect(inspectLinks.first()).toHaveAttribute('href', /sources\/[0-9a-f-]+\?fact=/i);
 
     // Check all three outcome cards
@@ -87,7 +91,7 @@ test.describe('Phase 4 — Reconciliation Room UX & Permissions', () => {
     await page.getByTestId('tab-conflicts').click();
 
     await page.getByRole('link', { name: /open reconciliation room/i }).first().click();
-    await expect(page.getByText(/Reconciliation room/i)).toBeVisible();
+    await expect(page.getByText('Reconciliation room', { exact: true })).toBeVisible();
 
     // Expect read-only notice banner
     await expect(page.getByText(/Read-only review mode \(coordinator\)/i)).toBeVisible();
@@ -181,3 +185,5 @@ test.describe('Phase 4 — Accessibility & Keyboard Interactions', () => {
     expect(hasReducedMotionRule).toBe(true);
   });
 });
+
+test.afterAll(closePools);

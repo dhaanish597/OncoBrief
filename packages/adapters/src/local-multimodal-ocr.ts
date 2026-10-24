@@ -1,4 +1,4 @@
-import { createHash } from 'node:crypto';
+import { PDFDocument } from 'pdf-lib';
 import { inflateSync, inflateRawSync } from 'node:zlib';
 import type {
   AsyncOcrJob,
@@ -7,6 +7,7 @@ import type {
   AsyncOcrStartInput,
   AsyncOcrStatus,
   OcrPageInput,
+  OcrDocumentInput,
   OcrPageResult,
   OcrPort,
   OcrSpanDraft,
@@ -26,27 +27,34 @@ type Matrix6 = [number, number, number, number, number, number];
 export class LocalMultimodalOcrAdapter implements AsyncOcrPort, OcrPort {
   readonly name = 'local-multimodal';
   readonly version = 'v1';
-  private readonly asyncJobs = new Map<string, { status: AsyncOcrStatus; pages: AsyncOcrPageResult[]; raw: unknown }>();
-
-  async startDocumentAnalysis(input: AsyncOcrStartInput): Promise<AsyncOcrJob> {
-    const jobId = `local-${input.documentId}-${Date.now()}`;
-    this.asyncJobs.set(jobId, {
-      status: { status: 'SUCCEEDED' },
-      pages: [],
-      raw: null,
-    });
-    return { providerJobId: jobId };
+  async startDocumentAnalysis(_input: AsyncOcrStartInput): Promise<AsyncOcrJob> {
+    throw new Error('local_ocr_requires_document_processing');
+  }
+  async getJob(_jobId: string): Promise<AsyncOcrStatus> {
+    return { status: 'FAILED', statusMessage: 'local_ocr_job_not_found' };
+  }
+  async getResults(_jobId: string): Promise<{ pages: AsyncOcrPageResult[]; raw: unknown }> {
+    throw new Error('local_ocr_job_not_found');
   }
 
-  async getJob(providerJobId: string): Promise<AsyncOcrStatus> {
-    const job = this.asyncJobs.get(providerJobId);
-    if (!job) return { status: 'SUCCEEDED' };
-    return job.status;
-  }
-
-  async getResults(providerJobId: string): Promise<{ pages: AsyncOcrPageResult[]; raw: unknown }> {
-    const job = this.asyncJobs.get(providerJobId);
-    return { pages: job?.pages ?? [], raw: job?.raw ?? null };
+  async extractDocument(input: OcrDocumentInput): Promise<AsyncOcrPageResult[]> {
+    if (input.bytes.subarray(0, 5).toString('ascii') !== '%PDF-') {
+      return [{ pageNumber: 1, ...await this.extract({ documentId: input.documentId, pageNumber: 1, imageBytes: input.bytes }) }];
+    }
+    const pdf = await PDFDocument.load(input.bytes);
+    const pages: AsyncOcrPageResult[] = [];
+    for (let index = 0; index < pdf.getPageCount(); index++) {
+      const single = await PDFDocument.create();
+      const [copied] = await single.copyPages(pdf, [index]);
+      single.addPage(copied!);
+      const bytes = Buffer.from(await single.save({ useObjectStreams: false }));
+      const result = await this.extract({ documentId: input.documentId, pageNumber: 1, imageBytes: bytes });
+      if (!result.plainText.trim() && /\/Subtype\s*\/Image\b/.test(bytes.toString('latin1'))) {
+        throw new Error('ocr_manual_transcription_required');
+      }
+      pages.push({ ...result, pageNumber: index + 1, widthPx: copied!.getWidth(), heightPx: copied!.getHeight() });
+    }
+    return pages;
   }
 
   async extract(page: OcrPageInput): Promise<OcrPageResult> {
@@ -60,23 +68,7 @@ export class LocalMultimodalOcrAdapter implements AsyncOcrPort, OcrPort {
     }
 
     if (!page.imageBytes || page.imageBytes.length === 0) {
-      const fallbackText = `Document ${page.documentId} Page ${page.pageNumber}`;
-      return {
-        plainText: fallbackText,
-        spans: [
-          {
-            granularity: 'line',
-            index: 0,
-            text: fallbackText,
-            charStart: 0,
-            charEnd: fallbackText.length,
-            bbox: { x: 0.1, y: 0.1, w: 0.8, h: 0.04 },
-            confidence: 0.95,
-          },
-        ],
-        engine: this.name,
-        engineVersion: this.version,
-      };
+      return { plainText: '', spans: [], engine: this.name, engineVersion: this.version };
     }
 
     const bytes = page.imageBytes;
@@ -143,7 +135,7 @@ export class LocalMultimodalOcrAdapter implements AsyncOcrPort, OcrPort {
     // 2. Select streams for the requested target page
     const streamsToParse = pageStreams.has(targetPageNumber)
       ? pageStreams.get(targetPageNumber)!
-      : streams;
+      : [];
 
     for (const streamContent of streamsToParse) {
       const parsedItems = this.parsePdfTextStream(streamContent, pageWidth, pageHeight, cmap);
@@ -151,7 +143,7 @@ export class LocalMultimodalOcrAdapter implements AsyncOcrPort, OcrPort {
     }
 
     // Fallback: If no stream text could be decoded, search for literal strings in raw PDF
-    if (textItems.length === 0) {
+    if (textItems.length === 0 && pageStreams.size === 0 && targetPageNumber === 1) {
       const literalMatches = rawPdf.match(/\(([^()]{2,100})\)\s*Tj/g);
       if (literalMatches) {
         let y = 0.1;
@@ -421,9 +413,12 @@ export class LocalMultimodalOcrAdapter implements AsyncOcrPort, OcrPort {
         let curX = 0;
         let curY = 0;
         let fontSize = 12;
+        let leading = 0;
+        let lineX = 0;
+        let lineY = 0;
 
         const tokRegex =
-          /(?:(\/F\w+)\s+([\d.]+)\s+Tf)|(?:([\d.-]+)\s+([\d.-]+)\s+([\d.-]+)\s+([\d.-]+)\s+([\d.-]+)\s+([\d.-]+)\s+Tm)|(?:([\d.-]+)\s+([\d.-]+)\s+Td)|(?:\(([^()]*)\)\s*Tj)|(?:<([0-9a-fA-F]+)>\s*Tj)|(?:\[([\s\S]*?)\]\s*TJ)/g;
+          /(?:(\/F\w+)\s+([\d.]+)\s+Tf)|(?:([\d.-]+)\s+([\d.-]+)\s+([\d.-]+)\s+([\d.-]+)\s+([\d.-]+)\s+([\d.-]+)\s+Tm)|(?:([\d.-]+)\s+([\d.-]+)\s+Td)|(?:\(([^()]*)\)\s*Tj)|(?:<([0-9a-fA-F]+)>\s*Tj)|(?:\[([\s\S]*?)\]\s*TJ)|(?:([\d.-]+)\s+TL)|(T\*)/g;
         let tokMatch: RegExpExecArray | null;
 
         while ((tokMatch = tokRegex.exec(block)) !== null) {
@@ -432,9 +427,17 @@ export class LocalMultimodalOcrAdapter implements AsyncOcrPort, OcrPort {
           } else if (tokMatch[7] && tokMatch[8]) {
             curX = parseFloat(tokMatch[7]);
             curY = parseFloat(tokMatch[8]);
+            lineX = curX; lineY = curY;
           } else if (tokMatch[9] && tokMatch[10]) {
             curX += parseFloat(tokMatch[9]);
             curY += parseFloat(tokMatch[10]);
+            lineX = curX; lineY = curY;
+          } else if (tokMatch[14] !== undefined) {
+            leading = parseFloat(tokMatch[14]);
+          } else if (tokMatch[15] !== undefined) {
+            curX = lineX;
+            curY = lineY - leading;
+            lineY = curY;
           } else if (tokMatch[11] !== undefined) {
             const rawText = tokMatch[11]
               .replace(/\\([()\\])/g, '$1')
@@ -513,14 +516,78 @@ export class LocalMultimodalOcrAdapter implements AsyncOcrPort, OcrPort {
 
     if (Array.isArray(json['entry'])) {
       lines.push(`Total Entries: ${json['entry'].length}`);
-      for (let i = 0; i < Math.min(json['entry'].length, 10); i++) {
+      for (let i = 0; i < json['entry'].length; i++) {
         const item = json['entry'][i];
         if (item && typeof item === 'object' && item['resource']) {
           const res = item['resource'] as Record<string, unknown>;
           const resType = res['resourceType'] ? String(res['resourceType']) : 'Unknown';
-          const codeObj = res['code'] as Record<string, unknown> | undefined;
-          const title = res['title'] ?? res['name'] ?? codeObj?.['text'];
-          lines.push(`Entry [${i + 1}]: ${resType}${title ? ` - ${String(title)}` : ''}`);
+
+          if (resType === 'Observation') {
+            const codeObj = res['code'] as Record<string, unknown> | undefined;
+            const name = (codeObj?.['text'] as string) ||
+              ((codeObj?.['coding'] as Array<Record<string, unknown>>)?.[0]?.['display'] as string) ||
+              'Observation';
+
+            let valStr = '';
+            if (res['valueQuantity'] && typeof res['valueQuantity'] === 'object') {
+              const q = res['valueQuantity'] as Record<string, unknown>;
+              valStr = `${q['value'] ?? ''} ${q['unit'] ?? ''}`.trim();
+            } else if (res['valueString']) {
+              valStr = String(res['valueString']);
+            }
+
+            const date = (res['effectiveDateTime'] as string) || (res['issued'] as string);
+            lines.push(
+              `Observation: ${name}: ${valStr}${date ? ` (Date: ${date.slice(0, 10)})` : ''}`,
+            );
+          } else if (resType === 'Procedure') {
+            const codeObj = res['code'] as Record<string, unknown> | undefined;
+            const name = (codeObj?.['text'] as string) ||
+              ((codeObj?.['coding'] as Array<Record<string, unknown>>)?.[0]?.['display'] as string) ||
+              'Procedure';
+            const date = res['performedDateTime'] as string;
+            lines.push(`Procedure: ${name}${date ? ` (Date: ${date.slice(0, 10)})` : ''}`);
+          } else if (resType === 'MedicationStatement' || resType === 'MedicationRequest') {
+            const medObj = (res['medicationCodeableConcept'] ?? res['medicationReference']) as Record<string, unknown> | undefined;
+            const name = (medObj?.['text'] as string) ||
+              ((medObj?.['coding'] as Array<Record<string, unknown>>)?.[0]?.['display'] as string) ||
+              'Medication';
+            lines.push(`Medication: ${name}`);
+          } else if (resType === 'Condition') {
+            const codeObj = res['code'] as Record<string, unknown> | undefined;
+            const name = (codeObj?.['text'] as string) ||
+              ((codeObj?.['coding'] as Array<Record<string, unknown>>)?.[0]?.['display'] as string) ||
+              'Condition';
+            lines.push(`Condition: ${name}`);
+          } else if (resType === 'DiagnosticReport') {
+            const codeObj = res['code'] as Record<string, unknown> | undefined;
+            const name = (res['title'] as string) ||
+              (res['name'] as string) ||
+              (codeObj?.['text'] as string) ||
+              ((codeObj?.['coding'] as Array<Record<string, unknown>>)?.[0]?.['display'] as string) ||
+              'Diagnostic Report';
+            const conclusion = res['conclusion'] ? ` - ${String(res['conclusion'])}` : '';
+            lines.push(`DiagnosticReport: ${name}${conclusion}`);
+          } else if (resType === 'Patient') {
+            const nameArr = res['name'] as Array<Record<string, unknown>> | undefined;
+            const nameText = (nameArr?.[0]?.['text'] as string) || 'Patient';
+            const identifiers = (res['identifier'] as Array<Record<string, unknown>>) ?? [];
+            const abhaId = identifiers.find((id) =>
+              String(id['system'] ?? '').includes('abdm.gov.in') || String(id['system'] ?? '').includes('ndhm.gov.in'),
+            );
+            lines.push(`Patient: ${nameText}${abhaId?.['value'] ? ` ABHA: ${abhaId['value']}` : ''}`);
+          } else if (resType === 'Organization') {
+            const name = String(res['name'] ?? 'Hospital');
+            lines.push(`Hospital: ${name}`);
+          } else if (resType === 'DocumentReference') {
+            lines.push(`DocumentReference: ${String(res['description'] ?? res['id'] ?? 'Report Attachment')}`);
+          } else if (resType === 'Binary') {
+            lines.push(`Binary Attachment: ${String(res['contentType'] ?? 'application/octet-stream')} (${String(res['id'] ?? '')})`);
+          } else if (resType === 'Composition') {
+            lines.push(`Composition: ${String(res['title'] ?? 'Clinical Document')}`);
+          } else {
+            lines.push(`Entry [${i + 1}]: ${resType} (ID: ${String(res['id'] ?? '')})`);
+          }
         }
       }
     }
@@ -559,56 +626,9 @@ export class LocalMultimodalOcrAdapter implements AsyncOcrPort, OcrPort {
     return this.buildResultFromLines(lines);
   }
 
-  private extractImage(bytes: Buffer): OcrPageResult {
-    let width = 800;
-    let height = 600;
-    let format = 'image';
-
-    // PNG dimensions
-    if (bytes.length >= 24 && bytes.subarray(1, 4).toString('latin1') === 'PNG') {
-      format = 'PNG';
-      width = bytes.readUInt32BE(16);
-      height = bytes.readUInt32BE(20);
-    } else if (bytes[0] === 0xff && bytes[1] === 0xd8) {
-      format = 'JPEG';
-      // Search for SOF0 marker
-      let off = 2;
-      while (off < bytes.length - 8) {
-        if (bytes[off] === 0xff && (bytes[off + 1] === 0xc0 || bytes[off + 1] === 0xc2)) {
-          height = bytes.readUInt16BE(off + 5);
-          width = bytes.readUInt16BE(off + 7);
-          break;
-        }
-        off += 1;
-      }
-    } else if (bytes.length >= 12 && bytes.subarray(0, 4).toString('latin1') === 'RIFF') {
-      format = 'WebP';
-    } else if (
-      bytes.length >= 4 &&
-      ((bytes[0] === 0x49 && bytes[1] === 0x49) || (bytes[0] === 0x4d && bytes[1] === 0x4d))
-    ) {
-      format = 'TIFF';
-    }
-
-    const sha256 = createHash('sha256').update(bytes).digest('hex');
-    const lines: string[] = [
-      `Image Format: ${format}`,
-      `Dimensions: ${width}x${height}`,
-      `SHA-256: ${sha256}`,
-    ];
-
-    // Look for any readable ASCII strings embedded
-    const ascii = bytes.toString('latin1').match(/[A-Za-z0-9 ,.:;/-]{6,100}/g);
-    if (ascii) {
-      for (const text of ascii.slice(0, 8)) {
-        const trimmed = text.trim();
-        if (trimmed.length > 5 && !lines.includes(trimmed)) {
-          lines.push(trimmed);
-        }
-      }
-    }
-
-    return this.buildResultFromLines(lines);
+  private extractImage(_bytes: Buffer): OcrPageResult {
+    // Local mode has no image OCR engine. Metadata is not source text.
+    return { plainText: '', spans: [], engine: this.name, engineVersion: this.version };
   }
 
   private buildResultFromLines(lines: string[]): OcrPageResult {

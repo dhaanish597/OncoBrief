@@ -1,11 +1,13 @@
 import { can } from '@oncobrief/domain';
-import { getPacket, listPackets } from '@oncobrief/db';
+import { getPacket, listPackets, listStudioArtifacts } from '@oncobrief/db';
 import { requireSession, withSession } from '@/lib/session';
 import { EmptyFinding, SectionHeading, StateBadge } from '@/components/evidence';
+import { ProductivityStudio } from '@/components/ProductivityStudio';
 import {
   approvePacketAction,
   createPacketAction,
   submitPacketAction,
+  linkPacketCareContextAction,
 } from '@/lib/actions';
 
 /**
@@ -26,10 +28,25 @@ export default async function PacketPage({ params }: { params: Promise<{ id: str
   const data = await withSession(async (q, s) => {
     const packets = await listPackets(q, id);
     const latest = packets[0] ? await getPacket(q, s.orgId, packets[0].id) : null;
-    return { packets, latest };
+    let abdmCareContext: { careContextReference: string; status: string; linkedAt: string | null } | null = null;
+    if (latest) {
+      const ccRes = await q.query<{ care_context_reference: string; status: string; linked_at: Date | null }>(
+        `SELECT care_context_reference, status, linked_at FROM abdm_care_context WHERE org_id = $1 AND packet_id = $2`,
+        [s.orgId, latest.id],
+      );
+      if (ccRes.rows[0]) {
+        abdmCareContext = {
+          careContextReference: ccRes.rows[0].care_context_reference,
+          status: ccRes.rows[0].status,
+          linkedAt: ccRes.rows[0].linked_at ? (ccRes.rows[0].linked_at.toISOString().split('T')[0] ?? null) : null,
+        };
+      }
+    }
+    const studioArtifacts = await listStudioArtifacts(q, s.orgId, id);
+    return { packets, latest, abdmCareContext, studioArtifacts };
   });
 
-  const { packets, latest } = data;
+  const { packets, latest, abdmCareContext, studioArtifacts } = data;
 
   return (
     <div>
@@ -119,7 +136,51 @@ export default async function PacketPage({ params }: { params: Promise<{ id: str
                     </span>
                   )
                 ) : null}
-                {canExport ? (
+                {canExport && latest.status === 'approved' && !latest.sourcesUnavailable ? (
+                  <>
+                    <a
+                      href={`/api/v1/packets/${latest.id}/export`}
+                      className="mono border border-[var(--color-rule-strong)] px-2.5 py-1 text-[11px] uppercase hover:bg-[var(--color-accent-soft)]"
+                      data-testid="export-packet"
+                      title="Export standard OncoBrief Consultation Packet JSON"
+                    >
+                      export json
+                    </a>
+                    <a
+                      href={`/api/v1/packets/${latest.id}/export?format=abdm`}
+                      className="mono border border-blue-600 bg-blue-50 px-2.5 py-1 text-[11px] uppercase text-blue-800 hover:bg-blue-100"
+                      data-testid="export-abdm-fhir"
+                      title="Export NRCeS v6.5.0 FHIR DocumentBundle"
+                    >
+                      export abdm fhir
+                    </a>
+                    <a
+                      href={`/api/v1/packets/${latest.id}/export?format=mcode`}
+                      className="mono border border-purple-600 bg-purple-50 px-2.5 py-1 text-[11px] uppercase text-purple-800 hover:bg-purple-100"
+                      data-testid="export-mcode-fhir"
+                      title="Export HL7 mCODE STU4 FHIR Bundle"
+                    >
+                      export mcode
+                    </a>
+                    {abdmCareContext?.status === 'LINKED' ? (
+                      <span className="mono border border-emerald-600 bg-emerald-50 px-2 py-1 text-[10px] text-emerald-800">
+                        ABDM LINKED · {abdmCareContext.careContextReference}
+                      </span>
+                    ) : (
+                      <form action={linkPacketCareContextAction} className="inline-block">
+                        <input type="hidden" name="patientId" value={id} />
+                        <input type="hidden" name="packetId" value={latest.id} />
+                        <button
+                          type="submit"
+                          className="mono border border-blue-600 px-2.5 py-1 text-[11px] uppercase text-blue-700 hover:bg-blue-50"
+                          title="Link approved consultation packet to ABDM Care Context (M2 HIP)"
+                        >
+                          link abdm care context
+                        </button>
+                      </form>
+                    )}
+                  </>
+                ) : canExport && !latest.sourcesUnavailable ? (
                   <a
                     href={`/api/v1/packets/${latest.id}/export`}
                     className="mono border border-[var(--color-rule-strong)] px-3 py-1 text-[11px] uppercase hover:bg-[var(--color-accent-soft)]"
@@ -206,7 +267,7 @@ export default async function PacketPage({ params }: { params: Promise<{ id: str
               </div>
             ) : (
               <p className="mono px-4 py-4 text-xs text-[var(--color-ink-soft)]">
-                Draft assembled but not yet frozen. Approval serialises and hashes the content.
+                {latest.sourcesUnavailable ? 'Source withdrawn or unavailable. Frozen content is hidden and export is blocked; review accessible sources in a successor packet.' : 'Draft assembled but not yet frozen. Approval serialises and hashes the content.'}
               </p>
             )}
           </div>
@@ -217,6 +278,15 @@ export default async function PacketPage({ params }: { params: Promise<{ id: str
           </p>
         </>
       )}
+
+      {/* Clinician Productivity Studio (Use Case 05) */}
+      <ProductivityStudio
+        patientId={id}
+        artifacts={studioArtifacts}
+        canDraft={canDraft}
+        canApprove={canApprove}
+        canExport={canExport}
+      />
     </div>
   );
 }

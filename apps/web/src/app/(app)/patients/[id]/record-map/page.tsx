@@ -1,7 +1,8 @@
-import { TASK_KINDS, TASK_KIND_LABEL } from '@oncobrief/domain';
+import { can, TASK_KINDS, TASK_KIND_LABEL } from '@oncobrief/domain';
 import { listRecordMap } from '@oncobrief/db';
 import { withSession } from '@/lib/session';
 import { EmptyFinding, OriginBadge, ReadinessBand, SectionHeading } from '@/components/evidence';
+import { GapWaiverControl } from '@/components/TaskOwnershipControls';
 import { createTaskAction } from '@/lib/actions';
 
 /**
@@ -14,10 +15,14 @@ import { createTaskAction } from '@/lib/actions';
  */
 export default async function RecordMapPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
-  const map = await withSession(async (q) => listRecordMap(q, id));
+  const { map, canWaive } = await withSession(async (q, s) => ({
+    map: await listRecordMap(q, id),
+    canWaive: can(s.role, 'checklist:author'),
+  }));
 
   const ordered = [...map.gaps].sort((a, b) => {
-    const rank = (s: string) => (s === 'missing' ? 0 : s === 'partial' ? 1 : s === 'waived' ? 3 : 2);
+    const rank = (s: string) =>
+      s === 'missing' ? 0 : s === 'partial' ? 1 : s === 'waived' ? 3 : 2;
     return rank(a.status) - rank(b.status);
   });
 
@@ -41,11 +46,34 @@ export default async function RecordMapPage({ params }: { params: Promise<{ id: 
       ) : (
         <ul className="mt-6 grid gap-3 md:grid-cols-2 xl:grid-cols-3">
           {ordered.map((g) => {
-            const statusMeta: Record<string, { label: string; fg: string; bg: string; glyph: string }> = {
-              missing: { label: 'missing', fg: 'var(--color-state-conflicting)', bg: '#fbe9e8', glyph: '□' },
-              partial: { label: 'type not confirmed', fg: 'var(--color-state-extracted)', bg: '#fdf3df', glyph: '◐' },
-              satisfied: { label: 'present', fg: 'var(--color-state-verified)', bg: '#e8f3ea', glyph: '■' },
-              waived: { label: 'waived by a human', fg: 'var(--color-ink-soft)', bg: '#eeeeee', glyph: '—' },
+            const statusMeta: Record<
+              string,
+              { label: string; fg: string; bg: string; glyph: string }
+            > = {
+              missing: {
+                label: 'missing',
+                fg: 'var(--color-state-conflicting)',
+                bg: '#fbe9e8',
+                glyph: '□',
+              },
+              partial: {
+                label: 'type not confirmed',
+                fg: 'var(--color-state-extracted)',
+                bg: '#fdf3df',
+                glyph: '◐',
+              },
+              satisfied: {
+                label: 'present',
+                fg: 'var(--color-state-verified)',
+                bg: '#e8f3ea',
+                glyph: '■',
+              },
+              waived: {
+                label: 'waived by a human',
+                fg: 'var(--color-ink-soft)',
+                bg: '#eeeeee',
+                glyph: '—',
+              },
             };
             const s = statusMeta[g.status] ?? statusMeta.missing!;
             const actionable = g.status === 'missing' || g.status === 'partial';
@@ -59,7 +87,10 @@ export default async function RecordMapPage({ params }: { params: Promise<{ id: 
               >
                 <div className="flex items-start justify-between gap-2">
                   <h3 className="text-sm font-medium">{g.label}</h3>
-                  <span className="mono inline-flex items-center gap-1 whitespace-nowrap text-[11px] uppercase" style={{ color: s.fg }}>
+                  <span
+                    className="mono inline-flex items-center gap-1 whitespace-nowrap text-[11px] uppercase"
+                    style={{ color: s.fg }}
+                  >
                     <span aria-hidden>{s.glyph}</span>
                     {s.label}
                   </span>
@@ -67,8 +98,13 @@ export default async function RecordMapPage({ params }: { params: Promise<{ id: 
                 <p className="mono mt-1 text-[11px] text-[var(--color-ink-soft)]">
                   requires: {g.requiredDocumentType.replaceAll('_', ' ')} · {g.requirementKind}
                 </p>
-                <p className="mt-2 text-xs leading-relaxed text-[var(--color-ink-soft)]">{g.rationale}</p>
+                <p className="mt-2 text-xs leading-relaxed text-[var(--color-ink-soft)]">
+                  {g.rationale}
+                </p>
 
+                {actionable && canWaive && g.requirementKind === 'expected' ? (
+                  <GapWaiverControl patientId={id} gapId={g.id} />
+                ) : null}
                 {actionable ? (
                   <details className="mt-3">
                     <summary
@@ -134,7 +170,10 @@ export default async function RecordMapPage({ params }: { params: Promise<{ id: 
         <SectionHeading title="Where the records came from" />
         <ul className="mt-3 grid gap-3 md:grid-cols-3 xl:grid-cols-5">
           {map.origins.map((o) => (
-            <li key={o.recordOrigin} className="border border-[var(--color-rule-strong)] bg-[var(--color-paper-raised)] p-3">
+            <li
+              key={o.recordOrigin}
+              className="border border-[var(--color-rule-strong)] bg-[var(--color-paper-raised)] p-3"
+            >
               <OriginBadge origin={o.recordOrigin} />
               <p className="mono mt-1 text-2xl">{o.count}</p>
               <p className="mono mt-1 text-[11px] leading-relaxed text-[var(--color-ink-soft)]">
@@ -154,7 +193,7 @@ export default async function RecordMapPage({ params }: { params: Promise<{ id: 
           how this readiness band was computed
         </summary>
         <pre className="mono mt-2 overflow-x-auto border border-[var(--color-rule)] bg-[var(--color-paper-raised)] p-3 text-[11px]">
-{JSON.stringify(map.readiness?.inputs ?? {}, null, 2)}
+          {JSON.stringify(map.readiness?.inputs ?? {}, null, 2)}
         </pre>
       </details>
 

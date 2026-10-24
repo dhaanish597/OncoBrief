@@ -12,13 +12,13 @@
   --color-ink: #1b1a17;
   --color-ink-soft: #4a463f;
   --color-rule: #dcd5c8;
-  --color-rule-strong: #b9b0a0;
+  --color-rule-strong: #857d6f;
   --color-accent: #7a2e2e;
   --color-accent-soft: #f0e2dd;
 
-  --color-state-extracted: #9a6b12;
+  --color-state-extracted: #7c530b;
   --color-state-verified: #2f6b3c;
-  --color-state-conflicting: #a3282a;
+  --color-state-conflicting: #962123;
   --color-state-corrected: #2b4f8a;
   --color-state-rejected: #555555;
   --color-state-superseded: #4a5568;

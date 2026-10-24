@@ -8,6 +8,7 @@ import {
 } from '@oncobrief/domain';
 import type { Querier } from '../client';
 import { appendAuditEvent } from './audit';
+import { requireTaskActor } from './tasks';
 
 /**
  * The administrative digital twin (architecture §9).
@@ -19,7 +20,12 @@ import { appendAuditEvent } from './audit';
 
 export async function assignChecklist(
   q: Querier,
-  input: { orgId: string; patientId: string; templateId: string; userId: string },
+  input: {
+    orgId: string;
+    patientId: string;
+    templateId: string;
+    userId: string;
+  },
 ): Promise<string> {
   const tpl = await q.query<{ version: number }>(
     'SELECT version FROM checklist_template WHERE id = $1',
@@ -148,8 +154,8 @@ export async function evaluateAndPersistGaps(
     await q.query(
       `INSERT INTO record_gap
          (org_id, patient_id, patient_checklist_id, checklist_item_id, status,
-          satisfied_by_document_id, candidate_document_id, last_evaluated_at)
-       VALUES ($1,$2,$3,$4,$5,$6,$7, now())
+          satisfied_by_document_id, candidate_document_id, waived_by, waived_reason, last_evaluated_at)
+       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9, now())
        ON CONFLICT (patient_checklist_id, checklist_item_id) DO UPDATE SET
          status = EXCLUDED.status,
          satisfied_by_document_id = EXCLUDED.satisfied_by_document_id,
@@ -163,6 +169,10 @@ export async function evaluateAndPersistGaps(
         gap.status,
         gap.satisfiedByDocumentId,
         gap.candidateDocumentId,
+        existingRes.rows.find((r) => r.checklist_item_id === gap.checklistItemId)?.waived_by ??
+          null,
+        existingRes.rows.find((r) => r.checklist_item_id === gap.checklistItemId)?.waived_reason ??
+          null,
       ],
     );
   }
@@ -185,22 +195,41 @@ export async function waiveGap(
   q: Querier,
   input: { gapId: string; userId: string; reason: string },
 ): Promise<void> {
-  const res = await q.query<{ org_id: string }>(
-    `UPDATE record_gap
-        SET status = 'waived', waived_by = $2, waived_reason = $3, last_evaluated_at = now()
-      WHERE id = $1 RETURNING org_id`,
-    [input.gapId, input.userId, input.reason],
+  const actor = await requireTaskActor(q, input.userId, 'checklist:author');
+  if (!input.reason.trim()) throw new Error('waiver_reason_required');
+  if (input.reason.length > 2000) throw new Error('waiver_reason_too_long');
+  const patient = await q.query<{ patient_id: string }>(
+    `SELECT patient_id FROM record_gap WHERE id=$1`,
+    [input.gapId],
   );
-  const orgId = res.rows[0]?.org_id;
-  if (!orgId) throw new Error('gap_not_found');
+  if (!patient.rows[0]) throw new Error('gap_not_found');
+  const patientId = patient.rows[0].patient_id;
+  await q.query('SELECT id FROM patient WHERE id=$1 FOR UPDATE', [patientId]);
+  const gap = await q.query<{ status: string; requirement_kind: string }>(
+    `SELECT g.status,ci.requirement_kind FROM record_gap g JOIN checklist_item ci ON ci.id=g.checklist_item_id WHERE g.id=$1 FOR UPDATE OF g`,
+    [input.gapId],
+  );
+  if (!gap.rows[0] || gap.rows[0].requirement_kind !== 'expected')
+    throw new Error('only_expected_administrative_items_may_be_waived');
+  if (gap.rows[0].status === 'waived') return;
+  if (!['missing', 'partial'].includes(gap.rows[0].status)) throw new Error('gap_not_actionable');
+  await q.query(
+    `UPDATE record_gap SET status='waived',waived_by=$2,waived_reason=$3,last_evaluated_at=now() WHERE id=$1`,
+    [input.gapId, input.userId, input.reason.trim()],
+  );
   await appendAuditEvent(q, {
-    orgId,
-    actor: { userId: input.userId, role: null },
+    orgId: actor.org_id,
+    actor: { userId: input.userId, role: actor.role },
     action: 'gap.waived',
     entityKind: 'record_gap',
     entityId: input.gapId,
     outcome: 'success',
-    metadata: { reason: input.reason },
+    metadata: { reason_recorded: true },
+  });
+  await computeAndPersistReadiness(q, {
+    orgId: actor.org_id,
+    patientId,
+    computedBy: input.userId,
   });
 }
 
@@ -222,7 +251,9 @@ export async function computeAndPersistReadiness(
     (g) => g.requirement_kind === 'expected' && g.status === 'missing',
   ).length;
   const partialItems = gaps.filter((g) => g.status === 'partial').length;
-  const satisfiedItems = gaps.filter((g) => g.status === 'satisfied' || g.status === 'waived').length;
+  const satisfiedItems = gaps.filter(
+    (g) => g.status === 'satisfied' || g.status === 'waived',
+  ).length;
 
   const conflicts = await q.query<{ n: string }>(
     `SELECT count(*)::text AS n FROM conflict_set WHERE org_id = $1 AND patient_id = $2 AND status = 'open'`,
@@ -286,16 +317,31 @@ export async function computeAndPersistReadiness(
      VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15)
      RETURNING id`,
     [
-      input.orgId, input.patientId, counts.requiredItems, counts.satisfiedItems, counts.missingRequired,
-      counts.missingExpected, counts.partialItems, counts.unresolvedConflicts, counts.unverifiedFacts,
-      counts.openTasks, counts.overdueTasks, counts.duplicateDocuments, counts.staleVerifiedFacts,
-      readiness.band, JSON.stringify(inputsJson),
+      input.orgId,
+      input.patientId,
+      counts.requiredItems,
+      counts.satisfiedItems,
+      counts.missingRequired,
+      counts.missingExpected,
+      counts.partialItems,
+      counts.unresolvedConflicts,
+      counts.unverifiedFacts,
+      counts.openTasks,
+      counts.overdueTasks,
+      counts.duplicateDocuments,
+      counts.staleVerifiedFacts,
+      readiness.band,
+      JSON.stringify(inputsJson),
     ],
   );
 
   await appendAuditEvent(q, {
     orgId: input.orgId,
-    actor: { userId: input.computedBy, role: null, onBehalfOf: input.computedBy ? null : 'worker' },
+    actor: {
+      userId: input.computedBy,
+      role: null,
+      onBehalfOf: input.computedBy ? null : 'worker',
+    },
     action: 'readiness.computed',
     entityKind: 'patient',
     entityId: input.patientId,
@@ -303,5 +349,9 @@ export async function computeAndPersistReadiness(
     metadata: { readiness_band: readiness.band },
   });
 
-  return { band: readiness.band, reasons: readiness.reasons, snapshotId: ins.rows[0]!.id };
+  return {
+    band: readiness.band,
+    reasons: readiness.reasons,
+    snapshotId: ins.rows[0]!.id,
+  };
 }

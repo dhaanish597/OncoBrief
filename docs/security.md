@@ -111,3 +111,38 @@ off-box audit anchoring, no DPDP Act 2023 compliance review, no BAA-equivalent
 agreements, no customer-managed key rotation drill, and no data-retention or
 erasure implementation. These are pilot prerequisites and must not be described
 as present.
+
+## Local ABDM simulation assumptions
+
+The simulated HIU consent action accepts only patients marked `is_demo_fixture`
+and synthetic `@sbx` addresses. The UI labels the patient grant as simulated.
+Consent and transfer states are persisted by the callback handlers, not generated
+by the UI. Pulling records requires a separate authenticated, authorized action.
+Imported documents remain demo fixtures and facts are never auto-verified.
+
+Transfer private keys are wrapped with AES-256-GCM using a domain-separated key
+derived from `SESSION_COOKIE_SECRET`; bare base64 private keys are refused.
+Completed transfers delete the wrapped key, and temporary private-key buffers are
+wiped. Rotating the session secret invalidates in-flight wrapped transfer keys.
+The local filesystem retains its existing development storage policy; decrypted
+sources require private encrypted object storage (SSE-KMS) for deployments with
+real health information.
+
+The loopback queue and synthetic consent context live in one web process. A
+restart does not fabricate completion or replay pending events: initiate a new
+synthetic request. This is a local simulator, not proof of NHA certification,
+external patient consent, production webhook authentication, distributed durable
+callback delivery, or independent Fidelius interoperability. Sandbox callbacks
+still require a production authentication and durable worker review before real
+patient use. Local loopback HTTP carries encrypted record payloads; deployed
+callback URLs must use HTTPS. No external patient records were used in this test.
+
+### Imported consent withdrawal (ADR 0018)
+
+Revoking a consent with imported evidence preserves append-only facts and audit
+history. Runtime SELECT policies hide withdrawn source facts, spans, pages,
+candidates and timeline rows. Raw source objects are removed via the configured
+storage adapter; source metadata remains quarantined. The source inspector and
+evidence API deny further access. Request/artifact states track REVOKED or EXPIRED.
+This does not erase immutable ledger content, previously approved packet snapshots,
+backups or versioned object history; see ADR 0018 for the retention boundary.

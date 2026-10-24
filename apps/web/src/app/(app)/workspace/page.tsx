@@ -1,28 +1,35 @@
 import Link from 'next/link';
 import { forbidden } from 'next/navigation';
-import { can } from '@oncobrief/domain';
-import { listPatients } from '@oncobrief/db';
+import { can, OPD_TRANSITIONS } from '@oncobrief/domain';
+import { listPatients, listOpdWorkspace } from '@oncobrief/db';
 import { requireSession, withSession } from '@/lib/session';
 import { ReadinessBand } from '@/components/evidence';
+import { isClinicDate } from '@/lib/opd-presentation';
+import { OpdWorkspace } from '@/components/OpdWorkspace';
 
 /**
  * Today's consultation workspace. Deliberately not a dashboard: there is no
  * landing page of charts. The entry surface is a worklist of patients ordered
  * by record readiness, and each row states what is outstanding.
  */
-export default async function WorkspacePage() {
+export default async function WorkspacePage({ searchParams }: { searchParams: Promise<{ date?: string }> }) {
   const session = await requireSession();
   if (!can(session.role, 'patient:read')) {
     forbidden();
   }
 
-  const patients = await withSession(async (q) => listPatients(q));
+  const params = await searchParams;
+  const date = isClinicDate(params.date) ? params.date : undefined;
+  const { patients, workspace } = await withSession(async (q) => ({
+    patients: await listPatients(q),
+    workspace: await listOpdWorkspace(q, { orgId: session.orgId, date }),
+  }));
 
   return (
     <main className="mx-auto max-w-[1500px] px-4 py-6 sm:px-6 sm:py-10">
       <div className="flex flex-wrap items-end justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-semibold tracking-tight sm:text-3xl">Today’s consultation workspace</h1>
+          <h1 className="text-2xl font-semibold tracking-tight sm:text-3xl">Oncology consultation workspace</h1>
           <p className="mt-2 max-w-3xl text-sm leading-relaxed text-[var(--color-ink-soft)] sm:text-base">
             Every patient below is ordered by <strong>record readiness</strong>, an operational
             measure of document completeness, unresolved source conflicts, unverified evidence and
@@ -34,6 +41,7 @@ export default async function WorkspacePage() {
         </p>
       </div>
 
+      <OpdWorkspace transitions={OPD_TRANSITIONS} containsSyntheticData={patients.some(p => p.isDemoFixture)} workspace={workspace} canManage={can(session.role, 'opd:manage')} worklist={<>
       <div className="mt-8 border border-[var(--color-rule-strong)] bg-[var(--color-paper-raised)]">
         <div className="overflow-x-auto">
           <table className="w-full min-w-[720px] border-collapse text-sm">
@@ -104,6 +112,7 @@ export default async function WorkspacePage() {
         enumeration: open a patient to see exactly which documents are missing, which sources
         disagree and which facts no human has confirmed.
       </p>
+      </>} />
     </main>
   );
 }

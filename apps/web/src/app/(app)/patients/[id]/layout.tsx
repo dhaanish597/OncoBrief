@@ -38,7 +38,7 @@ export default async function PatientLayout({
     : null;
 
   return (
-    <div className="mx-auto max-w-[1500px] px-4 py-5 sm:px-6 sm:py-6">
+    <div className="mx-auto max-w-[1500px] px-4 py-5 pb-24 sm:px-6 sm:py-6">
       <div className="flex flex-wrap items-start justify-between gap-4">
         <div>
           <div className="flex items-center gap-3">

@@ -1,5 +1,7 @@
 import { normalizeForComparison } from '../provenance/normalize';
-import type { FactType } from '../vocab/fact-types';
+import { makeSlotKey, type FactType } from '../vocab/fact-types';
+import { toIsoDate } from '../vocab/observation-date';
+export { toIsoDate } from '../vocab/observation-date';
 import type { FactValue } from '../vocab/fact-value';
 
 /**
@@ -52,15 +54,6 @@ const DAY_MS = 24 * 60 * 60 * 1000;
  * comparator that silently treats one as unparseable would manufacture a
  * conflict that does not exist.
  */
-export function toIsoDate(value: string | Date | null | undefined): string | null {
-  if (!value) return null;
-  if (value instanceof Date) {
-    if (Number.isNaN(value.getTime())) return null;
-    return value.toISOString().slice(0, 10);
-  }
-  const m = /^(\d{4}-\d{2}-\d{2})/.exec(value.trim());
-  return m ? m[1]! : null;
-}
 
 function dateVerdict(a: string | Date, b: string | Date, toleranceDays: number): ComparisonVerdict {
   const sa = toIsoDate(a);
@@ -147,12 +140,19 @@ export const COMPARATORS: Record<FactType, Comparator> = {
   },
   'medication.recorded': {
     factType: 'medication.recorded',
-    version: 'v1',
+    version: 'v2',
     compare(a, b) {
       if (kindMismatch(a.value, b.value) || a.value.kind !== 'medication' || b.value.kind !== 'medication') {
         return 'incomparable';
       }
-      return normalizedEqual(a.value.name, b.value.name);
+      const dates = observationVerdict(a, b);
+      if (dates === 'serial') return 'agree';
+      if (dates === 'ambiguous') return 'incomparable';
+      const name = normalizedEqual(a.value.name, b.value.name);
+      if (name === 'disagree') return name;
+      if (!a.value.doseText || !b.value.doseText) return 'incomparable';
+      const dose = normalizedEqual(a.value.doseText, b.value.doseText);
+      return dose;
     },
   },
   'appointment.recorded': dateComparator('appointment.recorded', 1),
@@ -160,16 +160,19 @@ export const COMPARATORS: Record<FactType, Comparator> = {
   'stage_text.as_written': textualComparator('stage_text.as_written'),
   'lab_result.as_written': {
     factType: 'lab_result.as_written',
-    version: 'v1',
+    version: 'v3',
     compare(a, b) {
       if (kindMismatch(a.value, b.value) || a.value.kind !== 'lab' || b.value.kind !== 'lab') {
         return 'incomparable';
       }
+      const dates = observationVerdict(a, b);
+      if (dates === 'serial') return 'agree';
+      if (dates === 'ambiguous') return 'incomparable';
       const unitA = normalizeForComparison(a.value.unitText ?? '').toLowerCase();
       const unitB = normalizeForComparison(b.value.unitText ?? '').toLowerCase();
-      // Mismatched units are incomparable, never a fabricated disagreement.
       if (unitA !== unitB) return 'incomparable';
-      return normalizedEqual(a.value.valueText, b.value.valueText);
+      const value = normalizedEqual(a.value.valueText, b.value.valueText);
+      return value;
     },
   },
   'imaging.recorded': {
@@ -213,6 +216,12 @@ export const COMPARATORS: Record<FactType, Comparator> = {
       return normalizedEqual(a.value.label, b.value.label);
     },
   },
+  'pending_investigation.recorded': textualComparator('pending_investigation.recorded'),
+  'instruction.recorded': textualComparator('instruction.recorded'),
+  'vital_sign.as_written': {
+    factType: 'vital_sign.as_written', version: 'v1',
+    compare: (a, b) => COMPARATORS['lab_result.as_written'].compare(a, b),
+  },
   'referral.recorded': textualComparator('referral.recorded'),
   'followup.recorded': dateComparator('followup.recorded', 1),
   'consent.recorded': dateComparator('consent.recorded', 0),
@@ -236,6 +245,22 @@ export const COMPARATORS: Record<FactType, Comparator> = {
 };
 
 export function compareFacts(a: ComparableFact, b: ComparableFact): ComparisonVerdict {
-  if (a.factType !== b.factType || a.slotKey !== b.slotKey) return 'incomparable';
+  if (a.factType !== b.factType) return 'incomparable';
+  if (isLongitudinalFactType(a.factType)) {
+    if (makeSlotKey(a.factType, a.value) !== makeSlotKey(b.factType, b.value)) return 'incomparable';
+  } else if (a.slotKey !== b.slotKey) return 'incomparable';
   return COMPARATORS[a.factType].compare(a, b);
+}
+
+/** Different calendar dates describe separate observations, never truth resolution. */
+export function isLongitudinalFactType(type: FactType): boolean {
+  return type === 'lab_result.as_written' || type === 'medication.recorded' || type === 'vital_sign.as_written';
+}
+
+function observationVerdict(a: ComparableFact, b: ComparableFact): 'same' | 'serial' | 'undated' | 'ambiguous' {
+  const da = toIsoDate(a.observedOn);
+  const db = toIsoDate(b.observedOn);
+  if (da && db) return da === db ? 'same' : 'serial';
+  if (!a.observedOn && !b.observedOn) return 'undated';
+  return 'ambiguous';
 }

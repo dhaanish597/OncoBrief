@@ -1,3 +1,4 @@
+import { PDFDocument } from 'pdf-lib';
 import type {
   AsyncOcrJob,
   AsyncOcrPageResult,
@@ -5,6 +6,7 @@ import type {
   AsyncOcrStartInput,
   AsyncOcrStatus,
   OcrSpanDraft,
+  OcrPort, OcrPageInput, OcrPageResult, OcrDocumentInput,
 } from '@oncobrief/ports';
 import { signRequest, type AwsCredentials } from './aws-sigv4';
 
@@ -33,6 +35,8 @@ export interface TextractConfig {
   notificationRoleArn?: string;
   fetchImpl?: typeof fetch;
   now?: () => Date;
+  pollIntervalMs?: number;
+  maxPolls?: number;
 }
 
 export const TEXTRACT_ENGINE = 'textract';
@@ -55,7 +59,7 @@ interface TextractRawResponse {
   DocumentMetadata?: { Pages?: number };
 }
 
-export class TextractOcrAdapter implements AsyncOcrPort {
+export class TextractOcrAdapter implements AsyncOcrPort, OcrPort {
   readonly name = TEXTRACT_ENGINE;
   readonly version = TEXTRACT_ENGINE_VERSION;
   private readonly fetchImpl: typeof fetch;
@@ -84,12 +88,52 @@ export class TextractOcrAdapter implements AsyncOcrPort {
       },
       body,
     });
-    const res = await this.fetchImpl(`${parsed.origin}/`, { method: 'POST', headers, body });
+    const res = await this.fetchImpl(`${parsed.origin}/`, { method: 'POST', headers, body, signal: AbortSignal.timeout(30000) });
     if (!res.ok) {
       const text = await res.text().catch(() => '');
       throw new Error(`textract_${target}_failed:${res.status}:${text.slice(0, 200)}`);
     }
     return (await res.json()) as T;
+  }
+
+  async extract(page: OcrPageInput): Promise<OcrPageResult> {
+    if(page.fixture) return {...page.fixture, engine:this.name,engineVersion:this.version};
+    if(!page.imageBytes?.length) throw new Error('ocr_document_bytes_required');
+    const result=await this.extractDocument({documentId:page.documentId,bytes:page.imageBytes,mimeType:'application/octet-stream'});
+    const selected=result.find(p=>p.pageNumber===page.pageNumber);
+    if(!selected) throw new Error('ocr_page_not_found');
+    return selected;
+  }
+
+  async extractDocument(input: OcrDocumentInput): Promise<AsyncOcrPageResult[]> {
+    if(input.s3Key&&input.s3Bucket) {
+      const {providerJobId}=await this.startDocumentAnalysis({documentId:input.documentId,orgId:'',s3Key:input.s3Key,s3Bucket:input.s3Bucket,correlationId:''});
+      for(let poll=0;poll<(this.config.maxPolls??40);poll++) {
+        const status=await this.getJob(providerJobId);
+        if(status.status==='FAILED'||status.status==='PARTIAL_SUCCESS') throw new Error('ocr_textract_incomplete');
+        if(status.status==='SUCCEEDED') return (await this.getResults(providerJobId)).pages;
+        await new Promise(resolve=>setTimeout(resolve,this.config.pollIntervalMs??1500));
+      }
+      throw new Error('ocr_textract_timeout');
+    }
+    if(input.bytes.subarray(0,5).toString('ascii')==='%PDF-') {
+      const source=await PDFDocument.load(input.bytes);
+      const pages:AsyncOcrPageResult[]=[];
+      for(let index=0;index<source.getPageCount();index++) {
+        const single=await PDFDocument.create();
+        const [page]=await single.copyPages(source,[index]);
+        single.addPage(page!);
+        const bytes=Buffer.from(await single.save());
+        if(bytes.length>10*1024*1024) throw new Error('ocr_textract_sync_page_too_large');
+        const result=await this.call<TextractRawResponse>('AnalyzeDocument',{Document:{Bytes:bytes.toString('base64')},FeatureTypes:['TABLES','FORMS']});
+        const normalized=normalizeTextractBlocks(result.Blocks??[],{engine:this.name,engineVersion:this.version});
+        if(normalized.length>1) throw new Error('ocr_textract_invalid_page_count');
+        pages.push({...normalized[0]??{plainText:'',spans:[],engine:this.name,engineVersion:this.version},pageNumber:index+1});
+      }
+      return pages;
+    }
+    const result=await this.call<TextractRawResponse>('AnalyzeDocument',{Document:{Bytes:input.bytes.toString('base64')},FeatureTypes:['TABLES','FORMS']});
+    return normalizeTextractBlocks(result.Blocks??[],{engine:this.name,engineVersion:this.version});
   }
 
   async startDocumentAnalysis(input: AsyncOcrStartInput): Promise<AsyncOcrJob> {
@@ -157,8 +201,14 @@ export function normalizeTextractBlocks(
   blocks: readonly TextractBlock[],
   options: NormalizeOptions,
 ): AsyncOcrPageResult[] {
+  if (!blocks.some(block => block.BlockType === 'LINE' && typeof block.Text === 'string')) return [];
   const byPage = new Map<number, TextractBlock[]>();
   for (const block of blocks) {
+    if (block.BlockType === 'PAGE') {
+      const page = block.Page ?? 1;
+      if (!byPage.has(page)) byPage.set(page, []);
+      continue;
+    }
     if (block.BlockType !== 'LINE' || typeof block.Text !== 'string') continue;
     const page = block.Page ?? 1;
     const list = byPage.get(page) ?? [];

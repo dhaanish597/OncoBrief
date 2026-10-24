@@ -105,6 +105,45 @@ export const env = {
   get sarvamApiKey(): string | undefined {
     return process.env.SARVAM_API_KEY;
   },
+  get abdm(): {
+    driver: 'simulated' | 'sandbox';
+    cmId: string;
+    baseUrl: string;
+    sessionUrl: string;
+    abhaBaseUrl: string;
+    clientId: string;
+    clientSecret: string;
+    hipId: string;
+    hiuId: string;
+    hfrFacilityId: string;
+    callbackBaseUrl: string;
+  } {
+    const driver = (process.env.ABDM_DRIVER ?? 'simulated') as 'simulated' | 'sandbox';
+    const clientId = process.env.ABDM_CLIENT_ID ?? '';
+    const clientSecret = process.env.ABDM_CLIENT_SECRET ?? '';
+
+    if (driver === 'sandbox' && (!clientId || !clientSecret)) {
+      throw new Error(
+        'missing_abdm_credentials: ABDM_DRIVER is set to "sandbox" but ABDM_CLIENT_ID and ABDM_CLIENT_SECRET are not configured.',
+      );
+    }
+
+    return {
+      driver,
+      cmId: process.env.ABDM_CM_ID ?? 'sbx',
+      baseUrl: process.env.ABDM_BASE_URL ?? 'https://dev.abdm.gov.in/api/hiecm',
+      sessionUrl:
+        process.env.ABDM_SESSION_URL ?? 'https://dev.abdm.gov.in/api/hiecm/gateway/v3/sessions',
+      abhaBaseUrl:
+        process.env.ABDM_ABHA_BASE_URL ?? 'https://abhasbx.abdm.gov.in/abha/api/v3',
+      clientId,
+      clientSecret,
+      hipId: process.env.ABDM_HIP_ID ?? 'ONCOBRIEF-HIP-SBX',
+      hiuId: process.env.ABDM_HIU_ID ?? 'ONCOBRIEF-HIU-SBX',
+      hfrFacilityId: process.env.ABDM_HFR_FACILITY_ID ?? 'IN-HOSP-001',
+      callbackBaseUrl: process.env.ABDM_CALLBACK_BASE_URL ?? 'http://localhost:3000',
+    };
+  },
   isTest(): boolean {
     return process.env.NODE_ENV === 'test' || process.env.VITEST === 'true';
   },

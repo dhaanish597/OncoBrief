@@ -28,7 +28,7 @@ describe('log redaction', () => {
 
   it('truncates very long strings rather than logging them', () => {
     const out = redact({ note: 'x'.repeat(500) });
-    expect(out['note']).toBe('<500 chars>');
+    expect(out['note']).toBe('<redacted>');
   });
 
   it('emits one JSON line per event', () => {
@@ -47,4 +47,8 @@ describe('log redaction', () => {
     expect(parsed['level']).toBe('info');
     expect(parsed['correlation_id']).toBe('c1');
   });
+});
+
+it('redacts PHI and credentials nested in arrays and raw provider errors', () => {
+  expect(redact({ items: [{ quote: 'Patient PHI', nested: [{ accessToken: 'secret' }] }], error: new Error('provider echoed patient PHI') })).toEqual({ items: [{ quote: '<redacted>', nested: [{ accessToken: '<redacted>' }] }], error: '<redacted>' });
 });

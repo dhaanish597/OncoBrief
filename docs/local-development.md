@@ -82,3 +82,24 @@ Every key is documented in `.env.example`. The ones that change behaviour:
 `schema_migration`. `0001_bootstrap` creates the `oncobrief_app` and
 `oncobrief_migrator` roles; `0002`–`0007` build the schema. Never edit an
 applied migration; add a new one.
+
+## 7. Synthetic ABDM consent and encrypted retrieval
+
+Set `ABDM_DRIVER=simulated` and `ABDM_CALLBACK_BASE_URL=http://localhost:3000`,
+then restart the web server. On a demo patient, open Sources → Import from EHR /
+ABDM. Use a synthetic `@sbx` address, request consent, and wait for the persisted
+request and artifact to show `GRANTED`. Click **pull records** on that artifact.
+The transfer must show `TRANSFERRED`, one received page, and an imported document.
+Open `ABDM-inbound-CC-001.json` to inspect the exact source; its facts appear in
+Evidence journey as extracted candidates with source spans, requiring human review.
+
+Simulation delivers ordered HTTP callbacks through the real webhook routes after
+outbound transactions commit. It encrypts synthetic FHIR using the existing
+Curve25519/HKDF/AES-GCM implementation and decrypts only on receipt; there is no
+plaintext shortcut. Callback failures are surfaced instead of claiming success.
+Original stuck `INITIATED` requests are left intact for audit; make a new request.
+
+Run `E2E_SKIP_SERVER=1 pnpm --filter @oncobrief/web test:e2e abdm-complete.spec.ts`
+against the running server for browser plus database verification. Database tests
+also exercise corrupted ciphertext, concurrent transfer correlation, revocation,
+tenant isolation, and encrypted ephemeral key storage.

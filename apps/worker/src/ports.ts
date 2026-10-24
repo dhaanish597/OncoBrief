@@ -3,12 +3,10 @@ import {
   BedrockLlmProvider,
   LlmExtractionAdapter,
   LocalFsStorageAdapter,
-  LocalMultimodalOcrAdapter,
   RuleBasedExtractor,
   S3StorageAdapter,
-  SarvamVisionOcrAdapter,
   SqsQueueAdapter,
-  TextractOcrAdapter,
+  createOcrAdapter,
 } from '@oncobrief/adapters';
 import type { AsyncOcrPort, ExtractionPort, QueuePort, StoragePort } from '@oncobrief/ports';
 import type { WorkerConfig } from './config';
@@ -50,30 +48,17 @@ export function buildStorage(config: WorkerConfig): StoragePort {
 }
 
 export function buildAsyncOcr(config: WorkerConfig): AsyncOcrPort {
-  if (config.ocrDriver === 'sarvam' || (config.ocrDriver === 'auto' && config.sarvamApiKey)) {
-    return new SarvamVisionOcrAdapter({ apiKey: config.sarvamApiKey });
-  }
-
-  if (
-    config.ocrDriver === 'textract' ||
-    (config.ocrDriver === 'auto' &&
-      config.credentials.accessKeyId &&
-      config.credentials.accessKeyId !== 'test')
-  ) {
-    return new TextractOcrAdapter({
-      region: config.region,
-      credentials: config.credentials,
-      ...(config.endpoint ? { endpoint: config.endpoint } : {}),
-      ...(config.textractNotificationTopicArn
-        ? { notificationTopicArn: config.textractNotificationTopicArn }
-        : {}),
-      ...(config.textractNotificationRoleArn
-        ? { notificationRoleArn: config.textractNotificationRoleArn }
-        : {}),
-    });
-  }
-
-  return new LocalMultimodalOcrAdapter();
+  const adapter = createOcrAdapter({
+    driver: config.ocrDriver === 'fixture' ? 'local-pdf' : config.ocrDriver,
+    sarvam: { apiKey: config.sarvamApiKey, language: process.env['OCR_LANGUAGE'] ?? 'en-IN' },
+    ...(config.credentials.accessKeyId && (config.ocrDriver === 'textract' || config.credentials.accessKeyId !== 'test') ? {textract: {
+      region: config.region, credentials: config.credentials,
+      ...(config.endpoint ? {endpoint:config.endpoint} : {}),
+      notificationTopicArn: config.textractNotificationTopicArn,
+      notificationRoleArn: config.textractNotificationRoleArn,
+    }} : {}),
+  });
+  return adapter as AsyncOcrPort & typeof adapter;
 }
 
 export function buildExtractor(config: WorkerConfig): { extractor: ExtractionPort; kind: 'rule' | 'llm' } {

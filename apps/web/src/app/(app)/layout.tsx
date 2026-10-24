@@ -59,9 +59,9 @@ export default async function AppLayout({ children }: { children: React.ReactNod
           </div>
         </div>
       </header>
-      <div id="main-content" tabIndex={-1} className="outline-none">
+      <main id="main-content" tabIndex={-1} className="outline-none">
         {children}
-      </div>
+      </main>
       <AssistantLauncher />
     </div>
   );

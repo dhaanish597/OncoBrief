@@ -1,0 +1,50 @@
+[
+  {
+    "spec": "abdm-complete",
+    "passed": 1
+  },
+  {
+    "spec": "abdm-flow",
+    "passed": 3
+  },
+  {
+    "spec": "abdm-revocation",
+    "passed": 1
+  },
+  {
+    "spec": "assistant",
+    "passed": 7
+  },
+  {
+    "spec": "demo-flow",
+    "passed": 8
+  },
+  {
+    "spec": "phase2-consultation-readiness",
+    "passed": 3
+  },
+  {
+    "spec": "phase3-opd",
+    "passed": 6
+  },
+  {
+    "spec": "phase3-ownership",
+    "passed": 2
+  },
+  {
+    "spec": "phase4-studio-guidelines",
+    "passed": 4
+  },
+  {
+    "spec": "phase4-ux-accessibility",
+    "passed": 10
+  },
+  {
+    "spec": "phase5-continuity-voice",
+    "passed": 4
+  },
+  {
+    "spec": "independent-judge-journey",
+    "passed": 2
+  }
+]

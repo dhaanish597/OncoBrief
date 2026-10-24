@@ -24,6 +24,12 @@ Full detail for every decision below lives in
 | [0014](0014-raw-sql-data-access-via-node-postgres.md) | Raw SQL data access via node-postgres | Accepted |
 | [0015](0015-aws-backend-in-typescript-in-place.md) | AWS backend implemented in TypeScript, in place | Accepted |
 | [0016](0016-landing-page-integration.md) | Landing page integrated into the web app as a scoped route group | Accepted |
+| [0020](0020-v4-foundation-schema.md) | V4 foundation schema: oncology tables, baseline consultation dates and longitudinal audit | Accepted |
+| [0021](0021-document-ocr-integrity.md) | Configured OCR with real page integrity and explicit failure | Accepted |
+| [0022](0022-consultation-readiness-batch-verification.md) | Consultation readiness experience, server-enforced batch verification, and standard bundle intake | Accepted |
+| [0023](0023-opd-human-offers-and-ownership.md) | Human-controlled oncology capacity, reservations and task ownership | Accepted |
+| [0024](0024-source-grounded-guidelines-and-clinician-studio.md) | Source-grounded oncology guideline co-pilot and clinician productivity studio | Accepted |
+| [0025](0025-caregiver-voice-continuity-and-accessibility.md) | Caregiver voice continuity, attendance confirmation, and WCAG accessibility | Accepted |
 
 ## Conventions
 
@@ -34,3 +40,13 @@ Full detail for every decision below lives in
   (architecture §18) or adding to the closed `fact_type` or `task_kind`
   vocabularies **requires a new record**. Those boundaries are the non-clinical
   guarantee and must not drift silently.
+
+[0018 — Consent revocation preserves immutable ledger history](0018-consent-revocation-preserves-ledger.md).
+
+- [0019 — Source-dated longitudinal observations](0019-longitudinal-source-observations.md)
+- [0020 — V4 foundation schema](0020-v4-foundation-schema.md)
+- [0021 — Document OCR integrity](0021-document-ocr-integrity.md)
+- [0022 — Consultation readiness experience, batch verification, and bundle intake](0022-consultation-readiness-batch-verification.md)
+- [0023 — Human-controlled oncology OPD offers and ownership](0023-opd-human-offers-and-ownership.md)
+- [0024 — Source-grounded oncology guideline co-pilot and clinician productivity studio](0024-source-grounded-guidelines-and-clinician-studio.md)
+- [0025 — Caregiver voice continuity, attendance confirmation, and WCAG accessibility](0025-caregiver-voice-continuity-and-accessibility.md)

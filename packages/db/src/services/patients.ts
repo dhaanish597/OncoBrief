@@ -81,6 +81,7 @@ export interface TimelineRow {
   documentName: string;
   pageNumber: number | null;
   confidenceBand: string;
+  confidenceRaw?: number | null;
   extractorKind: string;
   extractorName: string;
   extractorVersion: string;
@@ -99,7 +100,8 @@ export async function getTimeline(q: Querier, patientId: string): Promise<Timeli
     id: string; evidence_fact_id: string; fact_type: string; value_text: string;
     display_date: string | null; observed_on: string | null; state: string;
     document_id: string; original_filename: string; page_number: number | null;
-    confidence_band: string; extractor_kind: string; extractor_name: string; extractor_version: string;
+    confidence_band: string; confidence_raw: string | number | null;
+    extractor_kind: string; extractor_name: string; extractor_version: string;
     verbatim_quote: string; reviewer_name: string | null; reviewed_at: Date | null;
     corrects_fact_id: string | null; replaced_by_fact_id: string | null; version: string;
     issuing_facility: string | null; record_origin: string | null;
@@ -108,7 +110,7 @@ export async function getTimeline(q: Querier, patientId: string): Promise<Timeli
             te.display_date::text AS display_date, ef.observed_on::text AS observed_on,
             coalesce(es.state, te.state, 'extracted') AS state,
             te.document_id, d.original_filename, d.issuing_facility, d.record_origin,
-            ef.confidence_band, ef.extractor_kind, ef.extractor_name, ef.extractor_version,
+            ef.confidence_band, ef.confidence_raw, ef.extractor_kind, ef.extractor_name, ef.extractor_version,
             ef.verbatim_quote, ef.corrects_fact_id,
             u.display_name AS reviewer_name, es.last_changed_at AS reviewed_at,
             (SELECT count(*) FROM ledger_entry le WHERE le.evidence_fact_id = ef.id)::text AS version,
@@ -140,6 +142,7 @@ export async function getTimeline(q: Querier, patientId: string): Promise<Timeli
     documentName: r.original_filename,
     pageNumber: r.page_number,
     confidenceBand: r.confidence_band,
+    confidenceRaw: r.confidence_raw === null || r.confidence_raw === undefined ? null : Number(r.confidence_raw),
     extractorKind: r.extractor_kind,
     extractorName: r.extractor_name,
     extractorVersion: r.extractor_version,
@@ -465,7 +468,8 @@ export async function getDocument(q: Querier, patientId: string, documentId: str
             document_date::text AS document_date, issuing_facility, record_origin, ingest_status,
             ingest_error, page_count, doc_version, duplicate_of_document_id, is_demo_fixture,
             content_sha256, storage_key
-       FROM document WHERE id = $1 AND patient_id = $2`,
+       FROM document WHERE id = $1 AND patient_id = $2
+        AND ingest_error IS DISTINCT FROM 'consent_revoked_or_expired'`,
     [documentId, patientId],
   );
   const r = res.rows[0];
@@ -628,10 +632,14 @@ export async function listMessages(q: Querier, patientId: string) {
     id: string; locale: string; body_rendered: string; status: string; created_at: Date;
     approved_at: Date | null; approver_name: string | null; composer_name: string | null;
     template_code: string; simulated: boolean | null; external_ref: string | null;
+    attendance_status: string | null; attendance_recorded_at: Date | null;
+    attendance_channel: string | null; attendance_responder: string | null; attendance_note: string | null;
   }>(
     `SELECT pm.id, pm.locale, pm.body_rendered, pm.status, pm.created_at, pm.approved_at,
             ap.display_name AS approver_name, cp.display_name AS composer_name,
-            mt.code AS template_code, ob.simulated, ob.external_ref
+            mt.code AS template_code, ob.simulated, ob.external_ref,
+            pm.attendance_status, pm.attendance_recorded_at, pm.attendance_channel,
+            pm.attendance_responder, pm.attendance_note
        FROM patient_message pm
        JOIN message_template mt ON mt.id = pm.template_id
        LEFT JOIN app_user ap ON ap.id = pm.approved_by
@@ -656,6 +664,11 @@ export async function listMessages(q: Querier, patientId: string) {
     templateCode: r.template_code,
     simulated: r.simulated,
     externalRef: r.external_ref,
+    attendanceStatus: r.attendance_status ?? 'no_response',
+    attendanceRecordedAt: r.attendance_recorded_at ? r.attendance_recorded_at.toISOString() : null,
+    attendanceChannel: r.attendance_channel,
+    attendanceResponder: r.attendance_responder,
+    attendanceNote: r.attendance_note,
   }));
 }
 
@@ -725,6 +738,12 @@ export async function listPatientAudit(q: Querier, patientId: string) {
               UNION SELECT id FROM consultation_packet WHERE patient_id = $1
               UNION SELECT id FROM patient_message WHERE patient_id = $1
               UNION SELECT id FROM record_gap WHERE patient_id = $1
+              UNION SELECT id FROM studio_artifact WHERE patient_id = $1
+              UNION SELECT id FROM caregiver_contact WHERE patient_id = $1
+              UNION SELECT id FROM opd_appointment_slot WHERE patient_id = $1
+              UNION SELECT id FROM opd_waitlist_entry WHERE patient_id = $1
+              UNION SELECT slot_id FROM opd_slot_event WHERE patient_id = $1
+              UNION SELECT evidence_fact_id FROM ledger_entry WHERE patient_id = $1
             )
       ORDER BY a.seq DESC
       LIMIT 400`,
@@ -1052,3 +1071,111 @@ export async function addMessage(q: Querier, input: AddMessageInput): Promise<{ 
   );
   return { id: res.rows[0]!.id };
 }
+
+// --- ABDM Profile & Identifiers (M2 HIP / M3 HIU) --------------------------
+
+export interface AbdmPatientLinkProfile {
+  id: string;
+  patientId: string;
+  abhaAddress: string;
+  abhaNumber: string | null;
+  aadhaarName: string | null;
+  gender: 'M' | 'F' | 'O' | 'U' | null;
+  yearOfBirth: number | null;
+  mobileLast10: string | null;
+  hasLinkToken: boolean;
+  linkTokenExpiresAt: string | null;
+  verificationSource: string;
+}
+
+export async function getPatientIdentifiers(
+  q: Querier,
+  patientId: string,
+): Promise<Array<{ system: string; value: string }>> {
+  const res = await q.query<{ system: string; value: string }>(
+    'SELECT system, value FROM patient_identifier WHERE patient_id = $1 ORDER BY system, value',
+    [patientId],
+  );
+  return res.rows;
+}
+
+export async function getAbdmPatientLink(
+  q: Querier,
+  patientId: string,
+): Promise<AbdmPatientLinkProfile | null> {
+  const res = await q.query<{
+    id: string;
+    patient_id: string;
+    abha_address: string;
+    abha_number: string | null;
+    aadhaar_name: string | null;
+    gender: string | null;
+    year_of_birth: number | null;
+    mobile_last10: string | null;
+    link_token_enc: string | null;
+    link_token_expires_at: Date | null;
+    verification_source: string;
+  }>(
+    `SELECT id, patient_id, abha_address, abha_number, aadhaar_name, gender, year_of_birth,
+            mobile_last10, link_token_enc, link_token_expires_at, verification_source
+       FROM abdm_patient_link WHERE patient_id = $1`,
+    [patientId],
+  );
+  const row = res.rows[0];
+  if (!row) return null;
+  return {
+    id: row.id,
+    patientId: row.patient_id,
+    abhaAddress: row.abha_address,
+    abhaNumber: row.abha_number,
+    aadhaarName: row.aadhaar_name,
+    gender: row.gender as AbdmPatientLinkProfile['gender'],
+    yearOfBirth: row.year_of_birth,
+    mobileLast10: row.mobile_last10,
+    hasLinkToken: Boolean(row.link_token_enc),
+    linkTokenExpiresAt: row.link_token_expires_at ? row.link_token_expires_at.toISOString() : null,
+    verificationSource: row.verification_source,
+  };
+}
+
+export async function upsertAbdmPatientLink(
+  q: Querier,
+  input: {
+    orgId: string;
+    patientId: string;
+    abhaAddress: string;
+    abhaNumber?: string | null;
+    aadhaarName?: string | null;
+    gender?: 'M' | 'F' | 'O' | 'U' | null;
+    yearOfBirth?: number | null;
+    mobileLast10?: string | null;
+    verificationSource?: string;
+  },
+): Promise<void> {
+  await q.query(
+    `INSERT INTO abdm_patient_link
+       (org_id, patient_id, abha_address, abha_number, aadhaar_name, gender, year_of_birth, mobile_last10, verification_source, updated_at)
+     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, now())
+     ON CONFLICT (org_id, patient_id) DO UPDATE SET
+       abha_address = EXCLUDED.abha_address,
+       abha_number = COALESCE(EXCLUDED.abha_number, abdm_patient_link.abha_number),
+       aadhaar_name = COALESCE(EXCLUDED.aadhaar_name, abdm_patient_link.aadhaar_name),
+       gender = COALESCE(EXCLUDED.gender, abdm_patient_link.gender),
+       year_of_birth = COALESCE(EXCLUDED.year_of_birth, abdm_patient_link.year_of_birth),
+       mobile_last10 = COALESCE(EXCLUDED.mobile_last10, abdm_patient_link.mobile_last10),
+       verification_source = EXCLUDED.verification_source,
+       updated_at = now()`,
+    [
+      input.orgId,
+      input.patientId,
+      input.abhaAddress,
+      input.abhaNumber ?? null,
+      input.aadhaarName ?? null,
+      input.gender ?? null,
+      input.yearOfBirth ?? null,
+      input.mobileLast10 ?? null,
+      input.verificationSource ?? 'MANUAL',
+    ],
+  );
+}
+

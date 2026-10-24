@@ -18,7 +18,7 @@ const config: NextConfig = {
     '@oncobrief/db',
   ],
   // Native / server-only modules must not be bundled.
-  serverExternalPackages: ['pg', '@node-rs/argon2', 'dotenv'],
+  serverExternalPackages: ['pg', '@node-rs/argon2', 'dotenv', 'pdf-lib'],
   outputFileTracingRoot: repoRoot,
   typedRoutes: false,
   eslint: { ignoreDuringBuilds: true },
@@ -34,6 +34,7 @@ const config: NextConfig = {
           '@node-rs/argon2': 'commonjs @node-rs/argon2',
           pg: 'commonjs pg',
           dotenv: 'commonjs dotenv',
+          'pdf-lib': 'commonjs pdf-lib',
         },
       ];
     }

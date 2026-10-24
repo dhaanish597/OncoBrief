@@ -13,7 +13,13 @@
  *    not the same authority as attesting to a clinical record.
  */
 
-export const ROLES = ['clinician', 'coordinator', 'records_officer', 'org_admin', 'auditor'] as const;
+export const ROLES = [
+  'clinician',
+  'coordinator',
+  'records_officer',
+  'org_admin',
+  'auditor',
+] as const;
 export type Role = (typeof ROLES)[number];
 
 export const PERMISSIONS = [
@@ -34,13 +40,31 @@ export const PERMISSIONS = [
   'checklist:author',
   'audit:read',
   'user:manage',
+  'opd:manage',
 ] as const;
 export type Permission = (typeof PERMISSIONS)[number];
 
 const M: Record<Permission, readonly Role[]> = {
-  'patient:read': ['clinician', 'coordinator', 'records_officer', 'org_admin', 'auditor'],
-  'document:upload': ['clinician', 'coordinator', 'records_officer', 'org_admin'],
-  'document:read_page': ['clinician', 'coordinator', 'records_officer', 'org_admin', 'auditor'],
+  'patient:read': [
+    'clinician',
+    'coordinator',
+    'records_officer',
+    'org_admin',
+    'auditor',
+  ],
+  'document:upload': [
+    'clinician',
+    'coordinator',
+    'records_officer',
+    'org_admin',
+  ],
+  'document:read_page': [
+    'clinician',
+    'coordinator',
+    'records_officer',
+    'org_admin',
+    'auditor',
+  ],
   'evidence:verify': ['clinician', 'coordinator', 'records_officer'],
   'evidence:correct': ['clinician', 'records_officer'],
   'evidence:reject': ['clinician', 'records_officer'],
@@ -55,6 +79,7 @@ const M: Record<Permission, readonly Role[]> = {
   'checklist:author': ['records_officer', 'org_admin'],
   'audit:read': ['org_admin', 'auditor'],
   'user:manage': ['org_admin'],
+  'opd:manage': ['clinician', 'coordinator', 'records_officer', 'org_admin'],
 };
 
 export function can(role: Role, permission: Permission): boolean {

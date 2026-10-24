@@ -13,9 +13,26 @@ import {
  * implementation drifts, this test fails.
  */
 const EXPECTED: Record<Permission, readonly Role[]> = {
-  'patient:read': ['clinician', 'coordinator', 'records_officer', 'org_admin', 'auditor'],
-  'document:upload': ['clinician', 'coordinator', 'records_officer', 'org_admin'],
-  'document:read_page': ['clinician', 'coordinator', 'records_officer', 'org_admin', 'auditor'],
+  'patient:read': [
+    'clinician',
+    'coordinator',
+    'records_officer',
+    'org_admin',
+    'auditor',
+  ],
+  'document:upload': [
+    'clinician',
+    'coordinator',
+    'records_officer',
+    'org_admin',
+  ],
+  'document:read_page': [
+    'clinician',
+    'coordinator',
+    'records_officer',
+    'org_admin',
+    'auditor',
+  ],
   'evidence:verify': ['clinician', 'coordinator', 'records_officer'],
   'evidence:correct': ['clinician', 'records_officer'],
   'evidence:reject': ['clinician', 'records_officer'],
@@ -30,6 +47,7 @@ const EXPECTED: Record<Permission, readonly Role[]> = {
   'checklist:author': ['records_officer', 'org_admin'],
   'audit:read': ['org_admin', 'auditor'],
   'user:manage': ['org_admin'],
+  'opd:manage': ['clinician', 'coordinator', 'records_officer', 'org_admin'],
 };
 
 describe('RBAC matrix', () => {
@@ -57,7 +75,9 @@ describe('RBAC matrix', () => {
   });
 
   it('auditor holds no mutating permission', () => {
-    const mutating = PERMISSIONS.filter((p) => !p.endsWith(':read') && !p.endsWith(':read_page'));
+    const mutating = PERMISSIONS.filter(
+      (p) => !p.endsWith(':read') && !p.endsWith(':read_page'),
+    );
     for (const p of mutating) {
       expect(can('auditor', p)).toBe(false);
     }

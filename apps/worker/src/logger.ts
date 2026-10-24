@@ -21,6 +21,14 @@ export interface LogFields {
 }
 
 const FORBIDDEN = new Set([
+  'error',
+  'errorMessage',
+  'error_message',
+  'phone',
+  'phone_number',
+  'phoneNumber',
+  'note',
+  'markdownBody',
   'text',
   'plainText',
   'pageText',
@@ -34,6 +42,17 @@ const FORBIDDEN = new Set([
   'accessKeyId',
   'secretAccessKey',
   'sessionToken',
+  'clientSecret',
+  'accessToken',
+  'linkToken',
+  'abhaNumber',
+  'abhaAddress',
+  'privateKey',
+  'ephemeral_private_key_enc',
+  'otp',
+  'token',
+  'mobile',
+  'password',
 ]);
 
 export function redact(fields: LogFields): LogFields {
@@ -47,7 +66,13 @@ export function redact(fields: LogFields): LogFields {
       out[k] = `<${v.length} chars>`;
       continue;
     }
-    if (v && typeof v === 'object' && !Array.isArray(v)) {
+    if (Array.isArray(v)) {
+      out[k] = v.map((item) => item && typeof item === 'object'
+        ? (Array.isArray(item) ? redact({ items: item }).items : redact(item as LogFields))
+        : (typeof item === 'string' ? '<redacted>' : item));
+      continue;
+    }
+    if (v && typeof v === 'object') {
       out[k] = redact(v as LogFields);
       continue;
     }

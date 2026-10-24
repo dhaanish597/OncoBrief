@@ -8,12 +8,14 @@ import {
   Microscope,
   Scissors,
   Stethoscope,
-  ExternalLink,
   CheckCircle2,
   AlertTriangle,
   Clock,
   ChevronRight,
   ShieldCheck,
+  Pill,
+  FileText,
+  Zap,
 } from 'lucide-react';
 import type { TimelineRow } from '@oncobrief/db';
 import { verifyEvidenceAction } from '@/lib/actions';
@@ -29,7 +31,7 @@ export interface TimelineNodeViewProps {
 export function TimelineNodeView({
   patientId,
   rows,
-  patientCode = 'DEMO-001',
+  patientCode: _patientCode = 'DEMO-001',
   openTasksCount = 3,
   documentsCount = 8,
 }: TimelineNodeViewProps) {
@@ -39,34 +41,34 @@ export function TimelineNodeView({
     const dn = docName.toLowerCase();
     const q = quote.toLowerCase();
 
-    if (ft.includes('lab') || dn.includes('cbc') || dn.includes('blood') || dn.includes('chem')) {
+    if (dn.includes('radiation') || dn.includes('radiotherapy') || q.includes('radiation') || q.includes('radiotherapy') || q.includes('fractions') || q.includes('gy')) {
       return {
-        category: 'Lab Report',
-        icon: <FlaskConical className="h-4 w-4 text-teal-600" />,
-        nodeBg: 'bg-teal-50 border-teal-300 text-teal-700',
-        ringColor: 'ring-teal-100',
-        badgeBg: 'bg-teal-50 text-teal-700 border-teal-200',
+        category: 'Radiation',
+        icon: <Zap className="h-4 w-4 text-orange-600" />,
+        nodeBg: 'bg-orange-50 border-orange-300 text-orange-700',
+        ringColor: 'ring-orange-100',
+        badgeBg: 'bg-orange-50 text-orange-700 border-orange-200',
       };
     }
-    if (ft.includes('imaging') || dn.includes('ct') || dn.includes('mri') || dn.includes('xray') || q.includes('mass') || q.includes('scan')) {
+    if (ft.includes('medication') || dn.includes('chemo') || q.includes('chemotherapy') || q.includes('cycle') || q.includes('paclitaxel') || q.includes('doxorubicin') || q.includes('carboplatin') || q.includes('cyclophosphamide') || q.includes('tamoxifen')) {
       return {
-        category: 'CT Scan (Thorax)',
-        icon: <Activity className="h-4 w-4 text-sky-600" />,
-        nodeBg: 'bg-sky-50 border-sky-300 text-sky-700',
-        ringColor: 'ring-sky-100',
-        badgeBg: 'bg-sky-50 text-sky-700 border-sky-200',
+        category: 'Chemotherapy / Systemic',
+        icon: <Pill className="h-4 w-4 text-rose-600" />,
+        nodeBg: 'bg-rose-50 border-rose-300 text-rose-700',
+        ringColor: 'ring-rose-100',
+        badgeBg: 'bg-rose-50 text-rose-700 border-rose-200',
       };
     }
-    if (ft.includes('pathology') || dn.includes('histopathology') || q.includes('carcinoma') || q.includes('adenocarcinoma')) {
+    if (ft.includes('pathology') || dn.includes('histopathology') || dn.includes('biopsy') || q.includes('carcinoma') || q.includes('adenocarcinoma') || q.includes('ihc')) {
       return {
-        category: 'Pathology Report',
+        category: 'Pathology',
         icon: <Microscope className="h-4 w-4 text-purple-600" />,
         nodeBg: 'bg-purple-50 border-purple-300 text-purple-700',
         ringColor: 'ring-purple-100',
         badgeBg: 'bg-purple-50 text-purple-700 border-purple-200',
       };
     }
-    if (ft.includes('procedure') || q.includes('surgery') || q.includes('lobectomy') || q.includes('resection') || dn.includes('surgery')) {
+    if (ft.includes('procedure') || q.includes('surgery') || q.includes('mastectomy') || q.includes('lobectomy') || q.includes('resection') || dn.includes('surgery') || dn.includes('discharge') || dn.includes('operative')) {
       return {
         category: 'Surgery',
         icon: <Scissors className="h-4 w-4 text-amber-600" />,
@@ -75,9 +77,36 @@ export function TimelineNodeView({
         badgeBg: 'bg-amber-50 text-amber-700 border-amber-200',
       };
     }
+    if (ft.includes('imaging') || dn.includes('imaging') || dn.includes('ct') || dn.includes('mri') || dn.includes('xray') || dn.includes('pet') || q.includes('scan') || q.includes('computed tomography')) {
+      return {
+        category: 'Imaging',
+        icon: <Activity className="h-4 w-4 text-sky-600" />,
+        nodeBg: 'bg-sky-50 border-sky-300 text-sky-700',
+        ringColor: 'ring-sky-100',
+        badgeBg: 'bg-sky-50 text-sky-700 border-sky-200',
+      };
+    }
+    if (dn.includes('referral') || q.includes('referred') || q.includes('referral')) {
+      return {
+        category: 'Referral',
+        icon: <FileText className="h-4 w-4 text-indigo-600" />,
+        nodeBg: 'bg-indigo-50 border-indigo-300 text-indigo-700',
+        ringColor: 'ring-indigo-100',
+        badgeBg: 'bg-indigo-50 text-indigo-700 border-indigo-200',
+      };
+    }
+    if (ft.includes('lab') || dn.includes('cbc') || dn.includes('blood') || dn.includes('chem')) {
+      return {
+        category: 'Laboratory',
+        icon: <FlaskConical className="h-4 w-4 text-teal-600" />,
+        nodeBg: 'bg-teal-50 border-teal-300 text-teal-700',
+        ringColor: 'ring-teal-100',
+        badgeBg: 'bg-teal-50 text-teal-700 border-teal-200',
+      };
+    }
     // Follow-up / Appointment / Clinical Note
     return {
-      category: 'Follow-up Visit',
+      category: 'Follow-up',
       icon: <Stethoscope className="h-4 w-4 text-emerald-600" />,
       nodeBg: 'bg-emerald-50 border-emerald-300 text-emerald-700',
       ringColor: 'ring-emerald-100',
@@ -155,7 +184,7 @@ export function TimelineNodeView({
           {rows.map((row) => {
             const modality = getModalityInfo(row.factType, row.documentName, row.verbatimQuote);
             const dateStr = formatTimelineDate(row.displayDate || row.observedOn);
-            const facility = row.issuingFacility || 'Apollo Hospitals';
+            const facility = row.issuingFacility?.trim() || 'Facility not stated';
             const isUnverified = row.state === 'extracted';
             const isConflicting = row.state === 'conflicting';
 

@@ -1,12 +1,16 @@
 import {
   assemblePacket,
   hashPacketSnapshot,
+  exportToAbdmDocumentBundle,
+  exportToMCodeBundle,
   type AssembledPacket,
   type PacketConflictSnapshot,
   type PacketFactSnapshot,
   type PacketGapSnapshot,
   type PacketInput,
   type PacketTaskSnapshot,
+  type FactWithProvenance,
+  type PacketSnapshot,
 } from '@oncobrief/domain';
 import type { Querier } from '../client';
 import { appendAuditEvent } from './audit';
@@ -292,6 +296,7 @@ export interface PacketDetail {
   snapshotSha256: string | null;
   assembled: AssembledPacket | null;
   ledgerAdvanced: boolean;
+  sourcesUnavailable?: boolean;
 }
 
 export async function getPacket(
@@ -328,9 +333,20 @@ export async function getPacket(
     assembled = assemblePacket(await gatherPacketInput(q, orgId, row.patient_id));
   }
 
+  let sourcesUnavailable = false;
+  if (snapshot?.assembled) {
+    try {
+      await assertPacketSourcesAccessible(q, orgId, packetId);
+    } catch {
+      sourcesUnavailable = true;
+      assembled = null;
+    }
+  }
+
   return {
     id: row.id,
     status: row.status,
+    sourcesUnavailable,
     encounterLabel: row.encounter_label,
     ledgerSeqAtApproval: approvedSeq,
     snapshotSha256: row.snapshot_sha256 ? row.snapshot_sha256.toString('hex') : null,
@@ -353,4 +369,138 @@ export function packetExportJson(detail: PacketDetail): string {
     null,
     2,
   );
+}
+
+export async function assertPacketSourcesAccessible(
+  q: Querier,
+  orgId: string,
+  packetId: string,
+): Promise<void> {
+  // The approved snapshot is authoritative. packet_item is a mutable draft projection.
+  const packet = await q.query<{ patient_id: string; snapshot_json: PacketSnapshot | null }>(
+    'SELECT patient_id, snapshot_json FROM consultation_packet WHERE org_id=$1 AND id=$2',
+    [orgId, packetId],
+  );
+  const row = packet.rows[0];
+  if (!row) throw new Error('packet_not_found');
+  const factIds: string[] = [];
+  const conflictIds: string[] = [];
+  for (const section of row.snapshot_json?.assembled?.sections ?? []) {
+    for (const item of section.items) {
+      if (item.fact) factIds.push(item.fact.evidenceFactId);
+      if (item.conflict) conflictIds.push(item.conflict.conflictSetId);
+    }
+  }
+  const res = await q.query<{ withdrawn_count: number }>(
+    `WITH referenced AS (
+       SELECT unnest($3::uuid[]) AS fact_id
+       UNION SELECT evidence_fact_id FROM conflict_member
+         WHERE org_id=$1 AND conflict_set_id=ANY($4::uuid[])
+       UNION SELECT evidence_fact_id FROM packet_item
+         WHERE org_id=$1 AND packet_id=$2 AND evidence_fact_id IS NOT NULL
+     )
+     SELECT count(*)::int AS withdrawn_count FROM referenced r
+     WHERE NOT EXISTS (
+       SELECT 1 FROM evidence_fact ef JOIN document d ON d.id=ef.document_id
+       WHERE ef.id=r.fact_id AND ef.org_id=$1 AND ef.patient_id=$5
+         AND d.ingest_error IS DISTINCT FROM 'consent_revoked_or_expired'
+     )`,
+    [orgId, packetId, factIds, conflictIds, row.patient_id],
+  );
+  if (!res.rows[0] || res.rows[0].withdrawn_count > 0) {
+    throw new Error('packet_source_withdrawn');
+  }
+}
+
+export async function getPacketExportBundle(
+  q: Querier,
+  orgId: string,
+  packetId: string,
+  format: 'abdm' | 'mcode',
+): Promise<unknown> {
+  const rowRes = await q.query<{
+    id: string;
+    patient_id: string;
+    status: string;
+    encounter_label: string;
+    snapshot_json: { assembled?: AssembledPacket } | null;
+    approved_by: string;
+  }>(
+    `SELECT id, patient_id, status, encounter_label, snapshot_json, approved_by
+       FROM consultation_packet
+      WHERE id = $1 AND org_id = $2`,
+    [packetId, orgId],
+  );
+  const row = rowRes.rows[0];
+  if (!row) throw new Error('packet_not_found');
+  if (row.status !== 'approved') throw new Error('packet_not_approved');
+
+  await assertPacketSourcesAccessible(q, orgId, packetId);
+
+  const pRes = await q.query<{ display_name: string }>(
+    `SELECT display_name FROM patient WHERE org_id = $1 AND id = $2`,
+    [orgId, row.patient_id],
+  );
+  const patient = pRes.rows[0];
+
+  const linkRes = await q.query<{ abha_number: string | null; abha_address: string }>(
+    `SELECT abha_number, abha_address FROM abdm_patient_link WHERE org_id = $1 AND patient_id = $2`,
+    [orgId, row.patient_id],
+  );
+  const link = linkRes.rows[0];
+
+  const orgRes = await q.query<{ name: string; hfr_facility_id: string | null }>(
+    `SELECT name, hfr_facility_id FROM organization WHERE id = $1`,
+    [orgId],
+  );
+  const org = orgRes.rows[0];
+
+  const userRes = await q.query<{ display_name: string; hpr_id: string | null }>(
+    `SELECT display_name, hpr_id FROM app_user WHERE id = $1`,
+    [row.approved_by],
+  );
+  const user = userRes.rows[0];
+
+  const snapshot = row.snapshot_json;
+  const facts: FactWithProvenance[] = [];
+
+  if (snapshot?.assembled?.sections) {
+    for (const sec of snapshot.assembled.sections) {
+      for (const item of sec.items) {
+        if (item.fact && item.fact.evidenceFactId && item.fact.valueText && item.fact.factType) {
+          facts.push({
+            id: item.fact.evidenceFactId,
+            patientId: row.patient_id,
+            documentId: row.id,
+            factType: item.fact.factType,
+            value: { kind: 'text', text: item.fact.valueText },
+            verbatimQuote: item.fact.verbatimQuote,
+            pageNumber: item.fact.pageNumber ?? 1,
+            state: item.stateAtSnapshot ?? 'verified',
+          });
+        }
+      }
+    }
+  }
+
+  if (format === 'abdm') {
+    return exportToAbdmDocumentBundle(facts, {
+      profileType: 'OPConsultRecord',
+      patientId: row.patient_id,
+      patientName: patient?.display_name || 'Patient',
+      abhaNumber: link?.abha_number ?? undefined,
+      abhaAddress: link?.abha_address ?? undefined,
+      facilityId: org?.hfr_facility_id ?? undefined,
+      facilityName: org?.name || 'OncoBrief Medical Centre',
+      practitionerId: user?.hpr_id ?? row.approved_by,
+      practitionerName: user?.display_name,
+    });
+  }
+
+  return exportToMCodeBundle(facts, {
+    patientId: row.patient_id,
+    patientName: patient?.display_name || 'Patient',
+    facilityName: org?.name || 'OncoBrief Medical Centre',
+    practitionerName: user?.display_name,
+  });
 }

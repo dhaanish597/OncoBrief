@@ -120,3 +120,14 @@ describe('handleDocumentIngest', () => {
     expect(store.jobs.size).toBe(0);
   });
 });
+
+it('processes local document bytes instead of reporting an empty fake async success', async () => {
+  const {LocalMultimodalOcrAdapter}=await import('@oncobrief/adapters');
+  const {buildSyntheticPdf}=await import('../src/fixture-pdf');
+  const store=newDocumentStore(); const d=deps(store);
+  await d.storage.put(KEY,buildSyntheticPdf([['Bring previous imaging CD']]));
+  await handleDocumentIngest(message,{...d,ocr:new LocalMultimodalOcrAdapter()});
+  expect((await store.getIngestionJob('DOC'))?.stage).toBe('completed');
+  expect(d.queue.size('ocr-q')).toBe(0);
+  expect(store.ingestCalls).toBe(1);
+});

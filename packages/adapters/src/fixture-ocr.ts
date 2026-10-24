@@ -1,4 +1,4 @@
-import type { OcrPageInput, OcrPageResult, OcrPort } from '@oncobrief/ports';
+import type { OcrPageInput, OcrPageResult, OcrPort, OcrDocumentInput, AsyncOcrPageResult } from '@oncobrief/ports';
 import { LocalMultimodalOcrAdapter } from './local-multimodal-ocr';
 
 /**
@@ -12,6 +12,10 @@ export class FixtureOcrAdapter implements OcrPort {
   readonly name = 'fixture';
   readonly version = 'v1';
   private readonly fallback = new LocalMultimodalOcrAdapter();
+
+  async extractDocument(input: OcrDocumentInput): Promise<AsyncOcrPageResult[]> {
+    return this.fallback.extractDocument(input);
+  }
 
   async extract(page: OcrPageInput): Promise<OcrPageResult> {
     if (page.fixture) {

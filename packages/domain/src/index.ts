@@ -55,3 +55,12 @@ export * from './ingestion/packet-segmenter';
 // fhir & standards
 export * from './fhir/abdm-bundle-mapper';
 export * from './fhir/mcode-mapper';
+export * from './fhir/standard-bundles';
+
+// longitudinal ledger read models
+export * from './journey/longitudinal-review';
+
+export * from './flow/slot-optimizer';
+
+// clinician productivity studio
+export * from './studio/draft-generator';

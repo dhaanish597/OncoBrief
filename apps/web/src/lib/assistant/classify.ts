@@ -6,6 +6,7 @@ export type Intent =
   | 'continuity_question'
   | 'navigation_question'
   | 'unsupported_medical_question'
+  | 'guideline_knowledge_question'
   | 'ambiguous_question';
 
 const NAVIGATION_PATTERNS = [
@@ -30,7 +31,7 @@ const CONFLICT_PATTERNS = [
 
 const UNSUPPORTED_MEDICAL_PATTERNS = [
   /\bwhat (?:is|are) (?:breast |lung |colon |prostate )?cancer\b/i,
-  /\bwhat (?:treatment|drug|therapy|medication|regimen) (?:should|do you recommend|is recommended|is used|would)\b/i,
+  /\bwhat (?:treatment|drug|therapy|medication|regimen|chemotherapy|chemo) (?:should|do you recommend|is recommended|is used|would)\b/i,
   /\bwhat does (?:this|the|my|their) diagnos(?:is|es) (?:usually )?mean\b/i,
   /\bhow (?:do|should) (?:i|we|you) treat\b/i,
   /\bwhat(?:'s| is) the (?:best|recommended|standard) (?:treatment|drug|therapy)\b/i,
@@ -39,6 +40,7 @@ const UNSUPPORTED_MEDICAL_PATTERNS = [
   /\bwhat (?:dose|dosage)\b/i,
   /\bcan you (?:diagnose|prescribe)\b/i,
   /\bwhat(?:'s| is) the survival rate\b/i,
+  /\b(?:prescribe|prescribing)\b/i,
 
   // Judgment-seeking phrasing. The distinction that matters is *retrieve*
   // versus *decide*: "show me the documented stage" is a ledger lookup and
@@ -46,12 +48,23 @@ const UNSUPPORTED_MEDICAL_PATTERNS = [
   // asks OncoBrief to state a clinical conclusion. These never reach evidence
   // retrieval or the model's general knowledge — they are answered with the
   // non-clinical boundary statement instead.
-  /\b(?:should|shall|ought)\b[^?]*\b(?:treat\w*|chemotherap\w*|radiother\w*|radiation|surg\w*|operat\w*|medicat\w*|drug\w*|dose|dosage|regimen|therapy)\b/i,
+  /\b(?:should|shall|ought)\b[^?]*\b(?:start|receive|take|give|prescribe|administer|treat\w*|chemotherap\w*|radiother\w*|radiation|surg\w*|operat\w*|medicat\w*|drug\w*|dose|dosage|regimen|therapy|undergo)\b/i,
   /\b(?:is|are|was|were|does|do|did)\b[^?]*\b(?:concerning|suspicious|worrying|worry|sinister|dangerous|malignant|benign|cancerous|aggressive)\b/i,
   /\b(?:how urgent|is (?:this|it|that) urgent|urgency|triage|prioritis\w*|prioritiz\w*)\b/i,
   /\brisk[\s_-]?(?:score|scores|stratification|category|band|level|assessment|profile)\b/i,
   /\b(?:what|which)\s+stage\b/i,
   /\b(?:does|do|did)\b[^?]*\b(?:have|has|had|got)\b[^?]*\b(?:cancer|carcinoma|malignan\w*|tumou?r|metasta\w*|neoplas\w*)\b/i,
+  /\b(?:does|do|is|are)\b[^?]*\b(?:prove|show|indicate)\s+(?:progression|recurrence|remission|response)\b/i,
+  /\b(?:is|are)\b[^?]*\b(?:clinically safe|safe|fit|suitable|eligible)\s+(?:for|to receive)\s+(?:chemo|chemotherap\w*|radiat\w*|surg\w*|therapy|treatment)\b/i,
+];
+
+const GUIDELINE_PATTERNS = [
+  /\b(?:guideline|guidelines|sop|sops|standard operating procedure|institutional protocol|ncg protocol|clinical protocol)\b/i,
+  /\b(?:locate|find|show|which section|what does|quote|passage)\b.*\b(?:guideline|sop|sops|protocol|institutional recommendation|checklist)\b/i,
+  /\b(?:hospital's|institutional|hospital)\b.*\b(?:checklist|sop|protocol|guideline|workup)\b/i,
+  /\b(?:tumor[- ]?board|referral[- ]?preparation|post[- ]?operative|radiation follow[- ]?up)\s+(?:checklist|sop|guideline|documentation)\b/i,
+  /\bdocumentation checklist\b/i,
+  /\breferral[- ]?preparation sop\b/i,
 ];
 
 const EVIDENCE_PATTERNS = [
@@ -84,6 +97,15 @@ export function classifyIntentDeterministic(message: string): ClassificationResu
       intent: 'unsupported_medical_question',
       confidence: 'high',
       rationale: 'Matches general-medical-knowledge pattern',
+    };
+  }
+
+  // Institutional oncology SOP and guideline reference lookup
+  if (GUIDELINE_PATTERNS.some((p) => p.test(text))) {
+    return {
+      intent: 'guideline_knowledge_question',
+      confidence: 'high',
+      rationale: 'Matches institutional oncology guideline or SOP pattern',
     };
   }
 
@@ -165,6 +187,7 @@ export async function classifyIntent(message: string): Promise<ClassificationRes
       'continuity_question',
       'navigation_question',
       'unsupported_medical_question',
+      'guideline_knowledge_question',
       'ambiguous_question',
     ];
     if (valid.includes(label)) {

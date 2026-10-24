@@ -86,6 +86,7 @@ async function main(): Promise<void> {
           ocrResultQueue: config.ocrResultQueue,
           ocrPollDelaySeconds: config.ocrPollDelaySeconds,
           useTextractNotifications,
+          extractorKind: ports.extractorKind,
         },
         orgId: parsed.orgId,
       });
@@ -136,8 +137,8 @@ async function poll(
         waitSeconds: config.pollWaitSeconds,
         visibilityTimeoutSeconds: config.visibilityTimeoutSeconds,
       });
-    } catch (err) {
-      logger.error({ error_code: 'receive_failed', stage: queueName }, err instanceof Error ? err.message : 'receive failed');
+    } catch {
+      logger.error({ error_code: 'receive_failed', stage: queueName }, 'queue receive failed');
       await sleep(2000);
       continue;
     }
@@ -154,7 +155,7 @@ async function poll(
             stage: queueName,
             receive_count: message.receiveCount,
           },
-          err instanceof Error ? err.message : 'handler failed',
+          'message handler failed',
         );
         // Do not delete: SQS will redeliver, then redrive to the DLQ.
       }
@@ -166,7 +167,7 @@ function sleep(ms: number): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
-main().catch((err) => {
-  console.error(JSON.stringify({ level: 'error', msg: 'worker crashed', error: String(err) }));
+main().catch(() => {
+  new JsonLogger('ingestion-worker').error({ error_code: 'worker_crashed' }, 'worker crashed');
   process.exit(1);
 });

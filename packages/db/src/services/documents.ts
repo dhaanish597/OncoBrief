@@ -586,26 +586,46 @@ export async function ingestDocument(
     }
   }
 
-  const normalized: NormalizedPage[] = [];
-  let totalPlainText = '';
-
-  for (let p = 1; p <= pageCount; p++) {
-    const ocr = await deps.ocr.extract({
-      documentId,
-      pageNumber: p,
-      imageBytes: bytes,
+  let normalized: NormalizedPage[] = [];
+  await q.query(`UPDATE document SET ingest_status = 'ocr_running' WHERE id = $1`, [documentId]);
+  try {
+    if (deps.ocr.extractDocument) {
+      normalized = await deps.ocr.extractDocument({
+        documentId, bytes, mimeType: doc.mime_type, filename: doc.original_filename,
+        ...(process.env['STORAGE_DRIVER'] === 's3' ? {
+          s3Key: doc.storage_key,
+          s3Bucket: process.env['STORAGE_S3_BUCKET'] ?? 'oncobrief-documents',
+        } : {}),
+      });
+      pageCount = normalized.length;
+    } else {
+      for (let p = 1; p <= pageCount; p++) {
+        const ocr = await deps.ocr.extract({ documentId, pageNumber: p, imageBytes: bytes });
+        normalized.push({ pageNumber: p, widthPx: null, heightPx: null, ...ocr });
+      }
+    }
+    const numbers = normalized.map(page => page.pageNumber);
+    if (numbers.some(n => !Number.isInteger(n) || n < 1) || new Set(numbers).size !== numbers.length) {
+      throw new Error('ocr_invalid_page_numbers');
+    }
+  } catch (error) {
+    // Only local, allow-listed failure categories can reach the record.
+    const manual = error instanceof Error && error.message === 'ocr_manual_transcription_required';
+    const status = manual ? 'quarantined' : 'failed';
+    const code = manual ? 'manual_transcription_required' : 'ocr_extraction_failed';
+    await q.query(
+      manual ? `UPDATE document SET ingest_status = 'quarantined', ingest_error = $2 WHERE id = $1`
+        : `UPDATE document SET ingest_status = 'failed', ingest_error = $2 WHERE id = $1`,
+      [documentId, code],
+    );
+    await appendAuditEvent(q, {
+      orgId: doc.org_id, actor: { userId: null, role: null },
+      action: 'ocr.failed', entityKind: 'document', entityId: documentId, outcome: 'error',
+      metadata: { error_code: code, engine: deps.ocr.name },
     });
-    totalPlainText += ocr.plainText;
-    normalized.push({
-      pageNumber: p,
-      widthPx: 612,
-      heightPx: 792,
-      plainText: ocr.plainText,
-      spans: ocr.spans,
-      engine: ocr.engine,
-      engineVersion: ocr.engineVersion,
-    });
+    return { documentId, status, pages: 0, spans: 0, candidates: 0, promoted: 0, rejected: 0, conflictsCreated: 0, conflictsFlagged: 0, documentType: null };
   }
+  const totalPlainText = normalized.map(page => page.plainText).join('\n');
 
   // If no usable text layer was found across all pages
   if (totalPlainText.trim().length === 0 && normalized.every((p) => p.spans.length === 0)) {
@@ -709,3 +729,155 @@ export async function detectNearDuplicates(
 }
 
 export const DOCUMENT_TYPE_VOCABULARY = DOCUMENT_TYPES;
+
+export interface SearchPatientDocumentsInput {
+  orgId: string;
+  patientId: string;
+  query: string;
+}
+
+export interface DocumentSearchResult {
+  id: string;
+  filename: string;
+  mimeType: string;
+  byteSize: number;
+  documentType: string | null;
+  documentDate: string | null;
+  issuingFacility: string | null;
+  recordOrigin: string;
+  duplicateOf: string | null;
+  duplicateStatus: string;
+  sha256Hex: string;
+  factCount: number;
+}
+
+export async function searchPatientDocuments(
+  q: Querier,
+  input: SearchPatientDocumentsInput,
+): Promise<DocumentSearchResult[]> {
+  const trimmed = input.query.trim();
+  const searchPattern = `%${trimmed}%`;
+  const res = await q.query<{
+    id: string;
+    original_filename: string;
+    mime_type: string;
+    byte_size: string;
+    document_type: string | null;
+    document_date: string | null;
+    issuing_facility: string | null;
+    record_origin: string;
+    duplicate_of_document_id: string | null;
+    duplicate_status: string;
+    sha256_hex: string;
+    fact_count: string;
+  }>(
+    `SELECT d.id, d.original_filename, d.mime_type, d.byte_size::text AS byte_size,
+            d.document_type, d.document_date::text AS document_date, d.issuing_facility,
+            d.record_origin, d.duplicate_of_document_id, d.duplicate_status,
+            encode(d.content_sha256, 'hex') AS sha256_hex,
+            (SELECT count(*) FROM evidence_fact ef WHERE ef.document_id = d.id)::text AS fact_count
+       FROM document d
+      WHERE d.org_id = $1
+        AND d.patient_id = $2
+        ${
+          trimmed.length > 0
+            ? `AND (
+          d.original_filename ILIKE $3
+          OR coalesce(d.issuing_facility, '') ILIKE $3
+          OR coalesce(d.document_type, '') ILIKE $3
+          OR encode(d.content_sha256, 'hex') ILIKE $3
+        )`
+            : ''
+        }
+      ORDER BY d.uploaded_at DESC
+      LIMIT 25`,
+    trimmed.length > 0 ? [input.orgId, input.patientId, searchPattern] : [input.orgId, input.patientId],
+  );
+
+  return res.rows.map((r) => ({
+    id: r.id,
+    filename: r.original_filename,
+    mimeType: r.mime_type,
+    byteSize: Number(r.byte_size),
+    documentType: r.document_type,
+    documentDate: r.document_date,
+    issuingFacility: r.issuing_facility,
+    recordOrigin: r.record_origin,
+    duplicateOf: r.duplicate_of_document_id,
+    duplicateStatus: r.duplicate_status,
+    sha256Hex: r.sha256_hex,
+    factCount: Number(r.fact_count),
+  }));
+}
+
+export interface LinkDocumentDuplicateInput {
+  orgId: string;
+  patientId: string;
+  documentId: string;
+  targetDocumentId: string | null;
+  action: 'link_duplicate' | 'unlink';
+  userId: string;
+}
+
+export async function linkDocumentDuplicate(
+  q: Querier,
+  input: LinkDocumentDuplicateInput,
+): Promise<void> {
+  const doc = await q.query<{ id: string; org_id: string; patient_id: string }>(
+    `SELECT id, org_id, patient_id FROM document WHERE id = $1 AND org_id = $2 AND patient_id = $3`,
+    [input.documentId, input.orgId, input.patientId],
+  );
+  if (!doc.rows[0]) throw new Error('document_not_found_or_unauthorized');
+
+  if (input.action === 'link_duplicate') {
+    if (!input.targetDocumentId || input.targetDocumentId === input.documentId) {
+      throw new Error('invalid_target_document');
+    }
+    const targetDoc = await q.query<{ id: string }>(
+      `SELECT id FROM document WHERE id = $1 AND org_id = $2 AND patient_id = $3`,
+      [input.targetDocumentId, input.orgId, input.patientId],
+    );
+    if (!targetDoc.rows[0]) throw new Error('target_document_not_found');
+
+    await q.query(
+      `UPDATE document
+          SET duplicate_of_document_id = $1, duplicate_status = 'confirmed_duplicate'
+        WHERE id = $2`,
+      [input.targetDocumentId, input.documentId],
+    );
+
+    await appendAuditEvent(q, {
+      orgId: input.orgId,
+      actor: { userId: input.userId, role: null },
+      action: 'document.duplicate_candidate',
+      entityKind: 'document',
+      entityId: input.documentId,
+      outcome: 'success',
+      metadata: {
+        duplicate_of: input.targetDocumentId,
+        status: 'confirmed_duplicate',
+      },
+    });
+  } else {
+    await q.query(
+      `UPDATE document
+          SET duplicate_of_document_id = NULL, duplicate_status = 'none'
+        WHERE id = $1`,
+      [input.documentId],
+    );
+
+    await appendAuditEvent(q, {
+      orgId: input.orgId,
+      actor: { userId: input.userId, role: null },
+      action: 'document.duplicate_candidate',
+      entityKind: 'document',
+      entityId: input.documentId,
+      outcome: 'success',
+      metadata: {
+        duplicate_of: null,
+        status: 'unlinked',
+      },
+    });
+  }
+}
+
