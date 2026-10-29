@@ -25,3 +25,7 @@ export * from './services/opd-flow';
 export * from './services/guidelines';
 export * from './services/studio';
 export * from './services/caregivers';
+export * from './services/admin';
+export * from './services/appointments';
+export * from './services/encounters';
+export * from './services/tumor-board';

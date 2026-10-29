@@ -1,10 +1,16 @@
 import Link from 'next/link';
+import { can } from '@oncobrief/domain';
 import { requireSession } from '@/lib/session';
 import { logoutAction } from '@/app/login/actions';
 import { AssistantLauncher } from '@/components/assistant/AssistantLauncher';
 
 export default async function AppLayout({ children }: { children: React.ReactNode }) {
   const session = await requireSession();
+  const canManageAdmin = can(session.role, 'user:manage') || can(session.role, 'clinician:manage');
+  const canReadPatients = can(session.role, 'patient:read');
+  const canManageAppointments = can(session.role, 'appointment:create') || can(session.role, 'opd:manage') || canReadPatients;
+  const canViewTasks = can(session.role, 'task:create') || can(session.role, 'task:assign');
+  const canViewTumorBoard = can(session.role, 'tumor_board:manage') || session.role === 'clinician' || session.role === 'coordinator';
 
   return (
     <div className="min-h-screen">
@@ -34,6 +40,31 @@ export default async function AppLayout({ children }: { children: React.ReactNod
               <Link href="/workspace" className="hover:text-[var(--color-ink)]">
                 Workspace
               </Link>
+              {canReadPatients ? (
+                <Link href="/patients" className="hover:text-[var(--color-ink)]">
+                  Patients
+                </Link>
+              ) : null}
+              {canManageAppointments ? (
+                <Link href="/appointments" className="hover:text-[var(--color-ink)]">
+                  Appointments
+                </Link>
+              ) : null}
+              {canViewTasks ? (
+                <Link href="/my-tasks" className="hover:text-[var(--color-ink)]">
+                  My Tasks
+                </Link>
+              ) : null}
+              {canViewTumorBoard ? (
+                <Link href="/tumor-board" className="hover:text-[var(--color-ink)]">
+                  Tumor Board
+                </Link>
+              ) : null}
+              {canManageAdmin ? (
+                <Link href="/admin" className="hover:text-[var(--color-ink)]">
+                  Admin
+                </Link>
+              ) : null}
               <Link href="/about" className="hover:text-[var(--color-ink)]">
                 What this is
               </Link>

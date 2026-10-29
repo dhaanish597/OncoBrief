@@ -1,4 +1,5 @@
 import type { Querier } from '../client';
+import { appendAuditEvent, type AuditActor, type AuditRequestMeta } from './audit';
 import {
   calculateBMI,
   calculateBSADuBois,
@@ -28,6 +29,43 @@ export interface PatientListItem {
   openTasks: number;
   documentCount: number;
   appointmentDate: string | null;
+  mrn: string | null;
+  primaryClinicianName: string | null;
+  departmentName: string | null;
+  status: string;
+  createdAt: Date;
+  lastDocumentUpdate: string | null;
+}
+
+export interface PatientRecord {
+  id: string;
+  orgId?: string;
+  displayName: string;
+  demoCode: string | null;
+  isDemoFixture: boolean;
+  mrn?: string | null;
+  dob?: string | null;
+  gender?: string | null;
+  phone?: string | null;
+  email?: string | null;
+  address?: string | null;
+  primaryLanguage?: string;
+  status?: string;
+  referralSource?: string | null;
+  referralNotes?: string | null;
+  clinicalContextNote?: string | null;
+  primaryClinicianId?: string | null;
+  primaryClinicianName?: string | null;
+  primaryClinicianSpecialty?: string | null;
+  departmentId?: string | null;
+  departmentName?: string | null;
+  facilityId?: string | null;
+  facilityName?: string | null;
+  archivedAt?: Date | null;
+  archivedBy?: string | null;
+  archivalReason?: string | null;
+  lastConsultationDate?: string | null;
+  createdAt?: Date;
 }
 
 export async function listPatients(q: Querier): Promise<PatientListItem[]> {
@@ -35,8 +73,15 @@ export async function listPatients(q: Querier): Promise<PatientListItem[]> {
     id: string; display_name: string; demo_code: string | null; is_demo_fixture: boolean;
     readiness_band: string | null; open_conflicts: string; unverified_facts: string;
     missing_required: string; open_tasks: string; document_count: string; appointment_date: string | null;
+    mrn: string | null; primary_clinician_name: string | null; department_name: string | null;
+    status: string; created_at: Date; last_document_update: string | null;
   }>(
     `SELECT p.id, p.display_name, p.demo_code, p.is_demo_fixture,
+            COALESCE(p.status, 'active') AS status, p.created_at,
+       (SELECT pi.value FROM patient_identifier pi WHERE pi.patient_id = p.id AND pi.system = 'MRN' LIMIT 1) AS mrn,
+       (SELECT u.display_name FROM app_user u WHERE u.id = p.primary_clinician_id) AS primary_clinician_name,
+       (SELECT d.name FROM department d WHERE d.id = p.department_id) AS department_name,
+       (SELECT max(doc.uploaded_at)::text FROM document doc WHERE doc.patient_id = p.id) AS last_document_update,
        (SELECT r.readiness_band FROM record_readiness_snapshot r
          WHERE r.patient_id = p.id ORDER BY r.computed_at DESC LIMIT 1) AS readiness_band,
        (SELECT count(*) FROM conflict_set c WHERE c.patient_id = p.id AND c.status='open')::text AS open_conflicts,
@@ -63,20 +108,76 @@ export async function listPatients(q: Querier): Promise<PatientListItem[]> {
     openTasks: Number(r.open_tasks),
     documentCount: Number(r.document_count),
     appointmentDate: r.appointment_date,
+    mrn: r.mrn,
+    primaryClinicianName: r.primary_clinician_name,
+    departmentName: r.department_name,
+    status: r.status,
+    createdAt: r.created_at,
+    lastDocumentUpdate: r.last_document_update,
   }));
 }
 
-export async function getPatient(q: Querier, patientId: string) {
+export async function getPatient(q: Querier, patientId: string): Promise<PatientRecord | null> {
   const res = await q.query<{
-    id: string; display_name: string; demo_code: string | null; is_demo_fixture: boolean;
-  }>('SELECT id, display_name, demo_code, is_demo_fixture FROM patient WHERE id = $1', [patientId]);
+    id: string; org_id: string; display_name: string; demo_code: string | null; is_demo_fixture: boolean;
+    dob: string | null; gender: string | null; phone: string | null; email: string | null; address: string | null;
+    primary_language: string; status: string; referral_source: string | null; referral_notes: string | null;
+    clinical_context_note: string | null; primary_clinician_id: string | null; primary_clinician_name: string | null;
+    primary_clinician_specialty: string | null; department_id: string | null; department_name: string | null;
+    facility_id: string | null; facility_name: string | null; archived_at: Date | null; archived_by: string | null;
+    archival_reason: string | null; last_consultation_date: string | null; created_at: Date; mrn: string | null;
+  }>(
+    `SELECT p.id, p.org_id, p.display_name, p.demo_code, p.is_demo_fixture,
+            p.dob::text AS dob, p.gender, p.phone, p.email, p.address,
+            COALESCE(p.primary_language, 'en-IN') AS primary_language,
+            COALESCE(p.status, 'active') AS status,
+            p.referral_source, p.referral_notes,
+            p.clinical_context_note, p.primary_clinician_id,
+            u.display_name AS primary_clinician_name, cp.specialty AS primary_clinician_specialty,
+            p.department_id, d.name AS department_name,
+            p.facility_id, f.name AS facility_name,
+            p.archived_at, p.archived_by, p.archival_reason,
+            p.last_consultation_date::text AS last_consultation_date, p.created_at,
+            (SELECT pi.value FROM patient_identifier pi WHERE pi.patient_id = p.id AND pi.system = 'MRN' LIMIT 1) AS mrn
+     FROM patient p
+     LEFT JOIN app_user u ON u.id = p.primary_clinician_id
+     LEFT JOIN clinician_profile cp ON cp.user_id = p.primary_clinician_id AND cp.org_id = p.org_id
+     LEFT JOIN department d ON d.id = p.department_id
+     LEFT JOIN facility f ON f.id = p.facility_id
+     WHERE p.id = $1`,
+    [patientId],
+  );
   const row = res.rows[0];
   if (!row) return null;
   return {
     id: row.id,
+    orgId: row.org_id,
     displayName: row.display_name,
     demoCode: row.demo_code,
     isDemoFixture: row.is_demo_fixture,
+    mrn: row.mrn,
+    dob: row.dob,
+    gender: row.gender,
+    phone: row.phone,
+    email: row.email,
+    address: row.address,
+    primaryLanguage: row.primary_language,
+    status: row.status,
+    referralSource: row.referral_source,
+    referralNotes: row.referral_notes,
+    clinicalContextNote: row.clinical_context_note,
+    primaryClinicianId: row.primary_clinician_id,
+    primaryClinicianName: row.primary_clinician_name,
+    primaryClinicianSpecialty: row.primary_clinician_specialty,
+    departmentId: row.department_id,
+    departmentName: row.department_name,
+    facilityId: row.facility_id,
+    facilityName: row.facility_name,
+    archivedAt: row.archived_at,
+    archivedBy: row.archived_by,
+    archivalReason: row.archival_reason,
+    lastConsultationDate: row.last_consultation_date,
+    createdAt: row.created_at,
   };
 }
 
@@ -1671,5 +1772,609 @@ export async function getPatientClinicalSummary(q: Querier, patientId: string): 
     },
     allObservations: observations,
     analyteGroups,
+  };
+}
+
+// ---------------------------------------------------------------------------
+// Patient CRUD & Care Team
+// ---------------------------------------------------------------------------
+
+export interface CreatePatientInput {
+  orgId: string;
+  displayName: string;
+  mrn: string;
+  dob?: string | null;
+  gender?: 'female' | 'male' | 'other' | 'unknown' | null;
+  phone?: string | null;
+  email?: string | null;
+  address?: string | null;
+  primaryLanguage?: string | null;
+  referralSource?: string | null;
+  referralNotes?: string | null;
+  primaryClinicianId?: string | null;
+  departmentId?: string | null;
+  facilityId?: string | null;
+  clinicalContextNote?: string | null;
+}
+
+export async function createPatient(
+  q: Querier,
+  input: CreatePatientInput,
+  actor: AuditActor,
+  request?: AuditRequestMeta,
+): Promise<{ patientId: string }> {
+  const displayName = input.displayName.trim();
+  const mrn = input.mrn.trim();
+  if (!displayName) throw new Error('display_name_required');
+  if (!mrn) throw new Error('mrn_required');
+
+  // Prevent duplicate scoped MRN
+  const existingMrn = await q.query<{ id: string }>(
+    `SELECT id FROM patient_identifier WHERE org_id = $1 AND UPPER(system) = 'MRN' AND lower(btrim(value)) = lower(btrim($2))`,
+    [input.orgId, mrn],
+  );
+  if (existingMrn.rows[0]) {
+    throw new Error('duplicate_patient_mrn');
+  }
+
+  // Insert patient record
+  const res = await q.query<{ id: string }>(
+    `INSERT INTO patient
+       (org_id, display_name, clinical_context_note, primary_language, dob, gender, phone, email, address,
+        referral_source, referral_notes, primary_clinician_id, department_id, facility_id, status)
+     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, 'active')
+     RETURNING id`,
+    [
+      input.orgId,
+      displayName,
+      input.clinicalContextNote?.trim() ?? null,
+      input.primaryLanguage?.trim() || 'en-IN',
+      input.dob && input.dob.trim() ? input.dob.trim() : null,
+      input.gender ?? null,
+      input.phone?.trim() ?? null,
+      input.email?.trim() ?? null,
+      input.address?.trim() ?? null,
+      input.referralSource?.trim() ?? null,
+      input.referralNotes?.trim() ?? null,
+      input.primaryClinicianId ?? null,
+      input.departmentId ?? null,
+      input.facilityId ?? null,
+    ],
+  );
+  const patientId = res.rows[0]!.id;
+
+  // Insert patient_identifier for MRN
+  await q.query(
+    `INSERT INTO patient_identifier (org_id, patient_id, system, value)
+     VALUES ($1, $2, 'MRN', $3)`,
+    [input.orgId, patientId, mrn],
+  );
+
+  // If primary clinician assigned, add to patient_care_team
+  if (input.primaryClinicianId) {
+    await q.query(
+      `INSERT INTO patient_care_team (org_id, patient_id, user_id, role_in_team, is_active, assigned_by)
+       VALUES ($1, $2, $3, 'primary_oncologist', true, $4)
+       ON CONFLICT (org_id, patient_id, user_id) DO UPDATE SET is_active = true, role_in_team = 'primary_oncologist'`,
+      [input.orgId, patientId, input.primaryClinicianId, actor.userId ?? null],
+    );
+  }
+
+  // Auto-assign new patient intake checklist if available
+  const tplRes = await q.query<{ id: string }>(
+    `SELECT id FROM checklist_template WHERE org_id = $1 AND code = 'new_patient_intake' ORDER BY version DESC LIMIT 1`,
+    [input.orgId],
+  );
+  if (tplRes.rows[0] && actor.userId) {
+    try {
+      const { assignChecklist, computeAndPersistReadiness } = await import('./twin');
+      await assignChecklist(q, {
+        orgId: input.orgId,
+        patientId,
+        templateId: tplRes.rows[0].id,
+        userId: actor.userId,
+      });
+      await computeAndPersistReadiness(q, {
+        orgId: input.orgId,
+        patientId,
+        computedBy: actor.userId,
+      });
+    } catch {
+      // Non-fatal if intake checklist fails
+    }
+  }
+
+  await appendAuditEvent(q, {
+    orgId: input.orgId,
+    actor,
+    action: 'patient.created',
+    entityKind: 'patient',
+    entityId: patientId,
+    outcome: 'success',
+    metadata: { displayName, mrn },
+    request,
+  });
+
+  return { patientId };
+}
+
+export interface UpdatePatientInput {
+  orgId: string;
+  patientId: string;
+  displayName?: string;
+  dob?: string | null;
+  gender?: 'female' | 'male' | 'other' | 'unknown' | null;
+  phone?: string | null;
+  email?: string | null;
+  address?: string | null;
+  primaryLanguage?: string | null;
+  referralSource?: string | null;
+  referralNotes?: string | null;
+  primaryClinicianId?: string | null;
+  departmentId?: string | null;
+  facilityId?: string | null;
+  clinicalContextNote?: string | null;
+}
+
+export async function updatePatient(
+  q: Querier,
+  input: UpdatePatientInput,
+  actor: AuditActor,
+  request?: AuditRequestMeta,
+): Promise<void> {
+  const current = await q.query<{ id: string; primary_clinician_id: string | null }>(
+    `SELECT id, primary_clinician_id FROM patient WHERE id = $1 AND org_id = $2`,
+    [input.patientId, input.orgId],
+  );
+  if (!current.rows[0]) throw new Error('patient_not_found');
+
+  await q.query(
+    `UPDATE patient
+     SET display_name = COALESCE($3, display_name),
+         dob = CASE WHEN $4::text IS NOT NULL THEN $4::date ELSE dob END,
+         gender = CASE WHEN $5::text IS NOT NULL THEN $5 ELSE gender END,
+         phone = CASE WHEN $6::text IS NOT NULL THEN $6 ELSE phone END,
+         email = CASE WHEN $7::text IS NOT NULL THEN $7 ELSE email END,
+         address = CASE WHEN $8::text IS NOT NULL THEN $8 ELSE address END,
+         primary_language = COALESCE($9, primary_language),
+         referral_source = CASE WHEN $10::text IS NOT NULL THEN $10 ELSE referral_source END,
+         referral_notes = CASE WHEN $11::text IS NOT NULL THEN $11 ELSE referral_notes END,
+         primary_clinician_id = CASE WHEN $12::uuid IS NOT NULL THEN $12::uuid ELSE primary_clinician_id END,
+         department_id = CASE WHEN $13::uuid IS NOT NULL THEN $13::uuid ELSE department_id END,
+         facility_id = CASE WHEN $14::uuid IS NOT NULL THEN $14::uuid ELSE facility_id END,
+         clinical_context_note = CASE WHEN $15::text IS NOT NULL THEN $15 ELSE clinical_context_note END
+     WHERE id = $1 AND org_id = $2`,
+    [
+      input.patientId,
+      input.orgId,
+      input.displayName ? input.displayName.trim() : null,
+      input.dob !== undefined ? (input.dob && input.dob.trim() ? input.dob.trim() : null) : null,
+      input.gender !== undefined ? input.gender : null,
+      input.phone !== undefined ? input.phone?.trim() ?? null : null,
+      input.email !== undefined ? input.email?.trim() ?? null : null,
+      input.address !== undefined ? input.address?.trim() ?? null : null,
+      input.primaryLanguage ? input.primaryLanguage.trim() : null,
+      input.referralSource !== undefined ? input.referralSource?.trim() ?? null : null,
+      input.referralNotes !== undefined ? input.referralNotes?.trim() ?? null : null,
+      input.primaryClinicianId !== undefined ? input.primaryClinicianId : null,
+      input.departmentId !== undefined ? input.departmentId : null,
+      input.facilityId !== undefined ? input.facilityId : null,
+      input.clinicalContextNote !== undefined ? input.clinicalContextNote?.trim() ?? null : null,
+    ],
+  );
+
+  // If primary clinician changed, update care team
+  if (input.primaryClinicianId && input.primaryClinicianId !== current.rows[0].primary_clinician_id) {
+    await q.query(
+      `INSERT INTO patient_care_team (org_id, patient_id, user_id, role_in_team, is_active, assigned_by)
+       VALUES ($1, $2, $3, 'primary_oncologist', true, $4)
+       ON CONFLICT (org_id, patient_id, user_id) DO UPDATE SET is_active = true, role_in_team = 'primary_oncologist'`,
+      [input.orgId, input.patientId, input.primaryClinicianId, actor.userId ?? null],
+    );
+  }
+
+  await appendAuditEvent(q, {
+    orgId: input.orgId,
+    actor,
+    action: 'patient.updated',
+    entityKind: 'patient',
+    entityId: input.patientId,
+    outcome: 'success',
+    metadata: { displayName: input.displayName },
+    request,
+  });
+}
+
+export async function archivePatient(
+  q: Querier,
+  input: {
+    orgId: string;
+    patientId: string;
+    reason: string;
+  },
+  actor: AuditActor,
+  request?: AuditRequestMeta,
+): Promise<void> {
+  const current = await q.query<{ id: string }>(
+    `SELECT id FROM patient WHERE id = $1 AND org_id = $2`,
+    [input.patientId, input.orgId],
+  );
+  if (!current.rows[0]) throw new Error('patient_not_found');
+
+  await q.query(
+    `UPDATE patient
+     SET status = 'archived',
+         archived_at = now(),
+         archived_by = $3,
+         archival_reason = $4
+     WHERE id = $1 AND org_id = $2`,
+    [input.patientId, input.orgId, actor.userId ?? null, input.reason.trim()],
+  );
+
+  await appendAuditEvent(q, {
+    orgId: input.orgId,
+    actor,
+    action: 'patient.archived',
+    entityKind: 'patient',
+    entityId: input.patientId,
+    outcome: 'success',
+    metadata: { reason: input.reason },
+    request,
+  });
+}
+
+export async function reactivatePatient(
+  q: Querier,
+  input: {
+    orgId: string;
+    patientId: string;
+  },
+  actor: AuditActor,
+  request?: AuditRequestMeta,
+): Promise<void> {
+  const current = await q.query<{ id: string }>(
+    `SELECT id FROM patient WHERE id = $1 AND org_id = $2`,
+    [input.patientId, input.orgId],
+  );
+  if (!current.rows[0]) throw new Error('patient_not_found');
+
+  await q.query(
+    `UPDATE patient
+     SET status = 'active',
+         archived_at = null,
+         archived_by = null,
+         archival_reason = null
+     WHERE id = $1 AND org_id = $2`,
+    [input.patientId, input.orgId],
+  );
+
+  await appendAuditEvent(q, {
+    orgId: input.orgId,
+    actor,
+    action: 'patient.reactivated',
+    entityKind: 'patient',
+    entityId: input.patientId,
+    outcome: 'success',
+    request,
+  });
+}
+
+export interface CareTeamMemberRecord {
+  id: string;
+  orgId: string;
+  patientId: string;
+  userId: string;
+  displayName: string;
+  email: string;
+  specialty: string | null;
+  roleInTeam: string;
+  isActive: boolean;
+  assignedAt: Date;
+  notes: string | null;
+}
+
+export async function listCareTeam(q: Querier, patientId: string): Promise<CareTeamMemberRecord[]> {
+  const res = await q.query<{
+    id: string; org_id: string; patient_id: string; user_id: string;
+    display_name: string; email: string; specialty: string | null;
+    role_in_team: string; is_active: boolean; assigned_at: Date; notes: string | null;
+  }>(
+    `SELECT pct.id, pct.org_id, pct.patient_id, pct.user_id,
+            u.display_name, u.email, cp.specialty,
+            pct.role_in_team, pct.is_active, pct.assigned_at, pct.notes
+     FROM patient_care_team pct
+     JOIN app_user u ON u.id = pct.user_id
+     LEFT JOIN clinician_profile cp ON cp.user_id = u.id AND cp.org_id = pct.org_id
+     WHERE pct.patient_id = $1 AND pct.is_active = true
+     ORDER BY
+       CASE pct.role_in_team
+         WHEN 'primary_oncologist' THEN 1
+         WHEN 'consulting_oncologist' THEN 2
+         WHEN 'surgical_oncologist' THEN 3
+         WHEN 'radiation_oncologist' THEN 4
+         WHEN 'care_coordinator' THEN 5
+         WHEN 'nurse' THEN 6
+         ELSE 7
+       END, u.display_name ASC`,
+    [patientId],
+  );
+  return res.rows.map((r) => ({
+    id: r.id,
+    orgId: r.org_id,
+    patientId: r.patient_id,
+    userId: r.user_id,
+    displayName: r.display_name,
+    email: r.email,
+    specialty: r.specialty,
+    roleInTeam: r.role_in_team,
+    isActive: r.is_active,
+    assignedAt: r.assigned_at,
+    notes: r.notes,
+  }));
+}
+
+export async function addCareTeamMember(
+  q: Querier,
+  input: {
+    orgId: string;
+    patientId: string;
+    userId: string;
+    roleInTeam: string;
+    notes?: string | null;
+  },
+  actor: AuditActor,
+  request?: AuditRequestMeta,
+): Promise<{ id: string }> {
+  const res = await q.query<{ id: string }>(
+    `INSERT INTO patient_care_team
+       (org_id, patient_id, user_id, role_in_team, notes, is_active, assigned_by)
+     VALUES ($1, $2, $3, $4, $5, true, $6)
+     ON CONFLICT (org_id, patient_id, user_id) DO UPDATE SET
+       role_in_team = EXCLUDED.role_in_team,
+       notes = EXCLUDED.notes,
+       is_active = true,
+       assigned_at = now(),
+       assigned_by = EXCLUDED.assigned_by
+     RETURNING id`,
+    [
+      input.orgId,
+      input.patientId,
+      input.userId,
+      input.roleInTeam,
+      input.notes?.trim() ?? null,
+      actor.userId ?? null,
+    ],
+  );
+  const id = res.rows[0]!.id;
+
+  await appendAuditEvent(q, {
+    orgId: input.orgId,
+    actor,
+    action: 'patient.care_team_assigned',
+    entityKind: 'patient_care_team',
+    entityId: id,
+    outcome: 'success',
+    metadata: { patientId: input.patientId, userId: input.userId, roleInTeam: input.roleInTeam },
+    request,
+  });
+
+  return { id };
+}
+
+export async function removeCareTeamMember(
+  q: Querier,
+  input: {
+    orgId: string;
+    patientId: string;
+    userId: string;
+  },
+  actor: AuditActor,
+  request?: AuditRequestMeta,
+): Promise<void> {
+  await q.query(
+    `UPDATE patient_care_team
+     SET is_active = false
+     WHERE org_id = $1 AND patient_id = $2 AND user_id = $3`,
+    [input.orgId, input.patientId, input.userId],
+  );
+
+  await appendAuditEvent(q, {
+    orgId: input.orgId,
+    actor,
+    action: 'patient.care_team_removed',
+    entityKind: 'patient_care_team',
+    entityId: input.patientId,
+    outcome: 'success',
+    metadata: { userId: input.userId },
+    request,
+  });
+}
+
+export async function checkDuplicatePatient(
+  q: Querier,
+  input: {
+    orgId: string;
+    mrn?: string;
+    displayName?: string;
+    dob?: string;
+  },
+): Promise<{
+  hasDuplicate: boolean;
+  matches: { id: string; displayName: string; mrn: string | null; reason: string }[];
+  existingPatient: { id: string; displayName: string; mrn: string | null; reason: string } | null;
+}> {
+  const matches: { id: string; displayName: string; mrn: string | null; reason: string }[] = [];
+
+  if (input.mrn && input.mrn.trim()) {
+    const mrnRes = await q.query<{ id: string; display_name: string; value: string }>(
+      `SELECT p.id, p.display_name, pi.value
+       FROM patient_identifier pi
+       JOIN patient p ON p.id = pi.patient_id
+       WHERE pi.org_id = $1 AND UPPER(pi.system) = 'MRN' AND lower(btrim(pi.value)) = lower(btrim($2))`,
+      [input.orgId, input.mrn],
+    );
+    for (const r of mrnRes.rows) {
+      matches.push({ id: r.id, displayName: r.display_name, mrn: r.value, reason: 'Exact hospital MRN match' });
+    }
+  }
+
+  if (input.displayName && input.dob) {
+    const nameDobRes = await q.query<{ id: string; display_name: string; mrn: string | null }>(
+      `SELECT p.id, p.display_name,
+              (SELECT pi.value FROM patient_identifier pi WHERE pi.patient_id = p.id AND UPPER(pi.system) = 'MRN' LIMIT 1) AS mrn
+       FROM patient p
+       WHERE p.org_id = $1
+         AND lower(btrim(p.display_name)) = lower(btrim($2))
+         AND p.dob = $3::date`,
+      [input.orgId, input.displayName, input.dob],
+    );
+    for (const r of nameDobRes.rows) {
+      if (!matches.some((m) => m.id === r.id)) {
+        matches.push({ id: r.id, displayName: r.display_name, mrn: r.mrn, reason: 'Name and date of birth match' });
+      }
+    }
+  }
+
+  return {
+    hasDuplicate: matches.length > 0,
+    matches,
+    existingPatient: matches[0] ?? null,
+  };
+}
+
+export interface PatientFilterOptions {
+  query?: string;
+  search?: string;
+  clinicianId?: string;
+  departmentId?: string;
+  status?: 'active' | 'archived' | 'all';
+  sortBy?: 'name' | 'readiness' | 'date';
+  sortOrder?: 'asc' | 'desc';
+  page?: number;
+  pageSize?: number;
+}
+
+export interface PaginatedPatientsResult {
+  patients: PatientListItem[];
+  totalCount: number;
+  page: number;
+  pageSize: number;
+  totalPages: number;
+}
+
+export async function searchAndFilterPatients(
+  q: Querier,
+  filters: PatientFilterOptions = {},
+): Promise<PaginatedPatientsResult> {
+  const page = Math.max(1, filters.page ?? 1);
+  const pageSize = Math.min(100, Math.max(1, filters.pageSize ?? 20));
+  const offset = (page - 1) * pageSize;
+
+  const conditions: string[] = [];
+  const params: unknown[] = [];
+
+  if (filters.status === 'archived') {
+    conditions.push("p.status = 'archived'");
+  } else if (filters.status !== 'all') {
+    conditions.push("(p.status = 'active' OR p.status IS NULL)");
+  }
+
+  if (filters.clinicianId) {
+    params.push(filters.clinicianId);
+    conditions.push(`p.primary_clinician_id = $${params.length}`);
+  }
+
+  if (filters.departmentId) {
+    params.push(filters.departmentId);
+    conditions.push(`p.department_id = $${params.length}`);
+  }
+
+  const qStr = filters.query ?? filters.search;
+  if (qStr && qStr.trim()) {
+    params.push(`%${qStr.trim()}%`);
+    const pIdx = params.length;
+    conditions.push(
+      `(p.display_name ILIKE $${pIdx} OR p.demo_code ILIKE $${pIdx} OR EXISTS (
+        SELECT 1 FROM patient_identifier pi WHERE pi.patient_id = p.id AND pi.value ILIKE $${pIdx}
+      ))`,
+    );
+  }
+
+  const whereClause = conditions.length > 0 ? `WHERE ${conditions.join(' AND ')}` : '';
+
+  // Count total
+  const countRes = await q.query<{ count: string }>(
+    `SELECT count(*)::text FROM patient p ${whereClause}`,
+    params,
+  );
+  const totalCount = Number(countRes.rows[0]?.count || '0');
+
+  // Sorting
+  let orderBy = 'ORDER BY readiness_band DESC NULLS LAST, p.display_name ASC';
+  if (filters.sortBy === 'name') {
+    orderBy = `ORDER BY p.display_name ${filters.sortOrder === 'desc' ? 'DESC' : 'ASC'}`;
+  } else if (filters.sortBy === 'date') {
+    orderBy = `ORDER BY p.created_at ${filters.sortOrder === 'desc' ? 'DESC' : 'ASC'}`;
+  }
+
+  params.push(pageSize, offset);
+  const limitClause = `LIMIT $${params.length - 1} OFFSET $${params.length}`;
+
+  const res = await q.query<{
+    id: string; display_name: string; demo_code: string | null; is_demo_fixture: boolean;
+    readiness_band: string | null; open_conflicts: string; unverified_facts: string;
+    missing_required: string; open_tasks: string; document_count: string; appointment_date: string | null;
+    mrn: string | null; primary_clinician_name: string | null; department_name: string | null;
+    status: string; created_at: Date; last_document_update: string | null;
+  }>(
+    `SELECT p.id, p.display_name, p.demo_code, p.is_demo_fixture,
+            COALESCE(p.status, 'active') AS status, p.created_at,
+       (SELECT pi.value FROM patient_identifier pi WHERE pi.patient_id = p.id AND pi.system = 'MRN' LIMIT 1) AS mrn,
+       (SELECT u.display_name FROM app_user u WHERE u.id = p.primary_clinician_id) AS primary_clinician_name,
+       (SELECT d.name FROM department d WHERE d.id = p.department_id) AS department_name,
+       (SELECT max(doc.uploaded_at)::text FROM document doc WHERE doc.patient_id = p.id) AS last_document_update,
+       (SELECT r.readiness_band FROM record_readiness_snapshot r
+         WHERE r.patient_id = p.id ORDER BY r.computed_at DESC LIMIT 1) AS readiness_band,
+       (SELECT count(*) FROM conflict_set c WHERE c.patient_id = p.id AND c.status='open')::text AS open_conflicts,
+       (SELECT count(*) FROM evidence_state es WHERE es.patient_id = p.id AND es.state='extracted')::text AS unverified_facts,
+       (SELECT count(*) FROM record_gap rg JOIN checklist_item ci ON ci.id = rg.checklist_item_id
+          WHERE rg.patient_id = p.id AND rg.status='missing' AND ci.requirement_kind='required')::text AS missing_required,
+       (SELECT count(*) FROM admin_task t WHERE t.patient_id = p.id AND t.status IN ('open','assigned','in_progress','blocked'))::text AS open_tasks,
+       (SELECT count(*) FROM document d WHERE d.patient_id = p.id)::text AS document_count,
+       (SELECT min(te.display_date)::text FROM timeline_event te
+          WHERE te.patient_id = p.id AND te.display_date >= current_date) AS appointment_date
+     FROM patient p
+     ${whereClause}
+     ${orderBy}
+     ${limitClause}`,
+    params,
+  );
+
+  const patients: PatientListItem[] = res.rows.map((r) => ({
+    id: r.id,
+    displayName: r.display_name,
+    demoCode: r.demo_code,
+    isDemoFixture: r.is_demo_fixture,
+    readinessBand: r.readiness_band,
+    openConflicts: Number(r.open_conflicts),
+    unverifiedFacts: Number(r.unverified_facts),
+    missingRequired: Number(r.missing_required),
+    openTasks: Number(r.open_tasks),
+    documentCount: Number(r.document_count),
+    appointmentDate: r.appointment_date,
+    mrn: r.mrn,
+    primaryClinicianName: r.primary_clinician_name,
+    departmentName: r.department_name,
+    status: r.status,
+    createdAt: r.created_at,
+    lastDocumentUpdate: r.last_document_update,
+  }));
+
+  return {
+    patients,
+    totalCount,
+    page,
+    pageSize,
+    totalPages: Math.ceil(totalCount / pageSize) || 1,
   };
 }

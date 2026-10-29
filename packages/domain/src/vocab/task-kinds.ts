@@ -37,7 +37,7 @@ export const TASK_KIND_LABEL: Record<TaskKind, string> = {
   verify_evidence_batch: 'Verify evidence batch',
 };
 
-export const TASK_ORIGIN_KINDS = ['evidence', 'record_gap', 'conflict', 'document'] as const;
+export const TASK_ORIGIN_KINDS = ['evidence', 'record_gap', 'conflict', 'document', 'encounter'] as const;
 export type TaskOriginKind = (typeof TASK_ORIGIN_KINDS)[number];
 
 const ORIGIN_SET: ReadonlySet<string> = new Set(TASK_ORIGIN_KINDS);

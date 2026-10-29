@@ -51,6 +51,10 @@ const EXPECTED_MIGRATIONS = [
   "0013_opd_reservation_overlap.sql",
   "0014_guideline_chat_intent.sql",
   "0015_patient_attendance_confirmation.sql",
+  "0016_foundation_users_clinicians_patients.sql",
+  "0017_app_user_admin_rls.sql",
+  "0018_task_origin_encounter.sql",
+  "0019_oncology_operations_milestone_b.sql",
 ];
 
 interface ReadinessServices {
@@ -162,13 +166,13 @@ export async function main(
 
     if (missingMigrations.length === 0 && applied.size === EXPECTED_MIGRATIONS.length) {
       results.push({
-        check: "Schema Migrations (0001–0015)",
+        check: "Schema Migrations (0001–0017)",
         status: "PASS",
         detail: `${applied.size} tracked migrations applied and verified.`,
       });
     } else {
       results.push({
-        check: "Schema Migrations (0001–0015)",
+        check: "Schema Migrations (0001–0017)",
         status: "FAIL",
         detail: `Migration mismatch: expected ${EXPECTED_MIGRATIONS.length}, found ${applied.size}; missing ${missingMigrations.join(", ")}`,
       });

@@ -4,11 +4,14 @@ import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 
 const TABS: { segment: string; label: string; badgeKey?: 'conflicts' | 'gaps' | 'tasks' }[] = [
+  { segment: 'overview', label: 'Overview' },
+  { segment: 'encounters', label: 'Encounters' },
   { segment: 'evidence', label: 'Evidence journey' },
   { segment: 'clinical-context', label: 'Clinical context' },
   { segment: 'sources', label: 'Sources' },
   { segment: 'conflicts', label: 'Reconciliation', badgeKey: 'conflicts' },
   { segment: 'record-map', label: 'Record map' },
+  { segment: 'care-team', label: 'Care team' },
   { segment: 'tasks', label: 'Tasks' },
   { segment: 'packet', label: 'Packet' },
   { segment: 'continuity', label: 'Continuity' },

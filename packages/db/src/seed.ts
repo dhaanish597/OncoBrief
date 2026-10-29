@@ -41,12 +41,17 @@ import {
 const DEMO_PASSWORD = "oncobrief-demo";
 
 const TRUNCATE_TABLES = [
+  "patient_care_team",
   "caregiver_contact",
   "opd_appointment_slot",
   "opd_waitlist_entry",
   "guideline_document",
   "guideline_span",
   "studio_artifact",
+  "user_invitation",
+  "clinician_profile",
+  "department",
+  "facility",
   "organization",
   "app_user",
   "membership",
@@ -180,47 +185,130 @@ export async function seed(
     ).rows[0]!.id;
     log(`orgs: rci=${org1} northgate=${org2}`);
 
+    // --- facilities & departments ------------------------------------------
+    const facRci = (
+      await client.query<{ id: string }>(
+        `INSERT INTO facility (org_id, name, code, address, is_active)
+         VALUES ($1, 'RCI Cancer Care Main Centre', 'RCI-MAIN', '10 Hospital Road, Bengaluru', true)
+         RETURNING id`,
+        [org1],
+      )
+    ).rows[0]!.id;
+    const facNgh = (
+      await client.query<{ id: string }>(
+        `INSERT INTO facility (org_id, name, code, address, is_active)
+         VALUES ($1, 'Northgate Oncology Centre', 'NGH-MAIN', '45 Northgate Ave, Bengaluru', true)
+         RETURNING id`,
+        [org2],
+      )
+    ).rows[0]!.id;
+
+    const deptList = [
+      { name: "Medical Oncology", code: "MED-ONC", specialty: "Medical Oncology" },
+      { name: "Surgical Oncology", code: "SURG-ONC", specialty: "Surgical Oncology" },
+      { name: "Radiation Oncology", code: "RAD-ONC", specialty: "Radiation Oncology" },
+      { name: "Pediatric Oncology", code: "PED-ONC", specialty: "Pediatric Oncology" },
+      { name: "Gynecologic Oncology", code: "GYN-ONC", specialty: "Gynecologic Oncology" },
+    ];
+    const deptId: Record<string, string> = {};
+    for (const d of deptList) {
+      const dep = (
+        await client.query<{ id: string }>(
+          `INSERT INTO department (org_id, facility_id, name, code, specialty, is_active)
+           VALUES ($1, $2, $3, $4, $5, true)
+           RETURNING id`,
+          [org1, facRci, d.name, d.code, d.specialty],
+        )
+      ).rows[0]!.id;
+      deptId[d.code] = dep;
+    }
+
     // --- users --------------------------------------------------------------
     const passwordHash = await hashPassword(DEMO_PASSWORD);
-    const staff: { email: string; name: string; role: string; org: string }[] =
-      [
-        {
-          email: "dr.rao@rci.demo",
-          name: "Dr. Meera Rao",
-          role: "clinician",
-          org: org1,
-        },
-        {
-          email: "coord.anita@rci.demo",
-          name: "Anita Joseph",
-          role: "coordinator",
-          org: org1,
-        },
-        {
-          email: "records.deepak@rci.demo",
-          name: "Deepak Nair",
-          role: "records_officer",
-          org: org1,
-        },
-        {
-          email: "admin.sys@rci.demo",
-          name: "System Admin",
-          role: "org_admin",
-          org: org1,
-        },
-        {
-          email: "auditor.k@rci.demo",
-          name: "Kavya Iyer",
-          role: "auditor",
-          org: org1,
-        },
-        {
-          email: "dr.menon@northgate.demo",
-          name: "Dr. Arun Menon",
-          role: "clinician",
-          org: org2,
-        },
-      ];
+    const staff: {
+      email: string;
+      name: string;
+      role: string;
+      org: string;
+      specialty?: string;
+      licenseNumber?: string;
+      deptCode?: string;
+    }[] = [
+      {
+        email: "dr.rao@rci.demo",
+        name: "Dr. Meera Rao",
+        role: "clinician",
+        org: org1,
+        specialty: "Medical Oncology",
+        licenseNumber: "MCI-48291",
+        deptCode: "MED-ONC",
+      },
+      {
+        email: "dr.sharma@rci.demo",
+        name: "Dr. Rajesh Sharma",
+        role: "clinician",
+        org: org1,
+        specialty: "Surgical Oncology",
+        licenseNumber: "MCI-59124",
+        deptCode: "SURG-ONC",
+      },
+      {
+        email: "dr.ananya@rci.demo",
+        name: "Dr. Ananya Sen",
+        role: "clinician",
+        org: org1,
+        specialty: "Radiation Oncology",
+        licenseNumber: "MCI-62381",
+        deptCode: "RAD-ONC",
+      },
+      {
+        email: "dr.chen@rci.demo",
+        name: "Dr. Wei Chen",
+        role: "clinician",
+        org: org1,
+        specialty: "Medical Oncology",
+        licenseNumber: "MCI-70192",
+        deptCode: "MED-ONC",
+      },
+      {
+        email: "coord.anita@rci.demo",
+        name: "Anita Joseph",
+        role: "coordinator",
+        org: org1,
+      },
+      {
+        email: "records.deepak@rci.demo",
+        name: "Deepak Nair",
+        role: "records_officer",
+        org: org1,
+      },
+      {
+        email: "reception.priya@rci.demo",
+        name: "Priya Nair",
+        role: "receptionist",
+        org: org1,
+      },
+      {
+        email: "admin.sys@rci.demo",
+        name: "System Admin",
+        role: "org_admin",
+        org: org1,
+      },
+      {
+        email: "auditor.k@rci.demo",
+        name: "Kavya Iyer",
+        role: "auditor",
+        org: org1,
+      },
+      {
+        email: "dr.menon@northgate.demo",
+        name: "Dr. Arun Menon",
+        role: "clinician",
+        org: org2,
+        specialty: "Surgical Oncology",
+        licenseNumber: "MCI-31908",
+      },
+    ];
     const userId: Record<string, string> = {};
     for (const s of staff) {
       const u = (
@@ -235,8 +323,17 @@ export async function seed(
         `INSERT INTO membership (org_id, user_id, role, is_demo_fixture) VALUES ($1,$2,$3,true)`,
         [s.org, u, s.role],
       );
+
+      if (s.specialty) {
+        const depId = s.deptCode ? deptId[s.deptCode] : null;
+        await client.query(
+          `INSERT INTO clinician_profile (org_id, user_id, department_id, specialty, license_number, is_active)
+           VALUES ($1, $2, $3, $4, $5, true)`,
+          [s.org, u, depId, s.specialty, s.licenseNumber ?? null],
+        );
+      }
     }
-    log(`users: ${staff.length}`);
+    log(`users: ${staff.length} staff created with clinician profiles`);
 
     // --- checklist template (human-authored, version-pinned) ----------------
     const tpl = (
@@ -511,20 +608,42 @@ export async function seed(
       code: string,
       name: string,
       mrn: string,
+      dob: string,
+      gender: string,
+      clinicianEmail: string,
+      deptCode: string,
       lastConsultationDate?: string | null,
       primaryTemplateId?: string,
     ): Promise<string> => {
+      const clinId = userId[clinicianEmail];
+      const dId = deptId[deptCode];
       const p = (
         await client.query<{ id: string }>(
-          `INSERT INTO patient (org_id, demo_code, display_name, last_consultation_date, is_demo_fixture)
-           VALUES ($1,$2,$3,$4,true) RETURNING id`,
-          [org1, code, name, lastConsultationDate ?? null],
+          `INSERT INTO patient (org_id, demo_code, display_name, dob, gender, status, primary_clinician_id, department_id, facility_id, last_consultation_date, is_demo_fixture)
+           VALUES ($1,$2,$3,$4,$5,'active',$6,$7,$8,$9,true) RETURNING id`,
+          [org1, code, name, dob, gender, clinId ?? null, dId ?? null, facRci, lastConsultationDate ?? null],
         )
       ).rows[0]!.id;
       await client.query(
         `INSERT INTO patient_identifier (org_id, patient_id, system, value) VALUES ($1,$2,'mrn',$3), ($1,$2,'demo',$4)`,
         [org1, p, mrn, code],
       );
+      if (clinId) {
+        await client.query(
+          `INSERT INTO patient_care_team (org_id, patient_id, user_id, role_in_team, notes)
+           VALUES ($1, $2, $3, 'primary_oncologist', 'Assigned at intake')
+           ON CONFLICT (org_id, patient_id, user_id) DO NOTHING`,
+          [org1, p, clinId],
+        );
+      }
+      if (userId["coord.anita@rci.demo"]) {
+        await client.query(
+          `INSERT INTO patient_care_team (org_id, patient_id, user_id, role_in_team, notes)
+           VALUES ($1, $2, $3, 'care_coordinator', 'Intake navigation')
+           ON CONFLICT (org_id, patient_id, user_id) DO NOTHING`,
+          [org1, p, userId["coord.anita@rci.demo"]],
+        );
+      }
       await assignChecklist(client, {
         orgId: org1,
         patientId: p,
@@ -546,6 +665,10 @@ export async function seed(
       "DEMO-001",
       "DEMO-001 — Fragmented referral",
       "SUN-448120",
+      "1974-05-12",
+      "female",
+      "dr.rao@rci.demo",
+      "MED-ONC",
       "2025-07-05",
       tplIntake,
     );
@@ -553,6 +676,10 @@ export async function seed(
       "DEMO-002",
       "DEMO-002 — Staleness",
       "RCI-2025-0044",
+      "1961-11-20",
+      "male",
+      "dr.sharma@rci.demo",
+      "SURG-ONC",
       "2025-06-10",
       tplTumorBoard,
     );
@@ -560,6 +687,10 @@ export async function seed(
       "DEMO-003",
       "DEMO-003 — Ready",
       "READY-1001",
+      "1982-08-15",
+      "female",
+      "dr.ananya@rci.demo",
+      "RAD-ONC",
       "2025-03-15",
       tplFollowup,
     );
@@ -567,8 +698,9 @@ export async function seed(
     // A second org patient with a colliding MRN, for the isolation tests.
     const pOther = (
       await client.query<{ id: string }>(
-        `INSERT INTO patient (org_id, demo_code, display_name, is_demo_fixture) VALUES ($1,'DEMO-001','DEMO-001 — Other tenant',true) RETURNING id`,
-        [org2],
+        `INSERT INTO patient (org_id, demo_code, display_name, dob, gender, status, facility_id, is_demo_fixture)
+         VALUES ($1,'DEMO-001','DEMO-001 — Other tenant','1974-05-12','female','active',$2,true) RETURNING id`,
+        [org2, facNgh],
       )
     ).rows[0]!.id;
     await client.query(
@@ -991,6 +1123,244 @@ Documented receptor status (ER, PR, HER2) must be recorded before systemic thera
   } catch (error) {
     await client.query("ROLLBACK");
     throw error;
+  } finally {
+    client.release();
+  }
+}
+
+/**
+ * Idempotent demo bootstrap: checks if demo fixtures are already loaded.
+ * If not, runs seed(). If already loaded, safely verifies that required demo
+ * facilities, departments, and staff accounts exist without wiping or truncating
+ * any user-created or non-demo patient records.
+ */
+export async function bootstrapDemo(
+  log: (m: string) => void = () => {},
+): Promise<SeedSummary> {
+  const client = await getMigratorPool().connect();
+  try {
+    const existingOrg = await client.query<{ id: string }>(
+      `SELECT id FROM organization WHERE slug = 'rci' AND is_demo_fixture = true LIMIT 1`,
+    );
+    const existingPatient = await client.query<{ id: string }>(
+      `SELECT id FROM patient WHERE demo_code = 'DEMO-001' AND is_demo_fixture = true LIMIT 1`,
+    );
+
+    if (existingOrg.rows.length === 0 || existingPatient.rows.length === 0) {
+      log("Demo data not detected; executing full seed()");
+      return await seed(log);
+    }
+
+    log("Demo data detected; ensuring required demo accounts and profiles exist (idempotent bootstrap)");
+    const org1 = existingOrg.rows[0]!.id;
+    const org2Res = await client.query<{ id: string }>(
+      `SELECT id FROM organization WHERE slug = 'northgate' AND is_demo_fixture = true LIMIT 1`,
+    );
+    const org2 = org2Res.rows[0]?.id ?? org1;
+
+    // Ensure facilities exist
+    const facRci = (
+      await client.query<{ id: string }>(
+        `INSERT INTO facility (org_id, name, code, address, is_active)
+         VALUES ($1, 'RCI Cancer Care Main Centre', 'RCI-MAIN', '10 Hospital Road, Bengaluru', true)
+         ON CONFLICT (org_id, code) DO UPDATE SET name = EXCLUDED.name
+         RETURNING id`,
+        [org1],
+      )
+    ).rows[0]!.id;
+
+    // Ensure departments exist
+    const deptCodes = [
+      { name: "Medical Oncology", code: "MED-ONC", specialty: "Medical Oncology" },
+      { name: "Surgical Oncology", code: "SURG-ONC", specialty: "Surgical Oncology" },
+      { name: "Radiation Oncology", code: "RAD-ONC", specialty: "Radiation Oncology" },
+      { name: "Pediatric Oncology", code: "PED-ONC", specialty: "Pediatric Oncology" },
+      { name: "Gynecologic Oncology", code: "GYN-ONC", specialty: "Gynecologic Oncology" },
+    ];
+    const deptId: Record<string, string> = {};
+    for (const d of deptCodes) {
+      const dep = (
+        await client.query<{ id: string }>(
+          `INSERT INTO department (org_id, facility_id, name, code, specialty, is_active)
+           VALUES ($1, $2, $3, $4, $5, true)
+           ON CONFLICT (org_id, code) DO UPDATE SET name = EXCLUDED.name, specialty = EXCLUDED.specialty
+           RETURNING id`,
+          [org1, facRci, d.name, d.code, d.specialty],
+        )
+      ).rows[0]!.id;
+      deptId[d.code] = dep;
+    }
+
+    // Ensure all demo staff exist
+    const passwordHash = await hashPassword(DEMO_PASSWORD);
+    const staff = [
+      { email: "dr.rao@rci.demo", name: "Dr. Meera Rao", role: "clinician", org: org1, specialty: "Medical Oncology", licenseNumber: "MCI-48291" },
+      { email: "dr.sharma@rci.demo", name: "Dr. Rajesh Sharma", role: "clinician", org: org1, specialty: "Surgical Oncology", licenseNumber: "MCI-59124" },
+      { email: "dr.ananya@rci.demo", name: "Dr. Ananya Sen", role: "clinician", org: org1, specialty: "Radiation Oncology", licenseNumber: "MCI-62381" },
+      { email: "dr.chen@rci.demo", name: "Dr. Wei Chen", role: "clinician", org: org1, specialty: "Medical Oncology", licenseNumber: "MCI-70192" },
+      { email: "coord.anita@rci.demo", name: "Anita Joseph", role: "coordinator", org: org1 },
+      { email: "records.deepak@rci.demo", name: "Deepak Nair", role: "records_officer", org: org1 },
+      { email: "reception.priya@rci.demo", name: "Priya Nair", role: "receptionist", org: org1 },
+      { email: "admin.sys@rci.demo", name: "System Admin", role: "org_admin", org: org1 },
+      { email: "auditor.k@rci.demo", name: "Kavya Iyer", role: "auditor", org: org1 },
+      { email: "dr.menon@northgate.demo", name: "Dr. Arun Menon", role: "clinician", org: org2, specialty: "Surgical Oncology", licenseNumber: "MCI-31908" },
+    ];
+
+    for (const s of staff) {
+      let uId: string;
+      const userRes = await client.query<{ id: string }>(
+        `SELECT id FROM app_user WHERE email = $1`,
+        [s.email],
+      );
+      if (userRes.rows.length === 0) {
+        uId = (
+          await client.query<{ id: string }>(
+            `INSERT INTO app_user (email, display_name, password_hash, is_demo_fixture)
+             VALUES ($1, $2, $3, true) RETURNING id`,
+            [s.email, s.name, passwordHash],
+          )
+        ).rows[0]!.id;
+      } else {
+        uId = userRes.rows[0]!.id;
+      }
+
+      await client.query(
+        `INSERT INTO membership (org_id, user_id, role, is_demo_fixture)
+         VALUES ($1, $2, $3, true)
+         ON CONFLICT (org_id, user_id) DO UPDATE SET role = EXCLUDED.role`,
+        [s.org, uId, s.role],
+      );
+
+      if (s.specialty) {
+        const dId =
+          s.org === org1 && s.specialty === "Medical Oncology"
+            ? deptId["MED-ONC"]
+            : s.org === org1 && s.specialty === "Surgical Oncology"
+            ? deptId["SURG-ONC"]
+            : s.org === org1 && s.specialty === "Radiation Oncology"
+            ? deptId["RAD-ONC"]
+            : null;
+        await client.query(
+          `INSERT INTO clinician_profile (org_id, user_id, department_id, specialty, license_number, is_active)
+           VALUES ($1, $2, $3, $4, $5, true)
+           ON CONFLICT (org_id, user_id) DO UPDATE SET specialty = EXCLUDED.specialty, license_number = EXCLUDED.license_number, department_id = EXCLUDED.department_id`,
+          [s.org, uId, dId, s.specialty, s.licenseNumber ?? null],
+        );
+      }
+    }
+
+    // Ensure Milestone B operational demo fixtures exist (idempotent)
+    const demo1 = existingPatient.rows[0]?.id;
+    const docMukhopadhyay = (
+      await client.query<{ id: string }>(
+        `SELECT id FROM app_user WHERE email = 'ananya.mukhopadhyay@rci.invalid' LIMIT 1`,
+      )
+    ).rows[0]?.id;
+
+    if (demo1 && docMukhopadhyay) {
+      // 1. Clinic Session
+      await client.query(
+        `INSERT INTO clinic_session (org_id, facility_id, department_id, clinician_id, title, day_of_week, start_time, end_time, room_label, max_patients)
+         VALUES ($1, $2, $3, $4, 'Thoracic & Medical Oncology Morning OPD', 1, '09:00:00', '13:00:00', 'OPD Room 101', 25)
+         ON CONFLICT (org_id, id) DO NOTHING`,
+        [org1, facRci, deptId['MED-ONC'], docMukhopadhyay],
+      );
+
+      // 2. Demo Appointment
+      const apptCheck = await client.query<{ id: string }>(
+        `SELECT id FROM appointment WHERE org_id = $1 AND patient_id = $2 AND token_number = 'TK-001' LIMIT 1`,
+        [org1, demo1],
+      );
+      let demoApptId = apptCheck.rows[0]?.id;
+      if (!demoApptId) {
+        const apptRes = await client.query<{ id: string }>(
+          `INSERT INTO appointment (org_id, patient_id, clinician_id, facility_id, department_id, scheduled_start, scheduled_end, room_label, appointment_type, arrival_category, status, token_number, notes)
+           VALUES ($1, $2, $3, $4, $5, (CURRENT_DATE + interval '10 hours'), (CURRENT_DATE + interval '10 hours 30 minutes'), 'OPD Room 101', 'follow_up', 'scheduled', 'checked_in', 'TK-001', 'Synthetic demo OPD follow-up appointment')
+           RETURNING id`,
+          [org1, demo1, docMukhopadhyay, facRci, deptId['MED-ONC']],
+        );
+        demoApptId = apptRes.rows[0]?.id;
+      }
+
+      // 3. Demo Consultation Encounter
+      const encCheck = await client.query<{ id: string }>(
+        `SELECT id FROM encounter WHERE org_id = $1 AND patient_id = $2 AND status = 'in_progress' LIMIT 1`,
+        [org1, demo1],
+      );
+      let demoEncId = encCheck.rows[0]?.id;
+      if (!demoEncId) {
+        const encRes = await client.query<{ id: string }>(
+          `INSERT INTO encounter (org_id, patient_id, appointment_id, facility_id, department_id, clinician_id, encounter_type, status, started_at)
+           VALUES ($1, $2, $3, $4, $5, $6, 'outpatient', 'in_progress', now())
+           RETURNING id`,
+          [org1, demo1, demoApptId ?? null, facRci, deptId['MED-ONC'], docMukhopadhyay],
+        );
+        demoEncId = encRes.rows[0]?.id;
+      }
+
+      if (demoEncId) {
+        await client.query(
+          `INSERT INTO encounter_participant (org_id, encounter_id, user_id, role)
+           VALUES ($1, $2, $3, 'attending_oncologist')
+           ON CONFLICT (org_id, encounter_id, user_id) DO NOTHING`,
+          [org1, demoEncId, docMukhopadhyay],
+        );
+
+        await client.query(
+          `INSERT INTO encounter_note_version (org_id, encounter_id, version, status, title, chief_complaint, clinical_assessment, plan_and_instructions, authored_by)
+           VALUES ($1, $2, 1, 'draft', 'Thoracic Oncology Consult Note', 'Cycle 3 Carboplatin/Pemetrexed restaging follow-up', 'Patient is clinically stable with ECOG PS 1. Reviewing histopathology and response markers.', 'Proceed with restaging chest CT scan. Continue anti-emetic prophylaxis.', $3)
+           ON CONFLICT (org_id, encounter_id, version) DO NOTHING`,
+          [org1, demoEncId, docMukhopadhyay],
+        );
+      }
+
+      // 4. Demo Tumor Board Meeting
+      const tbCheck = await client.query<{ id: string }>(
+        `SELECT id FROM tumor_board_meeting WHERE org_id = $1 AND title = 'RCI Thoracic Multidisciplinary Oncology Board' LIMIT 1`,
+        [org1],
+      );
+      let demoTbId = tbCheck.rows[0]?.id;
+      if (!demoTbId) {
+        const tbRes = await client.query<{ id: string }>(
+          `INSERT INTO tumor_board_meeting (org_id, title, meeting_date, start_time, end_time, location, status, moderator_user_id, notes)
+           VALUES ($1, 'RCI Thoracic Multidisciplinary Oncology Board', CURRENT_DATE + interval '2 days', '16:00:00', '17:30:00', 'Conference Room 3A & Telehealth', 'scheduled', $2, 'Multidisciplinary Thoracic and GI Oncology Review')
+           RETURNING id`,
+          [org1, docMukhopadhyay],
+        );
+        demoTbId = tbRes.rows[0]?.id;
+      }
+
+      if (demoTbId) {
+        await client.query(
+          `INSERT INTO tumor_board_case (org_id, meeting_id, patient_id, presenter_user_id, status, order_index, clinical_staging, checklist_histology_verified, checklist_imaging_verified, checklist_staging_verified, checklist_genomics_verified)
+           VALUES ($1, $2, $3, $4, 'registered', 1, 'cT2aN1M0 Stage IIB NSCLC', true, true, true, false)
+           ON CONFLICT (org_id, meeting_id, patient_id) DO NOTHING`,
+          [org1, demoTbId, demo1, docMukhopadhyay],
+        );
+      }
+    }
+
+    const patientRes = await client.query<{ id: string }>(
+      `SELECT id FROM patient WHERE org_id = $1 AND is_demo_fixture = true`,
+      [org1],
+    );
+
+    return {
+      orgs: [org1, org2],
+      patients: patientRes.rows.map((r) => r.id),
+      documents: 0,
+      facts: 0,
+      conflicts: 0,
+      gaps: 0,
+      tasks: 0,
+      packets: 0,
+      messages: 0,
+      credentials: staff.map((s) => ({
+        email: s.email,
+        password: DEMO_PASSWORD,
+        role: s.role,
+      })),
+    };
   } finally {
     client.release();
   }

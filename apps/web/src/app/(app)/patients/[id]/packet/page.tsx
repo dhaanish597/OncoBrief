@@ -3,6 +3,7 @@ import { getPacket, listPackets, listStudioArtifacts } from '@oncobrief/db';
 import { requireSession, withSession } from '@/lib/session';
 import { EmptyFinding, SectionHeading, StateBadge } from '@/components/evidence';
 import { ProductivityStudio } from '@/components/ProductivityStudio';
+import { PrintButton } from '@/components/PrintButton';
 import {
   approvePacketAction,
   createPacketAction,
@@ -138,6 +139,7 @@ export default async function PacketPage({ params }: { params: Promise<{ id: str
                 ) : null}
                 {canExport && latest.status === 'approved' && !latest.sourcesUnavailable ? (
                   <>
+                    <PrintButton label="print / pdf" />
                     <a
                       href={`/api/v1/packets/${latest.id}/export`}
                       className="mono border border-[var(--color-rule-strong)] px-2.5 py-1 text-[11px] uppercase hover:bg-[var(--color-accent-soft)]"

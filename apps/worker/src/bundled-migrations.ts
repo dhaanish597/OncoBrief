@@ -26,6 +26,10 @@ import m0012 from '../../../packages/db/migrations/0012_opd_transaction_safety.s
 import m0013 from '../../../packages/db/migrations/0013_opd_reservation_overlap.sql';
 import m0014 from '../../../packages/db/migrations/0014_guideline_chat_intent.sql';
 import m0015 from '../../../packages/db/migrations/0015_patient_attendance_confirmation.sql';
+import m0016 from '../../../packages/db/migrations/0016_foundation_users_clinicians_patients.sql';
+import m0017 from '../../../packages/db/migrations/0017_app_user_admin_rls.sql';
+import m0018 from '../../../packages/db/migrations/0018_task_origin_encounter.sql';
+import m0019 from '../../../packages/db/migrations/0019_oncology_operations_milestone_b.sql';
 
 export const BUNDLED_MIGRATIONS: MigrationFile[] = [
   { name: '0001_bootstrap.sql', sql: m0001 },
@@ -43,4 +47,8 @@ export const BUNDLED_MIGRATIONS: MigrationFile[] = [
   { name: '0013_opd_reservation_overlap.sql', sql: m0013 },
   { name: '0014_guideline_chat_intent.sql', sql: m0014 },
   { name: '0015_patient_attendance_confirmation.sql', sql: m0015 },
+  { name: '0016_foundation_users_clinicians_patients.sql', sql: m0016 },
+  { name: '0017_app_user_admin_rls.sql', sql: m0017 },
+  { name: '0018_task_origin_encounter.sql', sql: m0018 },
+  { name: '0019_oncology_operations_milestone_b.sql', sql: m0019 },
 ];

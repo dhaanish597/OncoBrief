@@ -19,12 +19,30 @@ const EXPECTED: Record<Permission, readonly Role[]> = {
     'records_officer',
     'org_admin',
     'auditor',
+    'receptionist',
+    'tumor_board_coordinator',
   ],
+  'patient:create': [
+    'clinician',
+    'coordinator',
+    'records_officer',
+    'org_admin',
+    'receptionist',
+  ],
+  'patient:update': [
+    'clinician',
+    'coordinator',
+    'records_officer',
+    'org_admin',
+    'receptionist',
+  ],
+  'patient:archive': ['records_officer', 'org_admin'],
   'document:upload': [
     'clinician',
     'coordinator',
     'records_officer',
     'org_admin',
+    'receptionist',
   ],
   'document:read_page': [
     'clinician',
@@ -32,22 +50,75 @@ const EXPECTED: Record<Permission, readonly Role[]> = {
     'records_officer',
     'org_admin',
     'auditor',
+    'receptionist',
+    'tumor_board_coordinator',
   ],
-  'evidence:verify': ['clinician', 'coordinator', 'records_officer'],
+  'evidence:verify': [
+    'clinician',
+    'coordinator',
+    'records_officer',
+    'tumor_board_coordinator',
+  ],
   'evidence:correct': ['clinician', 'records_officer'],
   'evidence:reject': ['clinician', 'records_officer'],
   'conflict:resolve': ['clinician', 'records_officer'],
-  'task:create': ['clinician', 'coordinator', 'records_officer'],
-  'task:assign': ['coordinator', 'records_officer', 'org_admin'],
-  'packet:draft': ['clinician', 'coordinator'],
+  'task:create': [
+    'clinician',
+    'coordinator',
+    'records_officer',
+    'receptionist',
+    'tumor_board_coordinator',
+  ],
+  'task:assign': [
+    'coordinator',
+    'records_officer',
+    'org_admin',
+    'tumor_board_coordinator',
+  ],
+  'packet:draft': ['clinician', 'coordinator', 'tumor_board_coordinator'],
   'packet:approve': ['clinician'],
-  'message:compose': ['coordinator', 'records_officer'],
+  'message:compose': ['coordinator', 'records_officer', 'receptionist'],
   'message:approve': ['clinician'],
-  'packet:export': ['clinician', 'coordinator', 'org_admin'],
+  'packet:export': [
+    'clinician',
+    'coordinator',
+    'org_admin',
+    'tumor_board_coordinator',
+  ],
   'checklist:author': ['records_officer', 'org_admin'],
-  'audit:read': ['org_admin', 'auditor'],
-  'user:manage': ['org_admin'],
-  'opd:manage': ['clinician', 'coordinator', 'records_officer', 'org_admin'],
+  'audit:read': ['org_admin', 'auditor', 'platform_admin'],
+  'user:manage': ['org_admin', 'platform_admin'],
+  'clinician:manage': ['org_admin', 'platform_admin'],
+  'department:manage': ['org_admin', 'platform_admin'],
+  'opd:manage': [
+    'clinician',
+    'coordinator',
+    'records_officer',
+    'org_admin',
+    'receptionist',
+  ],
+  'appointment:create': [
+    'clinician',
+    'coordinator',
+    'records_officer',
+    'org_admin',
+    'receptionist',
+  ],
+  'appointment:update': [
+    'clinician',
+    'coordinator',
+    'records_officer',
+    'org_admin',
+    'receptionist',
+  ],
+  'encounter:create': ['clinician', 'coordinator'],
+  'encounter:note': ['clinician'],
+  'tumor_board:manage': [
+    'clinician',
+    'coordinator',
+    'tumor_board_coordinator',
+    'org_admin',
+  ],
 };
 
 describe('RBAC matrix', () => {
@@ -90,5 +161,23 @@ describe('RBAC matrix', () => {
     expect(can('org_admin', 'conflict:resolve')).toBe(false);
     expect(can('org_admin', 'packet:approve')).toBe(false);
     expect(can('org_admin', 'message:approve')).toBe(false);
+  });
+
+  it('platform_admin has no routine clinical patient access or verification authority', () => {
+    expect(can('platform_admin', 'patient:read')).toBe(false);
+    expect(can('platform_admin', 'patient:create')).toBe(false);
+    expect(can('platform_admin', 'evidence:verify')).toBe(false);
+    expect(can('platform_admin', 'packet:approve')).toBe(false);
+    expect(can('platform_admin', 'user:manage')).toBe(true);
+    expect(can('platform_admin', 'audit:read')).toBe(true);
+  });
+
+  it('receptionist can register patients and upload docs but cannot verify evidence', () => {
+    expect(can('receptionist', 'patient:create')).toBe(true);
+    expect(can('receptionist', 'patient:read')).toBe(true);
+    expect(can('receptionist', 'document:upload')).toBe(true);
+    expect(can('receptionist', 'evidence:verify')).toBe(false);
+    expect(can('receptionist', 'evidence:correct')).toBe(false);
+    expect(can('receptionist', 'packet:approve')).toBe(false);
   });
 });

@@ -56,7 +56,6 @@ import {
   revokeCaregiverConsent,
   recordMessageAttendance,
   type AttendanceResponseStatus,
-  type ValidatedSession,
   type VariableInput,
 } from '@oncobrief/db';
 import { withSession } from './session';
@@ -418,6 +417,7 @@ export async function taskStatusAction(fd: FormData): Promise<void> {
     });
   });
   revalidatePath(`/patients/${patientId}/tasks`);
+  revalidatePath('/my-tasks');
 }
 
 export async function commentTaskAction(fd: FormData): Promise<void> {
@@ -433,6 +433,35 @@ export async function commentTaskAction(fd: FormData): Promise<void> {
     await commentTask(q, { taskId, actorId: s.userId, note });
   });
   revalidatePath(`/patients/${patientId}/tasks`);
+  revalidatePath('/my-tasks');
+}
+
+export async function createEncounterTaskAction(fd: FormData): Promise<void> {
+  const patientId = str(fd, 'patientId');
+  const encounterId = str(fd, 'encounterId');
+  const title = str(fd, 'title');
+  const taskKindRaw = str(fd, 'taskKind');
+  if (!isTaskKind(taskKindRaw)) throw new Error('invalid_task_kind');
+  const dueOn = optionalStr(fd, 'dueOn');
+  const assignedTo = optionalStr(fd, 'assignedTo');
+
+  await withSession(async (q, s) => {
+    requirePermission(s.role, 'task:create');
+    await createTask(q, {
+      orgId: s.orgId,
+      patientId,
+      title,
+      taskKind: taskKindRaw,
+      dueOn,
+      origin: { kind: 'encounter', encounterId },
+      createdBy: s.userId,
+      assignedTo: assignedTo || null,
+    });
+  });
+
+  revalidatePath(`/patients/${patientId}/encounters/${encounterId}`);
+  revalidatePath(`/patients/${patientId}/tasks`);
+  revalidatePath('/my-tasks');
 }
 
 // --- twin ------------------------------------------------------------------
@@ -1027,5 +1056,3 @@ export async function approveStudioArtifactAction(fd: FormData): Promise<void> {
   });
   revalidatePath(`/patients/${patientId}/packet`);
 }
-
-export type { ValidatedSession };

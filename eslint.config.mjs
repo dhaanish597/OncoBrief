@@ -16,6 +16,8 @@ export default tseslint.config(
       '**/*.config.js',
       '**/*.config.mjs',
       '**/*.config.ts',
+      '.codex-deck-work/**',
+      'video-output/**',
     ],
   },
   js.configs.recommended,

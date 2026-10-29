@@ -49,3 +49,13 @@ infra/build/
 audit/screenshots/
 *.png
 
+# media and video render outputs
+video-output/
+.codex-deck-work/
+
+# root-level presentation templates and scratch files
+/*.pptx
+/*.pdf
+!/ONCOBRIEF_ENHANCEMENT_PLAN (old).pdf
+
+

@@ -22,7 +22,8 @@ export type TaskOrigin =
   | { kind: 'evidence'; evidenceFactId: string }
   | { kind: 'record_gap'; recordGapId: string }
   | { kind: 'conflict'; conflictSetId: string }
-  | { kind: 'document'; documentId: string };
+  | { kind: 'document'; documentId: string }
+  | { kind: 'encounter'; encounterId: string };
 
 export interface CreateTaskInput {
   orgId: string;
@@ -71,11 +72,17 @@ export async function createTask(q: Querier, input: CreateTaskInput): Promise<st
               id: input.origin.conflictSetId,
               column: 'origin_conflict_set_id',
             }
-          : {
-              table: 'document',
-              id: input.origin.documentId,
-              column: 'origin_document_id',
-            };
+          : input.origin.kind === 'encounter'
+            ? {
+                table: 'encounter',
+                id: input.origin.encounterId,
+                column: 'origin_encounter_id',
+              }
+            : {
+                table: 'document',
+                id: input.origin.documentId,
+                column: 'origin_document_id',
+              };
   const sourceRow = await q.query(
     `SELECT id FROM ${source.table} WHERE id=$1 AND org_id=$2 AND patient_id=$3`,
     [source.id, input.orgId, input.patientId],
@@ -99,8 +106,8 @@ export async function createTask(q: Querier, input: CreateTaskInput): Promise<st
     `INSERT INTO admin_task
        (org_id, patient_id, title, detail, task_kind, due_on, origin_kind,
         origin_evidence_fact_id, origin_record_gap_id, origin_conflict_set_id, origin_document_id,
-        created_by, assigned_to)
-     VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13)
+        origin_encounter_id, created_by, assigned_to)
+     VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14)
      RETURNING id`,
     [
       input.orgId,
@@ -114,6 +121,7 @@ export async function createTask(q: Querier, input: CreateTaskInput): Promise<st
       origin.kind === 'record_gap' ? origin.recordGapId : null,
       origin.kind === 'conflict' ? origin.conflictSetId : null,
       origin.kind === 'document' ? origin.documentId : null,
+      origin.kind === 'encounter' ? origin.encounterId : null,
       input.createdBy,
       input.assignedTo ?? null,
     ],
@@ -399,3 +407,148 @@ export async function listVerifiedInstructions(q: Querier, patientId: string) {
   );
   return result.rows;
 }
+
+export interface MyTaskItem {
+  id: string;
+  patientId: string;
+  patientName: string;
+  patientIdentifier?: string;
+  title: string;
+  detail: string | null;
+  taskKind: TaskKind;
+  status: TaskStatus;
+  dueOn: string | null;
+  originKind: string;
+  originEvidenceFactId: string | null;
+  originRecordGapId: string | null;
+  originConflictSetId: string | null;
+  originDocumentId: string | null;
+  originEncounterId: string | null;
+  assignedTo: string | null;
+  assigneeName: string | null;
+  createdBy: string;
+  creatorName: string;
+  createdAt: string;
+  closedAt: string | null;
+  closureNote: string | null;
+}
+
+export async function listMyTasks(
+  q: Querier,
+  orgId: string,
+  filter: {
+    assignedTo?: string | null;
+    patientId?: string;
+    status?: TaskStatus | 'open_only' | 'all';
+    taskKind?: string;
+  } = {},
+): Promise<MyTaskItem[]> {
+  const conditions: string[] = ['t.org_id = $1'];
+  const values: unknown[] = [orgId];
+  let idx = 2;
+
+  if (filter.assignedTo) {
+    conditions.push(`t.assigned_to = $${idx++}`);
+    values.push(filter.assignedTo);
+  }
+
+  if (filter.patientId) {
+    conditions.push(`t.patient_id = $${idx++}`);
+    values.push(filter.patientId);
+  }
+
+  if (filter.status === 'open_only') {
+    conditions.push(`t.status NOT IN ('done', 'cancelled')`);
+  } else if (filter.status && filter.status !== 'all') {
+    conditions.push(`t.status = $${idx++}`);
+    values.push(filter.status);
+  }
+
+  if (filter.taskKind) {
+    conditions.push(`t.task_kind = $${idx++}`);
+    values.push(filter.taskKind);
+  }
+
+  const sql = `
+    SELECT
+      t.id,
+      t.patient_id,
+      p.display_name AS patient_name,
+      (SELECT value FROM patient_identifier pi WHERE pi.patient_id = p.id LIMIT 1) AS patient_identifier,
+      t.title,
+      t.detail,
+      t.task_kind,
+      t.status,
+      t.due_on::text AS due_on,
+      t.origin_kind,
+      t.origin_evidence_fact_id,
+      t.origin_record_gap_id,
+      t.origin_conflict_set_id,
+      t.origin_document_id,
+      t.origin_encounter_id,
+      t.assigned_to,
+      a.display_name AS assignee_name,
+      t.created_by,
+      c.display_name AS creator_name,
+      t.created_at::text,
+      t.closed_at::text,
+      t.closure_note
+    FROM admin_task t
+    JOIN patient p ON p.id = t.patient_id AND p.org_id = t.org_id
+    LEFT JOIN app_user a ON a.id = t.assigned_to
+    LEFT JOIN app_user c ON c.id = t.created_by
+    WHERE ${conditions.join(' AND ')}
+    ORDER BY (t.status IN ('done', 'cancelled')), t.due_on NULLS LAST, t.created_at DESC
+  `;
+
+  const res = await q.query<{
+    id: string;
+    patient_id: string;
+    patient_name: string;
+    patient_identifier: string | null;
+    title: string;
+    detail: string | null;
+    task_kind: TaskKind;
+    status: TaskStatus;
+    due_on: string | null;
+    origin_kind: string;
+    origin_evidence_fact_id: string | null;
+    origin_record_gap_id: string | null;
+    origin_conflict_set_id: string | null;
+    origin_document_id: string | null;
+    origin_encounter_id: string | null;
+    assigned_to: string | null;
+    assignee_name: string | null;
+    created_by: string;
+    creator_name: string;
+    created_at: string;
+    closed_at: string | null;
+    closure_note: string | null;
+  }>(sql, values);
+
+  return res.rows.map((r) => ({
+    id: r.id,
+    patientId: r.patient_id,
+    patientName: r.patient_name,
+    patientIdentifier: r.patient_identifier ?? undefined,
+    title: r.title,
+    detail: r.detail,
+    taskKind: r.task_kind,
+    status: r.status,
+    dueOn: r.due_on,
+    originKind: r.origin_kind,
+    originEvidenceFactId: r.origin_evidence_fact_id,
+    originRecordGapId: r.origin_record_gap_id,
+    originConflictSetId: r.origin_conflict_set_id,
+    originDocumentId: r.origin_document_id,
+    originEncounterId: r.origin_encounter_id,
+    assignedTo: r.assigned_to,
+    assigneeName: r.assignee_name,
+    createdBy: r.created_by,
+    creatorName: r.creator_name,
+    createdAt: r.created_at,
+    closedAt: r.closed_at,
+    closureNote: r.closure_note,
+  }));
+}
+
