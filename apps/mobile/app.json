@@ -1,0 +1,46 @@
+{
+  "expo": {
+    "name": "OncoBrief",
+    "slug": "oncobrief-patient",
+    "version": "1.0.0",
+    "scheme": "oncobrief",
+    "orientation": "portrait",
+    "userInterfaceStyle": "light",
+    "backgroundColor": "#F4F7FB",
+    "icon": "./assets/icon.png",
+    "android": {
+      "package": "org.oncobrief.patient",
+      "versionCode": 1,
+      "allowBackup": false,
+      "blockedPermissions": [
+        "android.permission.RECORD_AUDIO",
+        "android.permission.READ_CONTACTS",
+        "android.permission.READ_EXTERNAL_STORAGE",
+        "android.permission.WRITE_EXTERNAL_STORAGE",
+        "android.permission.READ_MEDIA_IMAGES",
+        "android.permission.READ_MEDIA_VIDEO"
+      ]
+    },
+    "plugins": [
+      "expo-router",
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": false,
+          "cameraPermission": "Capture a fictional sample document for the OncoBrief demo.",
+          "microphonePermission": false
+        }
+      ],
+      "expo-sharing",
+      "expo-font"
+    ],
+    "web": {
+      "bundler": "metro",
+      "output": "single",
+      "name": "OncoBrief patient companion"
+    },
+    "experiments": {
+      "typedRoutes": true
+    }
+  }
+}
