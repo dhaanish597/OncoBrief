@@ -300,7 +300,8 @@ export class PatientPortalApiClient {
     phoneNumber: string;
     preferredLocale?: string;
     syncReminders?: boolean;
-  }): Promise<{ caregiver: { id: string; fullName: string; relationship: string } }> {
+    scopes?: string[];
+  }): Promise<{ caregiver: { id: string; fullName: string; relationship: string; scopes?: string[] } }> {
     return this.request('/api/v1/patient-portal/caregivers', {
       method: 'POST',
       body: JSON.stringify(params),
@@ -378,11 +379,38 @@ export class PatientPortalApiClient {
     sharedDocumentIds: string[];
     includeQuestions?: boolean;
     expiresInHours?: number;
-  }): Promise<{ grantId: string; shareToken: string; expiresAt: string; shareUrl: string }> {
-    return this.request('/api/v1/patient-portal/shares', {
-      method: 'POST',
-      body: JSON.stringify(params),
-    });
+    durationHours?: number;
+  }): Promise<{
+    grantId: string;
+    shareToken: string;
+    expiresAt: string;
+    shareUrl: string;
+    grant: { id: string; recipientLabel: string; expiresAt: string; sharedDocumentIds: string[]; isRevoked: boolean };
+  }> {
+    const hours = params.expiresInHours ?? params.durationHours ?? 72;
+    const res = await this.request<{ grantId: string; shareToken: string; expiresAt: string; shareUrl: string }>(
+      '/api/v1/patient-portal/shares',
+      {
+        method: 'POST',
+        body: JSON.stringify({
+          recipientLabel: params.recipientLabel,
+          recipientRole: params.recipientRole,
+          sharedDocumentIds: params.sharedDocumentIds,
+          includeQuestions: params.includeQuestions,
+          expiresInHours: hours,
+        }),
+      },
+    );
+    return {
+      ...res,
+      grant: {
+        id: res.grantId,
+        recipientLabel: params.recipientLabel,
+        expiresAt: res.expiresAt,
+        sharedDocumentIds: params.sharedDocumentIds,
+        isRevoked: false,
+      },
+    };
   }
 
   async revokeShareGrant(grantId: string): Promise<{ grantId: string; revoked: boolean }> {

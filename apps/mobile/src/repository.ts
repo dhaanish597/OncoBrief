@@ -200,6 +200,8 @@ export class ConnectedPatientRepository {
       appointments: snapshot.appointments ?? [],
       continuityMessages: snapshot.continuityMessages ?? [],
       tasks: snapshot.tasks ?? [],
+      caregivers: snapshot.caregivers ?? [],
+      shareGrants: snapshot.shareGrants ?? [],
       lastSyncedAt: snapshot.lastSyncedAt ?? new Date().toISOString(),
       pendingSyncCount: this.syncQueue.size(),
     };

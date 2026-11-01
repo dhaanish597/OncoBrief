@@ -61,6 +61,21 @@ export interface State {
     dueDate?: string;
     description?: string;
   }[];
+  caregivers?: {
+    id: string;
+    fullName: string;
+    relationship: string;
+    phoneNumber: string;
+    isActive: boolean;
+    scopes: string[];
+  }[];
+  shareGrants?: {
+    id: string;
+    recipientLabel: string;
+    expiresAt: string;
+    sharedDocumentIds: string[];
+    isRevoked: boolean;
+  }[];
 }
 export function createEmptyConnectedState(): State {
   return {
@@ -94,6 +109,8 @@ export function createEmptyConnectedState(): State {
     appointments: [],
     continuityMessages: [],
     tasks: [],
+    caregivers: [],
+    shareGrants: [],
   };
 }
 export function createDemo(personaId: PersonaId = 'DEMO-001'): State {
