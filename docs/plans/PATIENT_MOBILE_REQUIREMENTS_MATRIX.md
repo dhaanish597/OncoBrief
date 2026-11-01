@@ -73,7 +73,7 @@ Every requirement below contains all 21 mandatory governance attributes:
 | `REQ-MOB-013` | D | Source-Backed Oncology Document Vault & Provenance Badges | `ORIGINAL_ONCOBRIEF` | `CORE` | M3 | P0 | `MOB-013` | Local mock records only (`app/(tabs)/records.tsx`) | `NOT_STARTED` |
 | `REQ-MOB-014` | D | Authorized Document Page Viewer (`GET /api/v1/patient-portal/documents/[id]/pages/[page]`) | `ORIGINAL_ONCOBRIEF` | `CORE` | M2 | P0 | `MOB-008` | Local text summary + local sample image URI only | `NOT_STARTED` |
 | `REQ-MOB-015` | D | Patient Document Upload to Backend (`POST /api/v1/patient-portal/documents`) | `ORIGINAL_ONCOBRIEF` | `CORE` | M2 | P0 | `MOB-009` | Copies to local sandbox only (`app/import.tsx`) | `NOT_STARTED` |
-| `REQ-MOB-016` | D | Transactional Local File Import, Date Fallback & SHA-256 Deduplication (`BUG-MOB-09`) | `MOBILE_EXTENSION` | `CORE` | M1 | P1 | `MOB-004` | Leaks orphan files; blank `date: ''`; no SHA-256 check | `NOT_STARTED` |
+| `REQ-MOB-016` | D | Transactional Local File Import, Date Fallback & SHA-256 Deduplication (`BUG-MOB-09`) | `MOBILE_EXTENSION` | `CORE` | M1 | P1 | `MOB-004` | Leaks orphan files; blank `date: ''`; no SHA-256 check | `COMPLETE` |
 | `REQ-MOB-017` | D | Document Ingestion Status & Verification Badge Lifecycle | `V4_ENHANCEMENT_PLAN` | `CORE` | M3 | P0 | `MOB-013` | Local `review: 'reviewed'` conflates patient & clinician | `NOT_STARTED` |
 | `REQ-MOB-018` | D | Patient Document Review & Discrepancy Flagging (`POST .../review`, `POST .../flags`) | `ORIGINAL_ONCOBRIEF` | `CORE` | M2 | P0 | `MOB-009` | Local-only `flag` action in `src/domain.ts:91` | `NOT_STARTED` |
 | `REQ-MOB-019` | D | Missing-Document Checklist Synced from Clinician Tasks (`task.category = 'missing_document'`) | `V4_ENHANCEMENT_PLAN` | `CORE` | M3 | P0 | `MOB-013` | Missing in `apps/mobile` | `NOT_STARTED` |
@@ -81,18 +81,18 @@ Every requirement below contains all 21 mandatory governance attributes:
 | `REQ-MOB-021` | E | Appointment Attendance Confirmation (`POST /api/v1/patient-portal/attendance`) | `V4_ENHANCEMENT_PLAN` | `CORE` | M2 | P0 | `MOB-010` | Missing in `apps/mobile` | `NOT_STARTED` |
 | `REQ-MOB-022` | E | Chronological Oncology Care Journey Timeline (`getTimeline`) | `ORIGINAL_ONCOBRIEF` | `CORE` | M3 | P0 | `MOB-014` | Missing timeline view; only flat document list | `NOT_STARTED` |
 | `REQ-MOB-023` | F | Clinician-Approved Continuity Message Feed (`continuity_message` inbox) | `ORIGINAL_ONCOBRIEF` | `CORE` | M3 | P0 | `MOB-015` | Missing in `apps/mobile` | `NOT_STARTED` |
-| `REQ-MOB-024` | F | Optional Check `c4` Fix & Dedicated `packSelected` vs `shareSelected` State (`BUG-MOB-05`, `BUG-MOB-06`) | `MOBILE_EXTENSION` | `CORE` | M1 | P1 | `MOB-004` | `c4` dead; `state.selected` shared by Pack & Share | `NOT_STARTED` |
+| `REQ-MOB-024` | F | Optional Check `c4` Fix & Dedicated `packSelected` vs `shareSelected` State (`BUG-MOB-05`, `BUG-MOB-06`) | `MOBILE_EXTENSION` | `CORE` | M1 | P1 | `MOB-004` | `c4` dead; `state.selected` shared by Pack & Share | `COMPLETE` |
 | `REQ-MOB-025` | F | Guided Consultation Preparation Sync (`PUT /api/v1/patient-portal/preparation`) | `V4_ENHANCEMENT_PLAN` | `CORE` | M2 | P1 | `MOB-009` | Local-only preparation workspace | `NOT_STARTED` |
-| `REQ-MOB-026` | F |Glossary-to-Question De-duplication & Direct Stage Routing (`BUG-MOB-11`) | `MOBILE_EXTENSION` | `EXTENDED` | M1 | P2 | `MOB-004` | Adds duplicates; routes to Stage 1 instead of Stage 2 | `NOT_STARTED` |
+| `REQ-MOB-026` | F |Glossary-to-Question De-duplication & Direct Stage Routing (`BUG-MOB-11`) | `MOBILE_EXTENSION` | `EXTENDED` | M1 | P2 | `MOB-004` | Adds duplicates; routes to Stage 1 instead of Stage 2 | `COMPLETE` |
 | `REQ-MOB-027` | F | Administrative Request to Hospital Coordinator (`POST /api/v1/patient-portal/requests`) | `V4_ENHANCEMENT_PLAN` | `CORE` | M2 | P1 | `MOB-011` | Missing in `apps/mobile` | `NOT_STARTED` |
 | `REQ-MOB-028` | F | Patient Consultation Packet Viewing & Scoped HTML/Print Export | `ORIGINAL_ONCOBRIEF` | `CORE` | M3 | P1 | `MOB-015` | Local summary print only (`src/export.ts`) | `NOT_STARTED` |
 | `REQ-MOB-029` | G | UTF-8 Tamil String Repair (`BUG-MOB-01`) & Complete Bilingual Dictionary (`BUG-MOB-10`) | `OFFICIAL_HACKATHON` | `CORE` | M1 | P0 | `MOB-001` | Mojibake `"родрооро┐ро┤рпН"` in `profile.tsx:8`; missing keys | `COMPLETE` |
 | `REQ-MOB-030` | G | Multilingual Voice Accessibility / Scoped TTS Playback (`POST /api/v1/patient-portal/voice-tts`) | `V4_ENHANCEMENT_PLAN` | `CORE` | M3 | P0 | `MOB-016` | Zero TTS/audio in `apps/mobile` | `NOT_STARTED` |
-| `REQ-MOB-031` | G | Bilingual Localization of Oncology Seed Cohort, Stages & Instructions (`en` / `ta`) | `OFFICIAL_HACKATHON` | `CORE` | M1 | P1 | `MOB-003` | Static UI labels translated; content strings English-only | `NOT_STARTED` |
+| `REQ-MOB-031` | G | Bilingual Localization of Oncology Seed Cohort, Stages & Instructions (`en` / `ta`) | `OFFICIAL_HACKATHON` | `CORE` | M1 | P1 | `MOB-003` | Static UI labels translated; content strings English-only | `COMPLETE` |
 | `REQ-MOB-032` | H | Consented Caregiver Management UI & Backend Sync (`POST/PATCH/DELETE .../caregivers`) | `V4_ENHANCEMENT_PLAN` | `CORE` | M3 | P0 | `MOB-017` | Only plain text `state.visit.companion` field | `NOT_STARTED` |
 | `REQ-MOB-033` | H | Time-Bounded & Revocable Consultation Share Grants (`POST/DELETE .../shares`) | `V4_ENHANCEMENT_PLAN` | `EXTENDED` | M3 | P1 | `MOB-017` | Local `state.shared` boolean without backend revocation | `NOT_STARTED` |
 | `REQ-MOB-034` | I | Encrypted At-Rest Storage via AES-256-GCM + `expo-secure-store` (`SEC-MOB-01`) & Web `localStorage` Fallback (`BUG-MOB-08`) | `V4_ENHANCEMENT_PLAN` | `CORE` | M4 | P0 | `MOB-018` | Plaintext `state-v1.json`; no-op on web reload | `NOT_STARTED` |
-| `REQ-MOB-035` | I | Explicit Informed Consent Gate on First Launch (`BUG-MOB-07`) & Revocation Wipe | `OFFICIAL_HACKATHON` | `CORE` | M1 | P0 | `MOB-004` | `app/index.tsx` auto-dispatches `onboard`, skipping screen | `NOT_STARTED` |
+| `REQ-MOB-035` | I | Explicit Informed Consent Gate on First Launch (`BUG-MOB-07`) & Revocation Wipe | `OFFICIAL_HACKATHON` | `CORE` | M1 | P0 | `MOB-004` | `app/index.tsx` auto-dispatches `onboard`, skipping screen | `COMPLETE` |
 | `REQ-MOB-036` | I | Native Screen-Capture Protection (`FLAG_SECURE` / `expo-screen-capture`), App-Switcher Privacy Overlay & External URL Removal (`SEC-MOB-05`, `SEC-MOB-06`) | `V4_ENHANCEMENT_PLAN` | `CORE` | M4 | P1 | `MOB-019` | Missing `FLAG_SECURE`; leaks lab names to `medlineplus.gov` | `NOT_STARTED` |
 | `REQ-MOB-037` | I | Bounded Hash-Chained Local Audit Log & Debounced Draft Persistence (`SEC-MOB-07`, `BUG-MOB-13`) | `V4_ENHANCEMENT_PLAN` | `EXTENDED` | M4 | P1 | `MOB-018` | Unbounded unchained array; full state write per keystroke | `NOT_STARTED` |
 | `REQ-MOB-038` | J | WCAG 2.2 AA Color Contrast Remediation (`BUG-MOB-12`) | `V4_ENHANCEMENT_PLAN` | `CORE` | M1 | P1 | `MOB-005` | `c.teal` on `c.sage` = `4.37:1`; `c.line` = `1.22:1` | `NOT_STARTED` |
@@ -439,7 +439,7 @@ Every requirement below contains all 21 mandatory governance attributes:
 - **Target User:** Patient
 - **User Story:** As a patient importing a document on my phone, I want clear feedback if I accidentally pick the same file twice, a sensible upload date if I leave the date field blank, and no leftover files cluttering my phone if an import is cancelled or fails.
 - **Existing Implementation (`757f495`):** `app/import.tsx:32-33` calls `retainSample` before `dispatch` without cleanup on error, sets `date: ''`, and has no duplicate hash check (`BUG-MOB-09`).
-- **Current Status:** `NOT_STARTED`
+- **Current Status:** `COMPLETE`
 - **Exact Source Files:** `apps/mobile/app/import.tsx`, `apps/mobile/src/file-validation.ts`, `apps/mobile/src/domain.ts`
 - **API / Data Dependency:** Local file system + `state.records` SHA-256 index.
 - **Security Dependency:** Prevents sandbox storage exhaustion and orphan PHI files (`SEC-MOB-03`).
@@ -608,7 +608,7 @@ Every requirement below contains all 21 mandatory governance attributes:
 - **Target User:** Patient
 - **User Story:** As a patient, I want to check off my optional personal-notes step once I enable it, and I want to choose which records to share with a family member without accidentally changing the documents in my doctor's consultation pack.
 - **Existing Implementation (`757f495`):** `src/preparation-workspace.tsx:24` filters `state.checks.filter(c => c.enabled && !c.optional)` (making `c4` permanently uncheckable), and both `src/preparation-workspace.tsx:33` and `app/sharing.tsx:9` mutate `state.selected`.
-- **Current Status:** `NOT_STARTED`
+- **Current Status:** `COMPLETE`
 - **Exact Source Files:** `apps/mobile/src/domain.ts`, `apps/mobile/src/preparation-workspace.tsx`, `apps/mobile/app/sharing.tsx`, `apps/mobile/src/export.ts`
 - **API / Data Dependency:** Backward-compatible migration of persisted `state.selected` into `packSelected` and `shareSelected`.
 - **Security Dependency:** Prevents unintended over-sharing of records when configuring caregiver shares (`SEC-MOB-04`).
@@ -649,7 +649,7 @@ Every requirement below contains all 21 mandatory governance attributes:
 - **Target User:** Patient
 - **User Story:** As a patient tapping a medical term in my pathology report to ask my doctor about it, I want to be taken directly to my Questions list without adding duplicate questions if I tap the button twice.
 - **Existing Implementation (`757f495`):** `src/domain.ts:95` (`addQuestion`) blindly prepends duplicates, and `app/record/[id].tsx:21` calls `router.push('/prepare')` which hardcodes `useState<Stage>('checklist')`.
-- **Current Status:** `NOT_STARTED`
+- **Current Status:** `COMPLETE`
 - **Exact Source Files:** `apps/mobile/src/domain.ts`, `apps/mobile/app/record/[id].tsx`, `apps/mobile/src/preparation-workspace.tsx`, `apps/mobile/app/(tabs)/prepare.tsx`
 - **API / Data Dependency:** None.
 - **Security Dependency:** None.
@@ -842,7 +842,7 @@ Every requirement below contains all 21 mandatory governance attributes:
 - **Target User:** Patient
 - **User Story:** As a first-time patient user, I must see and explicitly accept the privacy and non-diagnostic scope notice before the app loads my records, and if I revoke consent in Profile, all local and session data must be erased.
 - **Existing Implementation (`757f495`):** `apps/mobile/app/index.tsx:12` auto-dispatches `onboard` in a `useEffect` and redirects to `/(tabs)`, completely bypassing `app/onboarding.tsx` (`BUG-MOB-07`).
-- **Current Status:** `NOT_STARTED`
+- **Current Status:** `COMPLETE`
 - **Exact Source Files:** `apps/mobile/app/index.tsx`, `apps/mobile/app/onboarding.tsx`, `apps/mobile/app/(tabs)/profile.tsx`
 - **API / Data Dependency:** Calls `DELETE /api/v1/patient-portal/session` and `clearPersisted()` on revocation.
 - **Security Dependency:** Explicit consent timestamp recorded in state and audit log before any data sync.

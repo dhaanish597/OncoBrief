@@ -135,7 +135,14 @@ export function reduce(s: State, a: Action, at = new Date().toISOString()): Stat
       if (!s.checks.some(c => c.id === a.id)) throw new Error('unknown_item');
       next = { ...s, checks: s.checks.map(c => c.id === a.id ? { ...c, ...(a.type === 'check' ? { done: !c.done } : { enabled: !c.enabled }) } : c) }; entityId = a.id; break;
     case 'addCheck': next = { ...s, checks: [...s.checks, { id, label: textInput(a.text, 200), done: false, enabled: true, optional: false }] }; break;
-    case 'question': next = { ...s, questions: [...s.questions, { id, text: textInput(a.text), answered: false, at }] }; break;
+    case 'question': {
+      const t = textInput(a.text);
+      if (s.questions.some(q => q.text.trim().toLowerCase() === t.toLowerCase())) {
+        return s;
+      }
+      next = { ...s, questions: [...s.questions, { id, text: t, answered: false, at }] };
+      break;
+    }
     case 'editQuestion': if (!s.questions.some(q => q.id===a.id)) throw new Error('unknown_item');next={ ...s,questions:s.questions.map(q => q.id===a.id ? { ...q,text:textInput(a.text) } : q) };entityId=a.id;break;
     case 'removeQuestion': if (!a.approved) throw new Error('approval_required');if (!s.questions.some(q => q.id===a.id)) throw new Error('unknown_item');next={ ...s,questions:s.questions.filter(q => q.id!==a.id) };entityId=a.id;break;
     case 'answer': if (!s.questions.some(q => q.id === a.id)) throw new Error('unknown_item'); next = { ...s, questions: s.questions.map(q => q.id === a.id ? { ...q, answered: !q.answered } : q) }; entityId = a.id; break;
