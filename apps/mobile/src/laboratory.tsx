@@ -10,10 +10,8 @@ import { theme as c } from './theme';
 export function ReferenceBar({ observation:o,compact=false }:{ observation:LabObservation;compact?:boolean }) {
   const { t }=useStore();const range=referencePosition(o);
   if (!range) return <Copy kind="meta">{t('noReference')}</Copy>;
-  return <View style={{ gap:7 }} accessibilityLabel={`${o.value} ${o.unit}, ${range.low}–${range.high} ${o.unit}, ${t(range.location)}`}>
-    {!compact && <Row><Copy kind="label">{t('referenceInterval')}</Copy><Copy kind="meta">{range.low}–{range.high} {o.unit}</Copy></Row>}
-    <View style={{ height:26,justifyContent:'center',marginHorizontal:6 }}><View style={{ height:8,backgroundColor:c.deep,borderRadius:5 }}><View style={{ position:'absolute',left:'5%',right:'5%',height:8,borderRadius:5,backgroundColor:'#BCD2FF' }}/><View style={{ position:'absolute',left:`${range.fraction*90+5}%`,marginLeft:-6,top:-3,width:14,height:14,borderRadius:9,backgroundColor:c.cobalt,borderWidth:2,borderColor:c.paper }}/></View></View>
-    <View style={{ flexDirection:'row',justifyContent:'space-between' }}><Copy kind="meta">{range.low}</Copy><Copy kind="meta">{t(range.location)}</Copy><Copy kind="meta">{range.high}</Copy></View>
+  return <View style={{ gap:4 }} accessibilityLabel={`${t('referenceInterval')}: ${range.low}–${range.high} ${range.unit}`}>
+    <Row><Copy kind="label">{t('referenceInterval')}</Copy><Copy kind="meta">{range.low}–{range.high} {range.unit}</Copy></Row>
   </View>;
 }
 export function LabResultCard({ observation:o,onPress }:{ observation:LabObservation;onPress():void }) {

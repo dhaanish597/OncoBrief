@@ -82,7 +82,7 @@ The implementation loop may terminate as `RELEASE_READY` **if and only if** all 
 |---|---|---|---|---|---|---|---|---|---|---|
 | `MOB-000` | M0 | L | Isolated Git Worktree Setup, Baseline Snapshot & ADR `0026` De-Confliction | None | `REQ-MOB-042` | `COMPLETE` | 0 | Exit 1 (duplicate 0017 & missing 0026) | Exit 0 (35 pass, 0 fail; unique 0001..0026) | `2d3273f` |
 | `MOB-001` | M1 | B, G | UTF-8 Tamil Repair (`BUG-MOB-01`), Bilingual Key Parity (`BUG-MOB-10`) & CI Clinical Boundary Scanner Expansion (`BUG-MOB-03`) | `MOB-000` | `REQ-MOB-006`, `REQ-MOB-008`, `REQ-MOB-029` | `COMPLETE` | 0 | Exit 1 (scanner missing mobile; audit.tsx missing edit/remove question) | Exit 0 (42 pass, 0 fail; boundary scan clean) | `9af448d` |
-| `MOB-002` | M1 | B | Lab Reference Interval Classification Removal (`BUG-MOB-04`) & Factual Vital/Wellbeing Safety Disclaimers | `MOB-001` | `REQ-MOB-005`, `REQ-MOB-007` | `NOT_STARTED` | 0 | Pending | Pending | — |
+| `MOB-002` | M1 | B | Lab Reference Interval Classification Removal (`BUG-MOB-04`) & Factual Vital/Wellbeing Safety Disclaimers | `MOB-001` | `REQ-MOB-005`, `REQ-MOB-007` | `COMPLETE` | 0 | Exit 1 (below/within/above classification and gauge slider present) | Exit 0 (45 pass, 0 fail; verbatim reference interval display) | `6435456` |
 | `MOB-003` | M1 | A, G | Oncology Synthetic Cohort (`DEMO-001`..`003`), Journey Stage Ribbon, Readiness Score & Bilingual Oncology Content (`BUG-MOB-02`) | `MOB-001`, `MOB-002` | `REQ-MOB-001`..`004`, `REQ-MOB-031` | `NOT_STARTED` | 0 | Pending | Pending | — |
 | `MOB-004` | M1 | D, F, I | Core State & Workflow Bug Fixes (`c4` Check `BUG-MOB-06`, Pack vs Share Scope `BUG-MOB-05`, Onboarding Gate `BUG-MOB-07`, Transactional Import `BUG-MOB-09`, Glossary Dedupe `BUG-MOB-11`) | `MOB-003` | `REQ-MOB-016`, `REQ-MOB-024`, `REQ-MOB-026`, `REQ-MOB-035` | `NOT_STARTED` | 0 | Pending | Pending | — |
 | `MOB-005` | M1 | J | WCAG 2.2 AA Contrast Remediation, Accessible SVG Charts, `<KeyboardAvoidingView>` & 48dp Touch Targets (`BUG-MOB-12`) | `MOB-002`, `MOB-004` | `REQ-MOB-038`, `REQ-MOB-039` | `NOT_STARTED` | 0 | Pending | Pending | — |
@@ -217,6 +217,40 @@ Whenever the coding agent updates a task in Section 2 above, it MUST append a st
     - path: "apps/mobile/test/localization-utf8.test.ts"
       change_type: created
     - path: "apps/mobile/test/clinical-boundary-mobile.test.ts"
+      change_type: created
+  blocker_report: null
+
+- task_id: MOB-002
+  title: "Lab Reference Interval Classification Removal (BUG-MOB-04) & Factual Vital/Wellbeing Safety Disclaimers"
+  status: COMPLETE
+  worktree_branch: oncobrief-patient-app
+  commit_sha: "6435456"
+  requirements_updated:
+    - id: REQ-MOB-005
+      from_status: NOT_STARTED
+      to_status: COMPLETE
+    - id: REQ-MOB-007
+      from_status: NOT_STARTED
+      to_status: COMPLETE
+  red_phase:
+    command: "pnpm --filter @oncobrief/mobile test test/clinical-safety-remediation.test.ts"
+    exit_code: 1
+    failing_assertion_summary: "AssertionError: patient-selectors.ts must not classify observations into below/above/within normative locations; AssertionError: laboratory.tsx must not display range.location (within/below/above)"
+  green_phase:
+    command: "pnpm --filter @oncobrief/mobile test test/clinical-safety-remediation.test.ts"
+    exit_code: 0
+    passing_tests_count: 45
+  regression_gate:
+    typecheck_exit_code: 0
+    clinical_boundary_exit_code: 0
+    branding_exit_code: 0
+    unit_suite_exit_code: 0
+  files_changed:
+    - path: "apps/mobile/src/patient-selectors.ts"
+      change_type: modified
+    - path: "apps/mobile/src/laboratory.tsx"
+      change_type: modified
+    - path: "apps/mobile/test/clinical-safety-remediation.test.ts"
       change_type: created
   blocker_report: null
 ```

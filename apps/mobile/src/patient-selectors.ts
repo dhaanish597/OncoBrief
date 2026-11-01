@@ -22,11 +22,12 @@ export function comparison(latest:LabObservation,earlier?:LabObservation):{ kind
   const delta=Math.round((latest.value-earlier.value)*1000000)/1000000;
   return { kind:delta>0 ? 'higher' : delta<0 ? 'lower' : 'unchanged',delta };
 }
-export function referencePosition(o:LabObservation) {
+export function referenceInterval(o:LabObservation) {
   const r=o.reference;
   if (!r || r.unit!==o.unit || ![r.low,r.high,o.value].every(Number.isFinite) || r.low>=r.high) return null;
-  return { fraction:Math.min(1,Math.max(0,(o.value-r.low)/(r.high-r.low))),location:o.value<r.low ? 'below' as const : o.value>r.high ? 'above' as const : 'within' as const,low:r.low,high:r.high };
+  return { low:r.low,high:r.high,unit:r.unit };
 }
+export const referencePosition = referenceInterval;
 export const historyRanges=['1M','3M','6M','1Y','All'] as const;
 export type HistoryRange=typeof historyRanges[number];
 /** Windows anchor to the latest available source date, never a fabricated observation. */
