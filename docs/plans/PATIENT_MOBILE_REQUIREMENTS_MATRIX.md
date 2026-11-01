@@ -68,10 +68,10 @@ Every requirement below contains all 21 mandatory governance attributes:
 | `REQ-MOB-008` | B | Prohibition of Autonomous Triage, Risk Scoring & Dosing Advice | `OFFICIAL_HACKATHON` | `REJECTED_OUT_OF_SCOPE` | M1 | P0 | `MOB-001` | Guarded only by local regex in `mobile-app.test.ts` | `COMPLETE` |
 | `REQ-MOB-009` | C | Patient Portal Database Schema & RLS (`0022_patient_portal_foundation.sql`) | `V4_ENHANCEMENT_PLAN` | `CORE` | M2 | P0 | `MOB-006` | Missing (`0` patient-portal tables in `packages/db`) | `COMPLETE` |
 | `REQ-MOB-010` | C | Patient OTP/Session Authentication API (`POST/DELETE /api/v1/patient-portal/session`) | `V4_ENHANCEMENT_PLAN` | `CORE` | M2 | P0 | `MOB-007` | Fake offline toggle in `app/signin.tsx` | `COMPLETE` |
-| `REQ-MOB-011` | C | Patient Portal Snapshot API (`GET /api/v1/patient-portal/snapshot`) | `V4_ENHANCEMENT_PLAN` | `CORE` | M2 | P0 | `MOB-008` | Missing (`0` network calls in `apps/mobile`) | `NOT_STARTED` |
+| `REQ-MOB-011` | C | Patient Portal Snapshot API (`GET /api/v1/patient-portal/snapshot`) | `V4_ENHANCEMENT_PLAN` | `CORE` | M2 | P0 | `MOB-008` | Missing (`0` network calls in `apps/mobile`) | `COMPLETE` |
 | `REQ-MOB-012` | C | Hybrid Repository Architecture (`ConnectedPatientRepository` + `DemoRepository` + `OfflineSyncQueue`) | `V4_ENHANCEMENT_PLAN` | `CORE` | M3 | P0 | `MOB-012` | Local `DemoRepository` only (`src/repository.ts`) | `NOT_STARTED` |
 | `REQ-MOB-013` | D | Source-Backed Oncology Document Vault & Provenance Badges | `ORIGINAL_ONCOBRIEF` | `CORE` | M3 | P0 | `MOB-013` | Local mock records only (`app/(tabs)/records.tsx`) | `NOT_STARTED` |
-| `REQ-MOB-014` | D | Authorized Document Page Viewer (`GET /api/v1/patient-portal/documents/[id]/pages/[page]`) | `ORIGINAL_ONCOBRIEF` | `CORE` | M2 | P0 | `MOB-008` | Local text summary + local sample image URI only | `NOT_STARTED` |
+| `REQ-MOB-014` | D | Authorized Document Page Viewer (`GET /api/v1/patient-portal/documents/[id]/pages/[page]`) | `ORIGINAL_ONCOBRIEF` | `CORE` | M2 | P0 | `MOB-008` | Local text summary + local sample image URI only | `COMPLETE` |
 | `REQ-MOB-015` | D | Patient Document Upload to Backend (`POST /api/v1/patient-portal/documents`) | `ORIGINAL_ONCOBRIEF` | `CORE` | M2 | P0 | `MOB-009` | Copies to local sandbox only (`app/import.tsx`) | `NOT_STARTED` |
 | `REQ-MOB-016` | D | Transactional Local File Import, Date Fallback & SHA-256 Deduplication (`BUG-MOB-09`) | `MOBILE_EXTENSION` | `CORE` | M1 | P1 | `MOB-004` | Leaks orphan files; blank `date: ''`; no SHA-256 check | `COMPLETE` |
 | `REQ-MOB-017` | D | Document Ingestion Status & Verification Badge Lifecycle | `V4_ENHANCEMENT_PLAN` | `CORE` | M3 | P0 | `MOB-013` | Local `review: 'reviewed'` conflates patient & clinician | `NOT_STARTED` |
@@ -332,7 +332,7 @@ Every requirement below contains all 21 mandatory governance attributes:
 - **Target User:** Patient / Consented Caregiver
 - **User Story:** As a patient opening the mobile app, I want my app to load my complete, up-to-date oncology care snapshot from the hospital server in a single request and cache it safely for offline viewing.
 - **Existing Implementation (`757f495`):** Missing (`0` API endpoints for mobile snapshot).
-- **Current Status:** `NOT_STARTED`
+- **Current Status:** `COMPLETE`
 - **Exact Source Files:** `apps/web/src/app/api/v1/patient-portal/snapshot/route.ts` (new), `packages/db/src/services/patient-portal.ts` (new)
 - **API / Data Dependency:** Reuses `getPatient`, `getTimeline`, `listAppointments`, `listMessages`, `listCaregiverContacts` in `@oncobrief/db`.
 - **Security Dependency:** Requires valid bearer token from `requirePatientPortalSession(request)`; filters out unapproved drafts (`continuity_message.status` must be `'approved'` or `'dispatched'` or `'delivered'`), hides internal clinician-only notes, and respects caregiver `consent_scopes` when `actorRole === 'caregiver'`.
@@ -398,7 +398,7 @@ Every requirement below contains all 21 mandatory governance attributes:
 - **Target User:** Patient / Caregiver
 - **User Story:** As a patient checking a pathology or lab finding in my app, I want to inspect the underlying source page and highlighted span from the hospital record so I can verify the exact wording and date.
 - **Existing Implementation (`757f495`):** `app/record/[id].tsx` only renders static summary strings and local sample asset URIs.
-- **Current Status:** `NOT_STARTED`
+- **Current Status:** `COMPLETE`
 - **Exact Source Files:** `apps/web/src/app/api/v1/patient-portal/documents/[documentId]/pages/[pageNumber]/route.ts` (new), `apps/mobile/app/record/[id].tsx`
 - **API / Data Dependency:** `getDocument` and `getPageSpans` in `packages/db/src/services/patients.ts`.
 - **Security Dependency:** Enforces tenant + patient ownership (`document.patient_id === session.patientId`) and sets `Cache-Control: private, no-store`.

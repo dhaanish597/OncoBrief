@@ -545,3 +545,384 @@ export async function verifyPatientOtpChallenge(
     execute,
   );
 }
+
+export interface PatientPreparationState {
+  checksJson: unknown[];
+  questionsJson: unknown[];
+  symptomNotes: string;
+  companionName: string;
+  packSelectedDocumentIds: string[];
+  updatedAt: string;
+}
+
+export interface PatientPortalSnapshot {
+  patient: {
+    id: string;
+    demoCode: string | null;
+    displayName: string;
+    stage: string | null;
+    diagnosis: string | null;
+    primaryLanguage: string;
+    mrn: string | null;
+    primaryClinicianName: string | null;
+  };
+  readiness: {
+    band: string;
+    requiredItems: number;
+    satisfiedItems: number;
+    missingRequired: number;
+    missingExpected: number;
+    openTasks: number;
+  } | null;
+  appointments: Array<{
+    id: string;
+    scheduledStart: string;
+    scheduledEnd: string;
+    roomLabel: string;
+    appointmentType: string;
+    status: string;
+    clinicianName: string | null;
+  }>;
+  timeline: Array<{
+    id: string;
+    factType: string;
+    valueText: string;
+    displayDate: string | null;
+    state: string;
+    documentId: string;
+  }>;
+  documents: Array<{
+    id: string;
+    documentType: string | null;
+    originalFilename: string;
+    documentDate: string | null;
+    issuingFacility: string | null;
+    pageCount: number | null;
+    clinicianStatus: string;
+    patientReviewStatus: string | null;
+    reviewedAt: string | null;
+    duplicateStatus: string;
+  }>;
+  missingDocumentTasks: Array<{
+    id: string;
+    title: string;
+    detail: string | null;
+    dueOn: string | null;
+    status: string;
+    priority: string;
+  }>;
+  continuityMessages: Array<{
+    id: string;
+    bodyRendered: string;
+    locale: string;
+    approvedAt: string | null;
+    attendanceStatus: string;
+  }>;
+  caregivers: Array<{
+    id: string;
+    fullName: string;
+    relationship: string;
+    phoneNumber: string;
+    isActive: boolean;
+    scopes: string[];
+  }>;
+  preparation: PatientPreparationState | null;
+  shareGrants: Array<{
+    id: string;
+    granteeLabel: string;
+    expiresAt: string;
+    documentIds: string[];
+    isRevoked: boolean;
+  }>;
+}
+
+export async function getPatientPortalSnapshot(
+  session: ValidatedPatientPortalSession,
+  querier?: Querier,
+): Promise<PatientPortalSnapshot> {
+  const execute = async (q: Querier): Promise<PatientPortalSnapshot> => {
+    // 1. Patient profile
+    const pRes = await q.query<{
+      id: string;
+      demo_code: string | null;
+      display_name: string;
+      primary_language: string;
+      mrn: string | null;
+      primary_clinician_name: string | null;
+    }>(
+      `SELECT p.id, p.demo_code, p.display_name, p.primary_language,
+              pi.value as mrn,
+              u.display_name as primary_clinician_name
+       FROM patient p
+       LEFT JOIN patient_identifier pi ON pi.patient_id = p.id AND pi.org_id = p.org_id AND pi.system = 'mrn'
+       LEFT JOIN app_user u ON u.id = p.primary_clinician_id
+       WHERE p.id = $1 AND p.org_id = $2`,
+      [session.patientId, session.orgId],
+    );
+
+    if (pRes.rowCount === 0) {
+      throw new Error(`Patient not found: ${session.patientId}`);
+    }
+    const pRow = pRes.rows[0]!;
+
+    // 2. Readiness snapshot
+    const rRes = await q.query<{
+      readiness_band: string;
+      required_items: number;
+      satisfied_items: number;
+      missing_required: number;
+      missing_expected: number;
+      open_tasks: number;
+    }>(
+      `SELECT readiness_band, required_items, satisfied_items, missing_required, missing_expected, open_tasks
+       FROM record_readiness_snapshot
+       WHERE patient_id = $1 AND org_id = $2
+       ORDER BY computed_at DESC
+       LIMIT 1`,
+      [session.patientId, session.orgId],
+    );
+
+    const readiness = rRes.rowCount && rRes.rowCount > 0
+      ? {
+          band: rRes.rows[0]!.readiness_band,
+          requiredItems: rRes.rows[0]!.required_items,
+          satisfiedItems: rRes.rows[0]!.satisfied_items,
+          missingRequired: rRes.rows[0]!.missing_required,
+          missingExpected: rRes.rows[0]!.missing_expected,
+          openTasks: rRes.rows[0]!.open_tasks,
+        }
+      : null;
+
+    // 3. Appointments (redacted if 'appointments' scope missing)
+    let appointments: PatientPortalSnapshot['appointments'] = [];
+    if (session.grantedScopes.includes('appointments')) {
+      const aRes = await q.query<{
+        id: string;
+        scheduled_start: Date;
+        scheduled_end: Date;
+        room_label: string;
+        appointment_type: string;
+        status: string;
+        clinician_name: string | null;
+      }>(
+        `SELECT a.id, a.scheduled_start, a.scheduled_end, a.room_label, a.appointment_type, a.status,
+                u.display_name as clinician_name
+         FROM appointment a
+         LEFT JOIN app_user u ON u.id = a.clinician_id
+         WHERE a.patient_id = $1 AND a.org_id = $2
+         ORDER BY a.scheduled_start ASC`,
+        [session.patientId, session.orgId],
+      );
+      appointments = aRes.rows.map((r) => ({
+        id: r.id,
+        scheduledStart: r.scheduled_start.toISOString(),
+        scheduledEnd: r.scheduled_end.toISOString(),
+        roomLabel: r.room_label,
+        appointmentType: r.appointment_type,
+        status: r.status,
+        clinicianName: r.clinician_name,
+      }));
+    }
+
+    // 4. Timeline
+    const tRes = await q.query<{
+      id: string;
+      fact_type: string;
+      value_text: string;
+      display_date: Date | null;
+      state: string;
+      document_id: string;
+    }>(
+      `SELECT te.id, te.fact_type, te.value_text, te.display_date, te.state, te.document_id
+       FROM timeline_event te
+       WHERE te.patient_id = $1 AND te.org_id = $2
+       ORDER BY te.display_date DESC NULLS LAST, te.updated_at DESC`,
+      [session.patientId, session.orgId],
+    );
+    const timeline = tRes.rows.map((r) => ({
+      id: r.id,
+      factType: r.fact_type,
+      valueText: r.value_text,
+      displayDate: r.display_date ? r.display_date.toISOString().split('T')[0]! : null,
+      state: r.state,
+      documentId: r.document_id,
+    }));
+
+    // Derive stage/diagnosis from timeline if available
+    let stage: string | null = null;
+    let diagnosis: string | null = null;
+    for (const item of timeline) {
+      if (!stage && (item.factType === 'tnm_stage' || item.factType === 'stage')) {
+        stage = item.valueText;
+      }
+      if (!diagnosis && (item.factType === 'primary_site' || item.factType === 'histology' || item.factType === 'diagnosis')) {
+        diagnosis = item.valueText;
+      }
+    }
+
+    // 5. Documents (redacted if 'documents' scope missing - SEC-NEG-16)
+    let documents: PatientPortalSnapshot['documents'] = [];
+    if (session.grantedScopes.includes('documents')) {
+      const dRes = await q.query<{
+        id: string;
+        document_type: string | null;
+        original_filename: string;
+        document_date: Date | null;
+        issuing_facility: string | null;
+        page_count: number | null;
+        ingest_status: string;
+        duplicate_status: string;
+        patient_review_status: string | null;
+        reviewed_at: Date | null;
+      }>(
+        `SELECT d.id, d.document_type, d.original_filename, d.document_date, d.issuing_facility,
+                d.page_count, d.ingest_status, d.duplicate_status,
+                pdr.review_status as patient_review_status,
+                pdr.reviewed_at
+         FROM document d
+         LEFT JOIN patient_document_review pdr ON pdr.document_id = d.id AND pdr.patient_id = d.patient_id AND pdr.org_id = d.org_id
+         WHERE d.patient_id = $1 AND d.org_id = $2
+         ORDER BY d.document_date DESC NULLS LAST, d.uploaded_at DESC`,
+        [session.patientId, session.orgId],
+      );
+      documents = dRes.rows.map((r) => ({
+        id: r.id,
+        documentType: r.document_type,
+        originalFilename: r.original_filename,
+        documentDate: r.document_date ? r.document_date.toISOString().split('T')[0]! : null,
+        issuingFacility: r.issuing_facility,
+        pageCount: r.page_count,
+        clinicianStatus: r.ingest_status,
+        patientReviewStatus: r.patient_review_status,
+        reviewedAt: r.reviewed_at ? r.reviewed_at.toISOString() : null,
+        duplicateStatus: r.duplicate_status,
+      }));
+    }
+
+    // 6. Missing document tasks
+    const mRes = await q.query<{
+      id: string;
+      title: string;
+      detail: string | null;
+      due_on: Date | null;
+      status: string;
+      priority: string;
+    }>(
+      `SELECT t.id, t.title, t.detail, t.due_on, t.status, t.priority
+       FROM admin_task t
+       WHERE t.patient_id = $1 AND t.org_id = $2
+         AND t.status = 'open'
+         AND (t.origin_kind = 'record_gap' OR t.origin_record_gap_id IS NOT NULL OR t.task_kind ILIKE '%gap%' OR t.task_kind ILIKE '%missing%')
+       ORDER BY t.due_on ASC NULLS LAST, t.created_at DESC`,
+      [session.patientId, session.orgId],
+    );
+    const missingDocumentTasks = mRes.rows.map((r) => ({
+      id: r.id,
+      title: r.title,
+      detail: r.detail,
+      dueOn: r.due_on ? r.due_on.toISOString().split('T')[0]! : null,
+      status: r.status,
+      priority: r.priority,
+    }));
+
+    // 7. Approved continuity messages (EXCLUDES draft/pending/withdrawn - SEC-NEG-11)
+    const msgRes = await q.query<{
+      id: string;
+      body_rendered: string;
+      locale: string;
+      approved_at: Date | null;
+      attendance_status: string;
+    }>(
+      `SELECT pm.id, pm.body_rendered, pm.locale, pm.approved_at, pm.attendance_status
+       FROM patient_message pm
+       WHERE pm.patient_id = $1 AND pm.org_id = $2
+         AND pm.status = 'approved'
+       ORDER BY pm.approved_at DESC NULLS LAST, pm.created_at DESC`,
+      [session.patientId, session.orgId],
+    );
+    const continuityMessages = msgRes.rows.map((r) => ({
+      id: r.id,
+      bodyRendered: r.body_rendered,
+      locale: r.locale,
+      approvedAt: r.approved_at ? r.approved_at.toISOString() : null,
+      attendanceStatus: r.attendance_status,
+    }));
+
+    // 8. Caregivers
+    const cgRes = await q.query<{
+      id: string;
+      full_name: string;
+      relationship: string;
+      phone_number: string;
+      is_active: boolean;
+      sync_reminders: boolean;
+    }>(
+      `SELECT c.id, c.full_name, c.relationship, c.phone_number, c.is_active, c.sync_reminders
+       FROM caregiver_contact c
+       WHERE c.patient_id = $1 AND c.org_id = $2
+       ORDER BY c.consent_recorded_at ASC`,
+      [session.patientId, session.orgId],
+    );
+    const caregivers = cgRes.rows.map((r) => ({
+      id: r.id,
+      fullName: r.full_name,
+      relationship: r.relationship,
+      phoneNumber: r.phone_number,
+      isActive: r.is_active,
+      scopes: r.sync_reminders ? ['appointments', 'reminders'] : [],
+    }));
+
+    // 9. Preparation (redacted if 'preparation' scope missing - SEC-NEG-16)
+    let preparation: PatientPreparationState | null = null;
+    if (session.grantedScopes.includes('preparation')) {
+      preparation = await getPatientPreparationState(q, session.patientId);
+    }
+
+    // 10. Share Grants
+    const sgRes = await q.query<{
+      id: string;
+      recipient_label: string;
+      expires_at: Date;
+      shared_document_ids: string[];
+      is_revoked: boolean;
+    }>(
+      `SELECT sg.id, sg.recipient_label, sg.expires_at, sg.shared_document_ids, (sg.revoked_at IS NOT NULL) as is_revoked
+       FROM patient_share_grant sg
+       WHERE sg.patient_id = $1 AND sg.org_id = $2
+       ORDER BY sg.created_at DESC`,
+      [session.patientId, session.orgId],
+    );
+    const shareGrants = sgRes.rows.map((r) => ({
+      id: r.id,
+      granteeLabel: r.recipient_label,
+      expiresAt: r.expires_at.toISOString(),
+      documentIds: r.shared_document_ids,
+      isRevoked: r.is_revoked,
+    }));
+
+    return {
+      patient: {
+        id: pRow.id,
+        demoCode: pRow.demo_code,
+        displayName: pRow.display_name,
+        stage,
+        diagnosis,
+        primaryLanguage: pRow.primary_language,
+        mrn: pRow.mrn,
+        primaryClinicianName: pRow.primary_clinician_name,
+      },
+      readiness,
+      appointments,
+      timeline,
+      documents,
+      missingDocumentTasks,
+      continuityMessages,
+      caregivers,
+      preparation,
+      shareGrants,
+    };
+  };
+
+  if (querier) return execute(querier);
+  return withPatientPortalContext(session, execute);
+}

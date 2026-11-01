@@ -198,6 +198,7 @@ export async function POST(request: Request) {
         action: 'auth.login',
         entityKind: 'patient_portal_session',
         entityId: created.session.sessionId,
+        outcome: 'success',
       });
     });
   } catch {
@@ -233,6 +234,7 @@ export async function DELETE(request: Request) {
         action: 'auth.logout',
         entityKind: 'patient_portal_session',
         entityId: session.sessionId,
+        outcome: 'success',
       });
     });
   } catch {
