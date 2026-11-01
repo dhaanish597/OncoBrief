@@ -1,5 +1,6 @@
 import { translate } from './i18n';
 import { ONCOLOGY_PERSONAS, type PersonaId, type PersonaData } from './oncology-cohort';
+import { sha256Hex } from './crypto-envelope';
 export type { PersonaId, PersonaData };
 export type Locale = 'en' | 'ta';
 export type Category = 'laboratory' | 'pathology' | 'imaging' | 'referral' | 'prescription' | 'other';
@@ -19,6 +20,15 @@ export interface Evidence {
 export interface Check { id: string; label: string; labelTa?: string; done: boolean; enabled: boolean; optional: boolean }
 export interface Grant { id: string; recipient: string; purpose: string; ids: string[]; expiresAt: string; revokedAt?: string; simulated: true; createdAt: string }
 export type DraftKey='question'|'notes'|'check'|'recipient'|'purpose'|'missingText'|'missingNote'|'observation'|'flag';
+export interface AuditItem {
+  id: string;
+  actor: 'demo-patient' | 'connected-patient';
+  action: string;
+  entityId: string;
+  at: string;
+  prevHash?: string;
+  hash?: string;
+}
 export interface State {
   version: 1; mode: 'demo' | 'connected'; locale: Locale; onboarded: boolean; reducedMotion: boolean;
   personaId: PersonaId;
@@ -32,7 +42,7 @@ export interface State {
   observations: { id: string; text: string; intensity: number; source: 'patient-reported'; at: string }[];
   missing: { id: string; text: string; note: string; source: 'patient'; status: 'missing' | 'requested' | 'available' | 'unavailable'; documentId?: string }[];
   flags: { id: string; documentId: string; reason: string; at: string }[];
-  audit: { id: string; actor: 'demo-patient' | 'connected-patient'; action: string; entityId: string; at: string }[];
+  audit: AuditItem[];
   connectedHospital?: { id: string; slug: string; name: string };
   lastSyncedAt?: string;
   pendingSyncCount?: number;
@@ -181,6 +191,7 @@ export type Action =
   | { type: 'export'; ids: string[]; approved: boolean };
 function textInput(text: string, max = 1000) { const t = text.trim(); if (!t || t.length > max) throw new Error('invalid_input'); return t; }
 function owned(s: State, ids: string[]) { if (!ids.length || ids.some(id => !s.documents.some(d => d.id === id))) throw new Error('invalid_scope'); }
+export const stamp = (s: State, a: Action, at = new Date().toISOString()): State => reduce(s, a, at);
 export function reduce(s: State, a: Action, at = new Date().toISOString()): State {
   const id = `local-${Date.parse(at)}-${s.audit.length}`;
   let next: State = s; let action: string = a.type; let entityId = 'profile';
@@ -254,7 +265,48 @@ export function reduce(s: State, a: Action, at = new Date().toISOString()): Stat
     case 'revoke': if (!s.grants.some(g => g.id === a.id)) throw new Error('unknown_item'); next = { ...s, grants: s.grants.map(g => g.id === a.id ? { ...g, revokedAt: at } : g) }; entityId = a.id; break;
     case 'export': buildPacket(s,a.ids,a.approved); action = 'packet_export_requested'; break;
   }
-  return { ...next, audit: [...s.audit, { id, actor: 'demo-patient', action, entityId, at }] };
+  const prevHash = s.audit.length > 0 ? (s.audit[s.audit.length - 1]?.hash ?? 'GENESIS') : 'GENESIS';
+  const hash = computeAuditHash({ id, actor: 'demo-patient', action, entityId, at, prevHash });
+  const newEntry: AuditItem = { id, actor: 'demo-patient', action, entityId, at, prevHash, hash };
+  const fullAudit = [...s.audit, newEntry];
+  const boundedAudit = fullAudit.length > 250 ? fullAudit.slice(fullAudit.length - 250) : fullAudit;
+  return { ...next, audit: boundedAudit };
+}
+export function computeAuditHash(entry: {
+  id: string;
+  actor: string;
+  action: string;
+  entityId: string;
+  at: string;
+  prevHash: string;
+}): string {
+  return sha256Hex(`${entry.prevHash}:${entry.id}:${entry.actor}:${entry.action}:${entry.entityId}:${entry.at}`);
+}
+export function verifyAuditChain(audit: AuditItem[]): boolean {
+  if (!audit || !Array.isArray(audit)) return false;
+  if (audit.length === 0) return true;
+  for (let i = 0; i < audit.length; i++) {
+    const item = audit[i];
+    if (!item || typeof item.id !== 'string' || typeof item.action !== 'string' || typeof item.at !== 'string') {
+      return false;
+    }
+    const expectedPrev = item.prevHash ?? (i === 0 ? 'GENESIS' : audit[i - 1]?.hash ?? 'GENESIS');
+    const expectedHash = computeAuditHash({
+      id: item.id,
+      actor: item.actor,
+      action: item.action,
+      entityId: item.entityId ?? '',
+      at: item.at,
+      prevHash: expectedPrev,
+    });
+    if (item.hash !== expectedHash) {
+      return false;
+    }
+    if (i > 0 && item.prevHash !== audit[i - 1]?.hash) {
+      return false;
+    }
+  }
+  return true;
 }
 export function buildPacket(s: State, ids: string[], approved: boolean): string {
   if (!approved) throw new Error('approval_required'); owned(s, ids);

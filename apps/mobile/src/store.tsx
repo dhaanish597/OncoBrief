@@ -166,10 +166,33 @@ export function useStore() {
 
 export function useDraft(key: DraftKey): [string, (text: string) => void] {
   const { state, dispatch } = useStore();
-  return [
-    state.drafts[key],
-    (text) => {
-      dispatch({ type: 'draft', key, text });
+  const [localText, setLocalText] = useState(state.drafts[key]);
+  const timeoutRef = React.useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  useEffect(() => {
+    setLocalText(state.drafts[key]);
+  }, [state.drafts, key]);
+
+  const setDraft = useCallback(
+    (text: string) => {
+      setLocalText(text);
+      if (timeoutRef.current) {
+        clearTimeout(timeoutRef.current);
+      }
+      timeoutRef.current = setTimeout(() => {
+        dispatch({ type: 'draft', key, text });
+      }, 250);
     },
-  ];
+    [dispatch, key],
+  );
+
+  useEffect(() => {
+    return () => {
+      if (timeoutRef.current) {
+        clearTimeout(timeoutRef.current);
+      }
+    };
+  }, []);
+
+  return [localText, setDraft];
 }
