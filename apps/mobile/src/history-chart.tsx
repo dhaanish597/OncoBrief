@@ -3,6 +3,7 @@ import { View } from 'react-native';
 import Svg,{ Circle,Line,Path,Rect,Text as SvgText } from 'react-native-svg';
 import { Copy } from './ui';
 import { theme as c } from './theme';
+import { buildHistoryChartAccessibilityLabel } from './accessibility';
 export interface PlotPoint { id:string;date:string;value:number;displayDate?:string }
 export function HistoryChart({ points,unit,selected,onSelect,reference,variant='line',fixedScale }:{ points:PlotPoint[];unit:string;selected?:string;onSelect(id:string):void;reference?:{ low:number;high:number };variant?:'line'|'columns';fixedScale?:[number,number] }) {
   const chronological=[...points].sort((a,b) => a.date.localeCompare(b.date));
@@ -13,7 +14,7 @@ export function HistoryChart({ points,unit,selected,onSelect,reference,variant='
   const first=Date.parse(chronological[0]!.date);const last=Date.parse(chronological.at(-1)!.date);const y=(n:number) => 190-(n-min)/(max-min)*145;
   const coords=chronological.map(p => ({ ...p,x:chronological.length===1 ? 180 : 50+(Date.parse(p.date)-first)/(last-first || 1)*265,y:y(p.value) }));
   const chosen=coords.find(p => p.id===selected);const ticks=Array.from({ length:5 },(_,i) => min+(max-min)*i/4);
-  return <View style={{ gap:6 }}><Svg width="100%" height={245} viewBox="0 0 350 245" accessible={false}>
+  return <View style={{ gap:6 }}><Svg width="100%" height={245} viewBox="0 0 350 245" accessible={true} accessibilityRole="summary" accessibilityLabel={buildHistoryChartAccessibilityLabel(points, unit)}>
     {reference && <><Rect x={44} y={y(reference.high)} width={279} height={y(reference.low)-y(reference.high)} fill={c.blue}/><Line x1={44} x2={323} y1={y(reference.high)} y2={y(reference.high)} stroke="#88AAFF" strokeDasharray="4 4"/><Line x1={44} x2={323} y1={y(reference.low)} y2={y(reference.low)} stroke="#88AAFF" strokeDasharray="4 4"/></>}
     <SvgText x={10} y={22} fontSize={12} fill={c.muted}>{unit}</SvgText>
     {ticks.map(tick => <React.Fragment key={tick}><Line x1={44} x2={323} y1={y(tick)} y2={y(tick)} stroke={c.line} strokeDasharray="2 3"/><SvgText x={35} y={y(tick)+4} textAnchor="end" fontSize={11} fill={c.muted}>{Number(tick.toFixed(2))}</SvgText></React.Fragment>)}

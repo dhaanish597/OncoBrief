@@ -95,8 +95,8 @@ Every requirement below contains all 21 mandatory governance attributes:
 | `REQ-MOB-035` | I | Explicit Informed Consent Gate on First Launch (`BUG-MOB-07`) & Revocation Wipe | `OFFICIAL_HACKATHON` | `CORE` | M1 | P0 | `MOB-004` | `app/index.tsx` auto-dispatches `onboard`, skipping screen | `COMPLETE` |
 | `REQ-MOB-036` | I | Native Screen-Capture Protection (`FLAG_SECURE` / `expo-screen-capture`), App-Switcher Privacy Overlay & External URL Removal (`SEC-MOB-05`, `SEC-MOB-06`) | `V4_ENHANCEMENT_PLAN` | `CORE` | M4 | P1 | `MOB-019` | Missing `FLAG_SECURE`; leaks lab names to `medlineplus.gov` | `NOT_STARTED` |
 | `REQ-MOB-037` | I | Bounded Hash-Chained Local Audit Log & Debounced Draft Persistence (`SEC-MOB-07`, `BUG-MOB-13`) | `V4_ENHANCEMENT_PLAN` | `EXTENDED` | M4 | P1 | `MOB-018` | Unbounded unchained array; full state write per keystroke | `NOT_STARTED` |
-| `REQ-MOB-038` | J | WCAG 2.2 AA Color Contrast Remediation (`BUG-MOB-12`) | `V4_ENHANCEMENT_PLAN` | `CORE` | M1 | P1 | `MOB-005` | `c.teal` on `c.sage` = `4.37:1`; `c.line` = `1.22:1` | `NOT_STARTED` |
-| `REQ-MOB-039` | J | Accessible SVG Charts (`accessibilityLabel`), `<KeyboardAvoidingView>` & Touch Target Compliance (`BUG-MOB-12`) | `V4_ENHANCEMENT_PLAN` | `CORE` | M1 | P1 | `MOB-005` | `accessible={false}` on all 4 charts; no keyboard avoidance | `NOT_STARTED` |
+| `REQ-MOB-038` | J | WCAG 2.2 AA Color Contrast Remediation (`BUG-MOB-12`) | `V4_ENHANCEMENT_PLAN` | `CORE` | M1 | P1 | `MOB-005` | `c.teal` on `c.sage` = `4.37:1`; `c.line` = `1.22:1` | `COMPLETE` |
+| `REQ-MOB-039` | J | Accessible SVG Charts (`accessibilityLabel`), `<KeyboardAvoidingView>` & Touch Target Compliance (`BUG-MOB-12`) | `V4_ENHANCEMENT_PLAN` | `CORE` | M1 | P1 | `MOB-005` | `accessible={false}` on all 4 charts; no keyboard avoidance | `COMPLETE` |
 | `REQ-MOB-040` | K | Native Android Prebuild, Hermes Bundle & Debug/Release APK Generation (`assembleDebug`) | `OFFICIAL_HACKATHON` | `CORE` | M6 | P0 | `MOB-022` | Only JS/Web tested; no `android/` or `.apk` verified | `NOT_STARTED` |
 | `REQ-MOB-041` | K | Native Android Emulator/Device Installation & Runtime Smoke Verification (`adb install` + Maestro) | `OFFICIAL_HACKATHON` | `CORE` | M6 | P0 | `MOB-023` | `0%` native runtime verification on branch | `NOT_STARTED` |
 | `REQ-MOB-042` | L | ADR Numbering De-Confliction (`0017` → `0026`, `BUG-MOB-14`) & Git Worktree Isolation | `ORIGINAL_ONCOBRIEF` | `CORE` | M0 | P0 | `MOB-000` | Duplicate `0017` ADR number; dirty main worktree | `COMPLETE` |
@@ -907,7 +907,7 @@ Every requirement below contains all 21 mandatory governance attributes:
 - **Target User:** Low-vision & Elderly Oncology Patients
 - **User Story:** As an oncology patient reading my records under bright clinic lighting, I need sufficient contrast on badges, borders, and charts so text and controls are effortless to read.
 - **Existing Implementation (`757f495`):** `c.teal (#087F80)` on `c.sage (#E8F7F3)` is `4.37:1` (< 4.5:1); `c.line (#E1E9F3)` on `#FFFFFF` is `1.22:1`; `c.sand (#D6E0EF)` is `1.33:1` (`BUG-MOB-12`).
-- **Current Status:** `NOT_STARTED`
+- **Current Status:** `COMPLETE`
 - **Exact Source Files:** `apps/mobile/src/ui-core.tsx`, `apps/mobile/src/history-chart.tsx`, `apps/mobile/src/vital-chart.tsx`, `apps/mobile/src/wellbeing-chart.tsx`
 - **API / Data Dependency:** None.
 - **Security Dependency:** None.
@@ -928,7 +928,7 @@ Every requirement below contains all 21 mandatory governance attributes:
 - **Target User:** TalkBack / Screen-Reader Users & Mobile Touch Users
 - **User Story:** As a screen-reader user or a patient typing questions on an Android phone, I need charts to announce their data points aloud and text inputs to stay visible above the on-screen keyboard.
 - **Existing Implementation (`757f495`):** All `<Svg>` components set `accessible={false}`, hiding trend data from TalkBack; `Screen` lacks `<KeyboardAvoidingView>`.
-- **Current Status:** `NOT_STARTED`
+- **Current Status:** `COMPLETE`
 - **Exact Source Files:** `apps/mobile/src/ui-core.tsx`, `apps/mobile/src/history-chart.tsx`, `apps/mobile/src/vital-chart.tsx`, `apps/mobile/src/wellbeing-chart.tsx`
 - **API / Data Dependency:** None.
 - **Security Dependency:** None.
