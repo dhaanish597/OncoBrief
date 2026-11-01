@@ -18,6 +18,22 @@ test('import validation rejects duplicates by name and size (BUG-MOB-09 / REQ-MO
   assert.equal(result.error, 'duplicate_document');
 });
 
+test('import validation rejects duplicates by SHA-256 checksum even with different name (SEC-MOB-03)', () => {
+  const existingDocs = [{ name: 'original-scan.pdf', size: 4096, sha256: 'e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855' }];
+
+  const duplicateContentCandidate = {
+    name: 'renamed-scan.pdf',
+    mimeType: 'application/pdf',
+    size: 4096,
+    uri: 'file:///data/cache/renamed-scan.pdf',
+    sha256: 'e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855'
+  };
+
+  const result = validateImportCandidate(duplicateContentCandidate, existingDocs);
+  assert.equal(result.valid, false);
+  assert.equal(result.error, 'duplicate_document');
+});
+
 test('import candidate validates date fallback to today (BUG-MOB-09)', () => {
   const s = createDemo();
   const validCandidate = {

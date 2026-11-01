@@ -11,6 +11,7 @@ export interface ImportCandidate {
   size: number;
   uri: string;
   date?: string;
+  sha256?: string;
 }
 
 export interface ImportValidationResult {
@@ -19,7 +20,7 @@ export interface ImportValidationResult {
   date?: string;
 }
 
-export function validateImportCandidate(candidate: ImportCandidate, existingDocuments: { name: string; size: number }[] = []): ImportValidationResult {
+export function validateImportCandidate(candidate: ImportCandidate, existingDocuments: { name: string; size: number; sha256?: string }[] = []): ImportValidationResult {
   const types: Record<string, RegExp> = { 'application/pdf': /\.pdf$/i, 'image/jpeg': /\.jpe?g$/i, 'image/png': /\.png$/i };
   if (!candidate.size || candidate.size < 1 || candidate.size > 25 * 1024 * 1024) {
     return { valid: false, error: 'invalid_size' };
@@ -27,7 +28,10 @@ export function validateImportCandidate(candidate: ImportCandidate, existingDocu
   if (!candidate.mimeType || !types[candidate.mimeType]?.test(candidate.name)) {
     return { valid: false, error: 'invalid_type' };
   }
-  const isDuplicate = existingDocuments.some(d => d.name === candidate.name && d.size === candidate.size);
+  const isDuplicate = existingDocuments.some(d => 
+    (candidate.sha256 && d.sha256 && candidate.sha256 === d.sha256) ||
+    (d.name === candidate.name && d.size === candidate.size)
+  );
   if (isDuplicate) {
     return { valid: false, error: 'duplicate_document' };
   }
