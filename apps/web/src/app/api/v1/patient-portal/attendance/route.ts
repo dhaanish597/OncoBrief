@@ -112,10 +112,10 @@ export async function POST(request: Request) {
       }
 
       return {
-        status: 200,
+        status: 200 as const,
         appointmentId,
-        status: 'confirmed',
-        action: 'confirm',
+        appointmentStatus: 'confirmed',
+        action: 'confirm' as const,
       };
     }
 
@@ -127,7 +127,7 @@ export async function POST(request: Request) {
     );
     const originDocumentId = sourceDocRes.rows[0]?.id;
     if (!originDocumentId) {
-      return { status: 400, error: 'no_source_document', message: 'No patient record found for task linkage' };
+      return { status: 400 as const, error: 'no_source_document', message: 'No patient record found for task linkage' };
     }
 
     const taskRes = await q.query<{ id: string }>(
@@ -168,10 +168,10 @@ export async function POST(request: Request) {
     }
 
     return {
-      status: 200,
+      status: 200 as const,
       appointmentId,
       taskId,
-      action: 'request_reschedule',
+      action: 'request_reschedule' as const,
     };
   });
 
@@ -182,5 +182,13 @@ export async function POST(request: Request) {
     );
   }
 
-  return NextResponse.json(result, { status: 200, headers: NO_CACHE_HEADERS });
+  return NextResponse.json(
+    {
+      appointmentId: result.appointmentId,
+      status: result.action === 'confirm' ? result.appointmentStatus : undefined,
+      taskId: result.action === 'request_reschedule' ? result.taskId : undefined,
+      action: result.action,
+    },
+    { status: 200, headers: NO_CACHE_HEADERS },
+  );
 }

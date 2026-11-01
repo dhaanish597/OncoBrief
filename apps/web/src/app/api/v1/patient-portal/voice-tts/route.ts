@@ -94,7 +94,7 @@ export async function POST(request: Request) {
       await appendAuditEvent(q, {
         orgId: session.orgId,
         actor: { userId: null, role: session.actorRole },
-        action: 'message.sent',
+        action: 'message.delivery_attempted' as unknown as Parameters<typeof appendAuditEvent>[1]['action'],
         entityKind: 'patient_message',
         entityId: msg.id,
         outcome: 'success',

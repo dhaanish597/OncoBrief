@@ -85,7 +85,7 @@ export async function POST(request: Request) {
       [
         session.orgId,
         session.patientId,
-        'Patient flagged discrepancy on document: ' + (doc.originalFilename ?? 'Document'),
+        'Patient flagged discrepancy on document: ' + (doc.filename ?? 'Document'),
         `Field: ${fieldName}. Reason: ${patientReason}`,
         documentId,
         staffUserId,
