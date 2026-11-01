@@ -58,10 +58,10 @@ Every requirement below contains all 21 mandatory governance attributes:
 
 | Req ID | WS | Feature Name | Authority | Class | Milestone | Priority | Task ID | Baseline State (`757f495`) | Status |
 |---|---|---|---|---|---|---|---|---|---|
-| `REQ-MOB-001` | A | Oncology Synthetic Demo Cohort Alignment (`DEMO-001`..`003`) | `OFFICIAL_HACKATHON` | `CORE` | M1 | P0 | `MOB-003` | Generic non-oncology records (`d1`–`d5`) | `NOT_STARTED` |
-| `REQ-MOB-002` | A | Oncology Journey Stage & Cycle Ribbon on Home Dashboard | `V4_ENHANCEMENT_PLAN` | `CORE` | M1 | P0 | `MOB-003` | Generic document counters (`app/(tabs)/index.tsx`) | `NOT_STARTED` |
-| `REQ-MOB-003` | A | Consultation Readiness Score & Missing-Item Banner | `V4_ENHANCEMENT_PLAN` | `CORE` | M1 | P0 | `MOB-003` | Missing; only generic checklist exists | `NOT_STARTED` |
-| `REQ-MOB-004` | A | Oncology-Specific Preparation Checklist & Question Prompts | `ORIGINAL_ONCOBRIEF` | `CORE` | M1 | P0 | `MOB-003` | Generic primary-care checklist (`src/domain.ts:51`) | `NOT_STARTED` |
+| `REQ-MOB-001` | A | Oncology Synthetic Demo Cohort Alignment (`DEMO-001`..`003`) | `OFFICIAL_HACKATHON` | `CORE` | M1 | P0 | `MOB-003` | Generic non-oncology records (`d1`–`d5`) | `COMPLETE` |
+| `REQ-MOB-002` | A | Oncology Journey Stage & Cycle Ribbon on Home Dashboard | `V4_ENHANCEMENT_PLAN` | `CORE` | M1 | P0 | `MOB-003` | Generic document counters (`app/(tabs)/index.tsx`) | `COMPLETE` |
+| `REQ-MOB-003` | A | Consultation Readiness Score & Missing-Item Banner | `V4_ENHANCEMENT_PLAN` | `CORE` | M1 | P0 | `MOB-003` | Missing; only generic checklist exists | `COMPLETE` |
+| `REQ-MOB-004` | A | Oncology-Specific Preparation Checklist & Question Prompts | `ORIGINAL_ONCOBRIEF` | `CORE` | M1 | P0 | `MOB-003` | Generic primary-care checklist (`src/domain.ts:51`) | `COMPLETE` |
 | `REQ-MOB-005` | B | Lab Reference Interval Classification Removal (`BUG-MOB-04`) | `OFFICIAL_HACKATHON` | `CORE` | M1 | P0 | `MOB-002` | Violates boundary (`below`/`within`/`above` gauge) | `COMPLETE` |
 | `REQ-MOB-006` | B | CI Clinical Boundary Scanner Coverage for `apps/mobile` (`BUG-MOB-03`) | `OFFICIAL_HACKATHON` | `CORE` | M1 | P0 | `MOB-001` | `tools/check-clinical-boundary.ts` skips `apps/mobile` | `COMPLETE` |
 | `REQ-MOB-007` | B | Factual-Only Vital & Wellbeing Self-Log Without Scoring | `MOBILE_EXTENSION` | `OPTIONAL` | M1 | P1 | `MOB-002` | Partial; needs explicit non-monitored disclaimer | `COMPLETE` |
@@ -118,7 +118,7 @@ Every requirement below contains all 21 mandatory governance attributes:
 - **Target User:** Patient / Consented Caregiver / Hackathon Demo Judge
 - **User Story:** As a cancer patient or demo evaluator, I want the demo personas and records in the mobile app to reflect authentic oncology pathology, imaging, staging, chemotherapy lab panels, and discharge summaries that match the clinician dashboard.
 - **Existing Implementation (`757f495`):** `apps/mobile/src/domain.ts:27-47` (`createDemo()`) seeds generic non-oncology records (`Comprehensive metabolic panel`, `Lipid panel`, `Primary care visit summary`, `Discharge instructions`, `Abdominal ultrasound summary`) with zero oncology documents (`BUG-MOB-02`).
-- **Current Status:** `NOT_STARTED`
+- **Current Status:** `COMPLETE`
 - **Exact Source Files:** `apps/mobile/src/domain.ts`, `apps/mobile/src/oncology-cohort.ts` (new), `apps/mobile/src/copy.ts`
 - **API / Data Dependency:** Aligned with `patient` external IDs `DEMO-001`, `DEMO-002`, `DEMO-003` in `packages/db`.
 - **Security Dependency:** Synthetic-only PII marker (`isSyntheticDemo: true`); zero real patient PHI.
@@ -139,7 +139,7 @@ Every requirement below contains all 21 mandatory governance attributes:
 - **Target User:** Patient / Consented Caregiver
 - **User Story:** As a patient undergoing multi-cycle cancer treatment, I want my Home screen to immediately show where I am in my verified treatment plan and when my next oncology clinic visit is scheduled.
 - **Existing Implementation (`757f495`):** `app/(tabs)/index.tsx` displays only generic document count (`5 records`) and unverified count (`2 awaiting review`).
-- **Current Status:** `NOT_STARTED`
+- **Current Status:** `COMPLETE`
 - **Exact Source Files:** `apps/mobile/app/(tabs)/index.tsx`, `apps/mobile/src/domain.ts`, `apps/mobile/src/copy.ts`
 - **API / Data Dependency:** `GET /api/v1/patient-portal/snapshot` (`journeyStage`, `nextAppointment`, `readinessSummary`).
 - **Security Dependency:** Displays only clinician-verified stage metadata with explicit source citation.
@@ -160,7 +160,7 @@ Every requirement below contains all 21 mandatory governance attributes:
 - **Target User:** Patient / Caregiver / OPD Coordinator
 - **User Story:** As a patient preparing for an oncology consultation, I want to see which required reports are already verified and which missing reports I still need to upload before my appointment.
 - **Existing Implementation (`757f495`):** Missing; only a static 4-item generic checklist exists.
-- **Current Status:** `NOT_STARTED`
+- **Current Status:** `COMPLETE`
 - **Exact Source Files:** `apps/mobile/app/(tabs)/index.tsx`, `apps/mobile/src/preparation-workspace.tsx`, `apps/mobile/src/patient-selectors.ts`
 - **API / Data Dependency:** `GET /api/v1/patient-portal/snapshot` (`missingDocumentTasks`, `readinessChecklist`).
 - **Security Dependency:** Read-only reflection of authorized clinician task state.
@@ -180,7 +180,7 @@ Every requirement below contains all 21 mandatory governance attributes:
 - **Target User:** Patient / Caregiver
 - **User Story:** As a cancer patient preparing for my oncologist visit, I want an oncology-specific checklist and question builder so I do not forget critical pathology slides, pre-chemo labs, or questions about my treatment cycle.
 - **Existing Implementation (`757f495`):** `src/domain.ts:51-54` has generic items (`Confirm records for the next visit`, `Review unverified uploads`, `Select two priority questions`, `Add personal notes`).
-- **Current Status:** `NOT_STARTED`
+- **Current Status:** `COMPLETE`
 - **Exact Source Files:** `apps/mobile/src/domain.ts`, `apps/mobile/src/oncology-cohort.ts`, `apps/mobile/src/preparation-workspace.tsx`
 - **API / Data Dependency:** `PUT /api/v1/patient-portal/preparation`
 - **Security Dependency:** Enforces clinical boundary check on patient-authored notes/questions (no AI generation of clinical advice).
@@ -754,7 +754,7 @@ Every requirement below contains all 21 mandatory governance attributes:
 - **Target User:** Tamil-speaking Patient & Caregiver
 - **User Story:** As a Tamil-speaking user switching the app to `தமிழ்`, I want the consultation checklist items, medical glossary explanations, and care team instructions to appear in Tamil rather than staying in English.
 - **Existing Implementation (`757f495`):** Static UI labels in `src/copy.ts` switch to Tamil, but all checklist items, glossary terms, and document summaries in `src/domain.ts` remain hardcoded in English.
-- **Current Status:** `NOT_STARTED`
+- **Current Status:** `COMPLETE`
 - **Exact Source Files:** `apps/mobile/src/oncology-cohort.ts`, `apps/mobile/src/copy.ts`, `apps/mobile/src/domain.ts`
 - **API / Data Dependency:** Supports `titleTa`, `summaryTa`, `detailTa` fields on localized domain entities.
 - **Security Dependency:** Verbatim clinical numbers/dates remain identical across languages; zero clinical re-interpretation.

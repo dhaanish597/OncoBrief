@@ -1,4 +1,6 @@
 import { translate } from './i18n';
+import { ONCOLOGY_PERSONAS, type PersonaId, type PersonaData } from './oncology-cohort';
+export type { PersonaId, PersonaData };
 export type Locale = 'en' | 'ta';
 export type Category = 'laboratory' | 'pathology' | 'imaging' | 'referral' | 'prescription' | 'other';
 export type EvidenceStatus = 'extracted' | 'clinician-confirmed' | 'conflicting';
@@ -19,42 +21,51 @@ export interface Grant { id: string; recipient: string; purpose: string; ids: st
 export type DraftKey='question'|'notes'|'check'|'recipient'|'purpose'|'missingText'|'missingNote'|'observation'|'flag';
 export interface State {
   version: 1; mode: 'demo'; locale: Locale; onboarded: boolean; reducedMotion: boolean;
+  personaId: PersonaId;
+  patientName: string; patientNameTa: string; mrn: string;
+  diagnosis: string; diagnosisTa: string;
+  journeyStage: string; journeyStageTa: string;
   documents: DocumentRecord[]; ledger: Evidence[]; checks: Check[];
   questions: { id: string; text: string; answered: boolean; at: string }[]; notes: string;
-  selected: string[]; grants: Grant[];
+  selected: string[]; packSelected: string[]; shareSelected: string[]; grants: Grant[];
   drafts:Record<DraftKey,string>;
   observations: { id: string; text: string; intensity: number; source: 'patient-reported'; at: string }[];
   missing: { id: string; text: string; note: string; source: 'patient'; status: 'missing' | 'requested' | 'available' | 'unavailable'; documentId?: string }[];
   flags: { id: string; documentId: string; reason: string; at: string }[];
   audit: { id: string; actor: 'demo-patient'; action: string; entityId: string; at: string }[];
 }
-const fixtureTime = '2026-10-28T09:00:00.000Z';
-export function createDemo(): State {
-  const docs: [string, string, Category, string, string, string][] = [
-    ['d1', 'Blood count · 14 October', 'laboratory', '2026-10-14', 'Demo laboratory A', 'SYNTHETIC SAMPLE — Blood count report\nReport date: 14 October 2026\nLaboratory: Demo laboratory A\nHaemoglobin: 12.1 g/dL\nReference interval supplied by this synthetic laboratory: 12.0–15.5 g/dL\nThis is fabricated training data, not a patient report.'],
-    ['d2', 'Referral letter', 'referral', '2026-10-18', 'Demo clinic', 'SYNTHETIC SAMPLE — Referral letter\nDocument date: 18 October 2026\nAppointment: 30 October 2026 at 10:30\nBring a copy of the referral letter.\nThis is fabricated training data, not a patient report.'],
-    ['d3', 'Imaging report cover', 'imaging', '2026-10-20', 'Demo imaging centre', 'SYNTHETIC SAMPLE — Imaging report cover\nReport date: 20 October 2026\nRecord available for review. No clinical findings included.'],
-    ['d4', 'Blood count · 24 October', 'laboratory', '2026-10-24', 'Demo laboratory A', 'SYNTHETIC SAMPLE — Blood count report\nReport date: 24 October 2026\nLaboratory: Demo laboratory A\nHaemoglobin: 12.4 g/dL\nReference interval supplied by this synthetic laboratory: 12.0–15.5 g/dL\nThis is fabricated training data, not a patient report.'],
-    ['d5', 'Appointment confirmation', 'other', '2026-10-25', 'Demo clinic', 'SYNTHETIC SAMPLE — Appointment confirmation\nIssued: 25 October 2026\nAppointment: 31 October 2026 at 10:30\nThis differs from the referral letter. Contact the care team to confirm.'],
-  ];
-  const documents = docs.map(([id, name, category, date, facility, originalText]) => ({ id, name, category, date, facility, originalText, mimeType: 'text/plain', size: originalText.length, version: 'fixture-v1', extraction: 'fixture' as const, patientReviewed: id === 'd1', clinicianVerified: id === 'd1', addedAt: fixtureTime }));
-  const ledger: Evidence[] = documents.map(d => ({ id: `e-${d.id}`, kind: 'document', title: d.name, titleTa: ({ d1: 'இரத்த எண்ணிக்கை · 14 அக்டோபர்', d2: 'பரிந்துரைக் கடிதம்', d3: 'படப்பரிசோதனை அறிக்கை', d4: 'இரத்த எண்ணிக்கை · 24 அக்டோபர்', d5: 'சந்திப்பு உறுதிப்படுத்தல்' } as Record<string,string>)[d.id]!, date: d.date, status: d.clinicianVerified ? 'clinician-confirmed' : 'extracted', source: { documentId: d.id, page: 1, quote: d.originalText!.split('\n')[1]!, version: d.version, method: 'synthetic-fixture', confidence: 'not-applicable', ...(d.clinicianVerified ? { reviewer: 'Demo clinician (fixture)', reviewedAt: fixtureTime } : {}) } }));
-  for (const d of documents.filter(d => d.category==='laboratory')) {
-    const value=Number(d.originalText!.match(/Haemoglobin: ([\d.]+)/)![1]);
-    ledger.push({ id:`lab-${d.id}`,kind:'document',title:`Haemoglobin as documented: ${value} g/dL`,titleTa:`அறிக்கையில் உள்ள ஹீமோகுளோபின்: ${value} g/dL`,date:d.date,status:d.clinicianVerified ? 'clinician-confirmed' : 'extracted',observation:{ test:'haemoglobin',value,unit:'g/dL',referenceLow:12,referenceHigh:15.5 },source:{ documentId:d.id,page:1,quote:d.originalText!.split('\n').slice(3,5).join('\n'),version:d.version,method:'synthetic-fixture',confidence:'not-applicable',...(d.clinicianVerified ? { reviewer:'Demo clinician (fixture)',reviewedAt:fixtureTime } : {}) } });
-  }
-  ledger.push(...[
-    { id: 'a1', date: '2026-10-30', documentId: 'd2', quote: 'Appointment: 30 October 2026 at 10:30', title: 'Appointment date needs confirmation', titleTa: 'சந்திப்பு தேதியை உறுதிப்படுத்தவும்' },
-    { id: 'a2', date: '2026-10-31', documentId: 'd5', quote: 'Appointment: 31 October 2026 at 10:30', title: 'A second date appears in your records', titleTa: 'பதிவுகளில் மற்றொரு தேதி உள்ளது' },
-  ].map(e => ({ id: e.id, kind: 'appointment' as const, title: e.title, titleTa: e.titleTa, date: e.date, status: 'conflicting' as const, source: { documentId: e.documentId, page: 1, quote: e.quote, version: 'fixture-v1', method: 'synthetic-fixture' as const, confidence: 'not-applicable' as const } })));
-  return { version: 1, mode: 'demo', locale: 'en', onboarded: false, reducedMotion: false, documents, ledger,
-    checks: [
-      { id: 'c1', label: 'Review the reports I want to bring', labelTa: 'எடுத்துச் செல்லும் அறிக்கைகளைப் பார்க்கவும்', done: false, enabled: true, optional: false },
-      { id: 'c2', label: 'Prepare my questions', labelTa: 'என் கேள்விகளைத் தயாரிக்கவும்', done: true, enabled: true, optional: false },
-      { id: 'c3', label: 'Confirm my appointment details', labelTa: 'சந்திப்பு விவரங்களை உறுதிப்படுத்தவும்', done: false, enabled: true, optional: false },
-      { id: 'c4', label: 'Add personal notes', labelTa: 'தனிப்பட்ட குறிப்புகளைச் சேர்க்கவும்', done: false, enabled: true, optional: true },
-    ], questions: [{ id: 'q1', text: 'Which appointment date should I use?', answered: false, at: fixtureTime }], notes: '', selected: ['d1', 'd2'], grants: [], observations: [], flags: [],drafts:{ question:'',notes:'',check:'',recipient:'',purpose:'',missingText:'',missingNote:'',observation:'',flag:'' },
-    missing: [{ id: 'm1', text: 'A copy of my referral', note: 'My own checklist, not a medical requirement.', source: 'patient', status: 'missing' }], audit: [] };
+export function createDemo(personaId: PersonaId = 'DEMO-001'): State {
+  const p = ONCOLOGY_PERSONAS[personaId] || ONCOLOGY_PERSONAS['DEMO-001'];
+  const initialSelected = p.documents.slice(0, 2).map(d => d.id);
+  return {
+    version: 1,
+    mode: 'demo',
+    locale: 'en',
+    onboarded: false,
+    reducedMotion: false,
+    personaId: p.personaId,
+    patientName: p.patientName,
+    patientNameTa: p.patientNameTa,
+    mrn: p.mrn,
+    diagnosis: p.diagnosis,
+    diagnosisTa: p.diagnosisTa,
+    journeyStage: p.journeyStage,
+    journeyStageTa: p.journeyStageTa,
+    documents: [...p.documents],
+    ledger: [...p.ledger],
+    checks: p.checks.map(c => ({ ...c })),
+    questions: p.questions.map(q => ({ ...q })),
+    notes: '',
+    selected: [...initialSelected],
+    packSelected: [...initialSelected],
+    shareSelected: [...initialSelected],
+    grants: [],
+    drafts: { question: '', notes: '', check: '', recipient: '', purpose: '', missingText: '', missingNote: '', observation: '', flag: '' },
+    observations: [],
+    missing: p.missing.map(m => ({ ...m })),
+    flags: [],
+    audit: []
+  };
 }
 export function records(s: State, category = 'all', query = '', sort: 'newest' | 'oldest' = 'newest') {
   const term = query.trim().toLocaleLowerCase();
@@ -73,9 +84,12 @@ export function validateFile(f: { name: string; mimeType?: string; size?: number
   return f.mimeType && types[f.mimeType]?.test(f.name) ? null : 'type';
 }
 export type Action =
-  | { type:'editQuestion';id:string;text:string }
-  | { type:'removeQuestion';id:string;approved:boolean }
-  | { type:'draft';key:DraftKey;text:string }
+  | { type: 'selectPersona'; personaId: PersonaId }
+  | { type: 'selectPack'; id: string }
+  | { type: 'selectShare'; id: string }
+  | { type: 'editQuestion'; id: string; text: string }
+  | { type: 'removeQuestion'; id: string; approved: boolean }
+  | { type: 'draft'; key: DraftKey; text: string }
   | { type: 'locale'; locale: Locale } | { type: 'onboard' | 'leave' } | { type: 'motion' }
   | { type: 'review'; id: string } | { type: 'flag'; id: string; reason: string }
   | { type: 'check' | 'enableCheck' | 'select' | 'answer' | 'revoke'; id: string }
@@ -92,6 +106,24 @@ export function reduce(s: State, a: Action, at = new Date().toISOString()): Stat
   const id = `local-${Date.parse(at)}-${s.audit.length}`;
   let next: State = s; let action: string = a.type; let entityId = 'profile';
   switch (a.type) {
+    case 'selectPersona': {
+      if (!(a.personaId in ONCOLOGY_PERSONAS)) throw new Error('invalid_input');
+      const fresh = createDemo(a.personaId);
+      next = { ...fresh, locale: s.locale, onboarded: s.onboarded, reducedMotion: s.reducedMotion };
+      action = 'select_persona';
+      entityId = a.personaId;
+      break;
+    }
+    case 'selectPack':
+      owned(s, [a.id]);
+      next = { ...s, packSelected: s.packSelected.includes(a.id) ? s.packSelected.filter(i => i !== a.id) : [...s.packSelected, a.id] };
+      entityId = a.id;
+      break;
+    case 'selectShare':
+      owned(s, [a.id]);
+      next = { ...s, shareSelected: s.shareSelected.includes(a.id) ? s.shareSelected.filter(i => i !== a.id) : [...s.shareSelected, a.id] };
+      entityId = a.id;
+      break;
     case 'draft': if (!(a.key in s.drafts) || a.text.length>5000) throw new Error('invalid_input');return { ...s,drafts:{ ...s.drafts,[a.key]:a.text } };
     case 'locale': if (!['en','ta'].includes(a.locale)) throw new Error('invalid_input'); next = { ...s, locale: a.locale }; break;
     case 'onboard': next = { ...s, onboarded: true }; break;
@@ -108,7 +140,16 @@ export function reduce(s: State, a: Action, at = new Date().toISOString()): Stat
     case 'removeQuestion': if (!a.approved) throw new Error('approval_required');if (!s.questions.some(q => q.id===a.id)) throw new Error('unknown_item');next={ ...s,questions:s.questions.filter(q => q.id!==a.id) };entityId=a.id;break;
     case 'answer': if (!s.questions.some(q => q.id === a.id)) throw new Error('unknown_item'); next = { ...s, questions: s.questions.map(q => q.id === a.id ? { ...q, answered: !q.answered } : q) }; entityId = a.id; break;
     case 'notes': if (a.text.length > 5000) throw new Error('invalid_input'); next = { ...s, notes: a.text,drafts:{ ...s.drafts,notes:a.text } }; break;
-    case 'select': owned(s,[a.id]); next = { ...s, selected: s.selected.includes(a.id) ? s.selected.filter(i => i !== a.id) : [...s.selected, a.id] }; entityId = a.id; break;
+    case 'select':
+      owned(s,[a.id]);
+      next = {
+        ...s,
+        selected: s.selected.includes(a.id) ? s.selected.filter(i => i !== a.id) : [...s.selected, a.id],
+        packSelected: s.packSelected.includes(a.id) ? s.packSelected.filter(i => i !== a.id) : [...s.packSelected, a.id],
+        shareSelected: s.shareSelected.includes(a.id) ? s.shareSelected.filter(i => i !== a.id) : [...s.shareSelected, a.id]
+      };
+      entityId = a.id;
+      break;
     case 'missing': next = { ...s, missing: [...s.missing, { id, text: textInput(a.text,200), note: a.note.trim().slice(0,1000), source: 'patient', status: 'missing' }] }; break;
     case 'missingStatus':
       if (!s.missing.some(m => m.id === a.id)) throw new Error('unknown_item');
@@ -146,9 +187,20 @@ export function hydrate(raw: string): State {
   if (!parsed || typeof parsed !== 'object') throw new Error('invalid_storage');
   const s = parsed as State;
   if (s.version !== 1 || s.mode !== 'demo' || !['en','ta'].includes(s.locale) || typeof s.onboarded !== 'boolean' || typeof s.reducedMotion !== 'boolean' || typeof s.notes !== 'string') throw new Error('invalid_storage');
+  const personaId: PersonaId = (s.personaId && s.personaId in ONCOLOGY_PERSONAS) ? s.personaId : 'DEMO-001';
+  s.personaId = personaId;
+  const fixture = createDemo(personaId);
+  s.patientName = s.patientName || fixture.patientName;
+  s.patientNameTa = s.patientNameTa || fixture.patientNameTa;
+  s.mrn = s.mrn || fixture.mrn;
+  s.diagnosis = s.diagnosis || fixture.diagnosis;
+  s.diagnosisTa = s.diagnosisTa || fixture.diagnosisTa;
+  s.journeyStage = s.journeyStage || fixture.journeyStage;
+  s.journeyStageTa = s.journeyStageTa || fixture.journeyStageTa;
+  if (!Array.isArray(s.packSelected)) s.packSelected = Array.isArray(s.selected) ? [...s.selected] : [...fixture.packSelected];
+  if (!Array.isArray(s.shareSelected)) s.shareSelected = Array.isArray(s.selected) ? [...s.selected] : [...fixture.shareSelected];
   for (const key of ['documents','ledger','checks','questions','selected','grants','observations','missing','flags','audit'] as const) if (!Array.isArray(s[key])) throw new Error('invalid_storage');
   if (s.documents.some(d => !d || typeof d.id !== 'string' || typeof d.name !== 'string' || !['laboratory','pathology','imaging','referral','prescription','other'].includes(d.category) || typeof d.date !== 'string' || typeof d.patientReviewed !== 'boolean' || typeof d.clinicianVerified !== 'boolean' || !['fixture','unavailable'].includes(d.extraction))) throw new Error('invalid_storage');
-  const fixture=createDemo();
   // No mobile action can author clinical evidence. Only the bundled source-anchored fixture ledger is accepted.
   if (JSON.stringify(s.ledger)!==JSON.stringify(fixture.ledger)) throw new Error('invalid_storage');
   if (fixture.documents.some(original => { const d=s.documents.find(d => d.id===original.id);return !d || Object.entries(original).some(([key,value]) => key!=='patientReviewed' && d[key as keyof DocumentRecord]!==value); })) throw new Error('invalid_storage');

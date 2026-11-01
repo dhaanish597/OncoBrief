@@ -36,9 +36,9 @@ test('patients can edit and explicitly remove their own questions without alteri
   assert.equal(hydrate(JSON.stringify(removed)).questions.length,0);
 });
 test('journey source category, search and ordering remain ledger projections', () => {
-  const s=createDemo();const result=filterJourney(s,{ category:'imaging',query:'report',sort:'oldest' });
+  const s=createDemo();const result=filterJourney(s,{ category:'pathology',query:'report',sort:'oldest' });
   assert.equal(result.length,1);assert.equal(result[0]?.source.documentId,'d3');
-  assert.equal(filterJourney(s,{ category:'pathology' }).length,0);
+  assert.equal(filterJourney(s,{ category:'imaging' }).length,0);
 });
 test('wellbeing filtering preserves individual entries instead of inventing a daily medical score', () => {
   let s=createDemo();s=reduce(s,{ type:'wellbeing',text:'Tired',intensity:2 },'2026-10-01T10:00:00Z');

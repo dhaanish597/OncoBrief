@@ -10,10 +10,51 @@ import { theme as c } from './theme';
 export function ConnectedHome() {
   const { state,t }=useStore();const router=useRouter();const prep=readiness(state);const labs=labObservations(state);const latest=labs[0];const appointments=state.ledger.filter(e => e.kind==='appointment');const recent=filterJourney(state).filter(e => !e.observation).slice(0,2);
   const links:{ label:string;icon:IconName;href:Href;color:string }[]=[{ label:t('labResults'),icon:'lab',href:'/labs',color:c.purple },{ label:t('journey'),icon:'journey',href:'/(tabs)/journey',color:c.teal },{ label:t('wellbeing'),icon:'heart',href:'/wellbeing',color:'#C84279' },{ label:t('records'),icon:'records',href:'/(tabs)/records',color:c.cobalt }];
+  const missingCount = state.missing.filter(m => m.status === 'missing').length;
+  const readinessPct = Math.round(prep.total ? (prep.done / prep.total) * 100 : 0);
+
   return <Screen title={t('homeTitle')} intro={t('homeIntro')}>
+    {state.journeyStage && (
+      <Panel tone="blue" compact>
+        <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
+          <View style={{ flex: 1, gap: 2 }}>
+            <Copy kind="label" style={{ color: c.cobalt, fontSize: 13 }}>
+              {state.locale === 'ta' && state.patientNameTa ? state.patientNameTa : state.patientName} · {state.mrn}
+            </Copy>
+            <Copy kind="display" style={{ fontSize: 15, fontWeight: '600' }}>
+              {state.locale === 'ta' && state.journeyStageTa ? state.journeyStageTa : state.journeyStage}
+            </Copy>
+            <Copy kind="meta">
+              {state.locale === 'ta' && state.diagnosisTa ? state.diagnosisTa : state.diagnosis}
+            </Copy>
+          </View>
+          <Badge text={state.personaId} tone="blue" />
+        </View>
+      </Panel>
+    )}
+
+    {missingCount > 0 && (
+      <Panel tone="amber" compact>
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+          <Icon name="shield" color="#D97706" size={20} />
+          <View style={{ flex: 1 }}>
+            <Copy kind="label" style={{ color: '#92400E' }}>
+              {state.locale === 'ta' ? 'காணாமல் போன பதிவுகள் உள்ளன' : 'Missing Consultation Records'}
+            </Copy>
+            <Copy kind="meta">
+              {state.locale === 'ta'
+                ? `${missingCount} ஆவணம் சரிபார்க்கப்பட வேண்டும்`
+                : `${missingCount} record(s) pending for oncology consultation`}
+            </Copy>
+          </View>
+        </View>
+        <Button secondary title={state.locale === 'ta' ? 'சரிபார்க்கவும்' : 'Review Missing Records'} onPress={() => router.push('/prepare')} />
+      </Panel>
+    )}
+
     <Panel compact><SectionHeading icon="calendar" title={t('appointmentConfirm')}/><Copy kind="meta">{t('appointmentSources')}</Copy>{appointments.map(e => <Pressable key={e.id} accessibilityRole="button" accessibilityLabel={`${e.date} · ${t('source')}`} onPress={() => router.push({ pathname:'/record/[id]',params:{ id:e.source.documentId } })} style={{ minHeight:48,paddingVertical:7,borderBottomWidth:1,borderColor:c.line,flexDirection:'row',alignItems:'center',gap:10 }}><View style={{ flex:1,gap:2 }}><Copy kind="label">{new Date(`${e.date}T12:00:00Z`).toLocaleDateString(state.locale==='ta' ? 'ta-IN' : 'en-IN',{ month:'long',day:'numeric',year:'numeric',timeZone:'UTC' })}</Copy><Copy kind="meta">{state.documents.find(d => d.id===e.source.documentId)?.name}</Copy></View><Icon name="arrow" size={17}/></Pressable>) }<Button secondary title={t('compareSources')} onPress={() => router.push({ pathname:'/compare',params:{ left:appointments[0]?.source.documentId || 'd2',right:appointments[1]?.source.documentId || 'd5' } })}/></Panel>
     {latest && <Panel compact><SectionHeading icon="lab" title={t('latestLab')} action={t('viewAll')} onPress={() => router.push('/labs')}/><Pressable accessibilityRole="button" accessibilityLabel={t('viewLabs')} onPress={() => router.push({ pathname:'/lab/[test]',params:{ test:latest.test } })} style={{ gap:4 }}><Row><Copy kind="label">{t('haemoglobin')}</Copy><Copy kind="display" style={{ fontSize:27 }}>{latest.value}</Copy><Copy kind="label">{latest.unit}</Copy></Row><Copy kind="meta">{t('recorded')} {latest.date} · {latest.facility}</Copy>{labs[1] && <Copy kind="meta">{t('earlierResult')}: {labs[1].value} {labs[1].unit} · {labs[1].date}</Copy>}<Badge text={t(latest.status==='clinician-confirmed' ? 'confirmedShort' : 'extractedShort')} tone="amber"/></Pressable></Panel>}
-    <Panel><SectionHeading icon="check" title={t('personalChecklist')}/><Row><Copy kind="label">{prep.done}/{prep.total} {t('complete')}</Copy></Row><View accessibilityRole="progressbar" accessibilityLabel={t('personalChecklist')} accessibilityValue={{ min:0,max:prep.total,now:prep.done }} style={{ height:9,backgroundColor:c.deep,borderRadius:6 }}><View style={{ height:9,width:`${prep.total ? prep.done/prep.total*100 : 0}%`,backgroundColor:c.cobalt,borderRadius:6 }}/></View><Copy kind="meta">{t('notMedicalReadiness')}</Copy><Button secondary title={t('reviewPreparation')} onPress={() => router.push('/prepare')}/></Panel>
+    <Panel><SectionHeading icon="check" title={t('personalChecklist')}/><Row><Copy kind="label">{prep.done}/{prep.total} {t('complete')} ({readinessPct}%)</Copy></Row><View accessibilityRole="progressbar" accessibilityLabel={t('personalChecklist')} accessibilityValue={{ min:0,max:prep.total,now:prep.done }} style={{ height:9,backgroundColor:c.deep,borderRadius:6 }}><View style={{ height:9,width:`${prep.total ? prep.done/prep.total*100 : 0}%`,backgroundColor:c.cobalt,borderRadius:6 }}/></View><Copy kind="meta">{t('notMedicalReadiness')}</Copy><Button secondary title={t('reviewPreparation')} onPress={() => router.push('/prepare')}/></Panel>
     <Panel><SectionHeading title={t('quickActions')}/><View style={{ flexDirection:'row',gap:7 }}>{links.map(link => <Pressable key={link.icon} accessibilityRole="button" accessibilityLabel={link.label} onPress={() => router.push(link.href)} style={{ flex:1,minHeight:93,padding:9,backgroundColor:c.bg,borderRadius:12,alignItems:'center',justifyContent:'center',gap:9,borderWidth:1,borderColor:c.line }}><Icon name={link.icon} color={link.color}/><Copy kind="meta" style={{ textAlign:'center',color:c.ink,fontSize:11 }}>{link.label}</Copy></Pressable>)}</View></Panel>
     <Panel><SectionHeading title={t('recent')} action={t('viewAll')} onPress={() => router.push('/(tabs)/records')}/>{records(state).slice(0,2).map(d => <DocumentRow key={d.id} doc={d}/>) }<Button secondary title={t('addDocument')} onPress={() => router.push('/import')}/></Panel>
     <Panel><SectionHeading title={t('recentEvents')} action={t('journey')} onPress={() => router.push('/(tabs)/journey')}/>{recent.map(e => <LinkRow key={e.id} title={state.locale==='ta' ? e.titleTa : e.title} subtitle={e.date} href={{ pathname:'/record/[id]',params:{ id:e.source.documentId } }}/>)}</Panel>
