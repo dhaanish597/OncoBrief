@@ -36,12 +36,20 @@ appId: org.oncobrief.patient
     commands:
       - tapOn: "Connect to Live Hospital Portal"
 
-# 4. Verify fields and credentials
-- extendedWaitUntil:
-    visible: ".*(Sign In to Portal|Hospital Identifier).*"
+# 4. Populate synthetic test credentials
+- scrollUntilVisible:
+    element: "Prefill Synthetic Test Credentials"
+    direction: DOWN
     timeout: 8000
 
-# 5. Tap Sign In to Portal to authenticate against live PostgreSQL backend
+- tapOn: "Prefill Synthetic Test Credentials"
+
+# 5. Scroll to and Tap Sign In to Portal to authenticate against live PostgreSQL backend
+- scrollUntilVisible:
+    element: "Sign In to Portal"
+    direction: DOWN
+    timeout: 8000
+
 - tapOn: "Sign In to Portal"
 
 # 6. Verify authentication succeeded and landed on Connected Home

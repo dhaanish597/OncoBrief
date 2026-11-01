@@ -114,11 +114,11 @@ export function Screen({ children, title, intro, back = false }: { children: Rea
           ref={scrollRef}
           testID="screen-scroll"
           keyboardShouldPersistTaps="handled"
-          automaticallyAdjustKeyboardInsets={true}
+          automaticallyAdjustKeyboardInsets={Platform.OS === 'ios'}
           contentContainerStyle={{
             paddingHorizontal: 18,
             paddingTop: 19,
-            paddingBottom: Math.max(36, keyboardHeight + 48),
+            paddingBottom: Platform.OS === 'android' ? 48 : Math.max(36, keyboardHeight + 48),
             alignItems: 'center',
           }}
         >

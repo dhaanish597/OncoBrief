@@ -129,6 +129,7 @@ export function PreparationWorkspace() {
               action={progress.hasItems ? (configure ? 'Done' : t('manage')) : undefined}
               onPress={() => setConfigure(!configure)}
             />
+            <Copy kind="meta">Personal preparation suggestions (optional self-reminders, not clinician medical orders).</Copy>
 
             {progress.hasItems ? (
               <>

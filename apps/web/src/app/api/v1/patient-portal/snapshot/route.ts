@@ -2,6 +2,10 @@ import { NextResponse } from 'next/server';
 import { getPatientPortalSnapshot } from '@oncobrief/db';
 import { requirePatientPortalSession, NO_CACHE_HEADERS } from '@/lib/patient-session';
 
+export async function OPTIONS() {
+  return new NextResponse(null, { status: 204, headers: NO_CACHE_HEADERS });
+}
+
 export async function GET(request: Request) {
   const auth = await requirePatientPortalSession(request);
   if (!auth.ok) return auth.response;

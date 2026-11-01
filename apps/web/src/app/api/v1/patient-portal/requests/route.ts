@@ -41,6 +41,10 @@ export async function GET(request: Request) {
   return NextResponse.json(result, { status: 200, headers: NO_CACHE_HEADERS });
 }
 
+export async function OPTIONS() {
+  return new NextResponse(null, { status: 204, headers: NO_CACHE_HEADERS });
+}
+
 export async function POST(request: Request) {
   const auth = await requirePatientPortalSession(request);
   if (!auth.ok) return auth.response;

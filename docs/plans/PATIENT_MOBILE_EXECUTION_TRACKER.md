@@ -104,7 +104,7 @@ The implementation loop may terminate as `RELEASE_READY` **if and only if** all 
 | `MOB-021` | M5 | L | Playwright E2E Suite Expansion & 20-Step Clinician-to-Patient Continuity Verification (`clinician-patient-continuity.spec.ts`) | `MOB-005`, `MOB-013`..`MOB-020` | `REQ-MOB-044` | `COMPLETE` | 0 | Exit 1 (missing multi-server connected continuity orchestration) | Exit 0 (9/9 E2E pass in 46.7s; 20-step loop green with 0 unhandled errors) | `9b6b31f` |
 | `MOB-022` | M6 | K | Native Android Configuration (`allowBackup=false`), Hermes Bytecode Bundle Verification & Gradle `assembleDebug` APK Build | `MOB-019`, `MOB-021` | `REQ-MOB-040` | `COMPLETE` | 0 | Exit 0 (`tools/verify-android-build.sh` produces 240MB `app-debug.apk` with SHA-256 `d876e39d...`) | Exit 0 (`android-config.test.ts` 6 pass, CI workflow `.github/workflows/android-apk.yml`, allowBackup=false enforced) | `HEAD` |
 | `MOB-023` | M6 | K | Native Android Emulator/Device APK Installation (`adb install`), Runtime Crash Check (`adb logcat`) & Maestro Native Smoke Flow | `MOB-022` | `REQ-MOB-041` | `COMPLETE` | 0 | Exit 0 (Streamed APK installed on Samsung SM-E156B Android 14 API 34; `tools/verify-android-runtime.sh` passes 2/2 Maestro flows with 0 crashes) | Exit 0 (Maestro smoke + connected flows pass against live PostgreSQL on port 3000 over ADB reverse; 0 fatal exceptions in logcat) | `HEAD` |
-| `MOB-024` | M7 | L | Monorepo Root Verification Script (`pnpm verify:patient-mobile`), CI Workflow Integration & Final Release Readiness Sign-Off | `MOB-020`..`MOB-023` | `REQ-MOB-045` | `NOT_STARTED` | 0 | Pending | Pending | — |
+| `MOB-024` | M7 | L | Monorepo Root Verification Script (`pnpm verify:patient-mobile`), CI Workflow Integration & Final Release Readiness Sign-Off | `MOB-020`..`MOB-023` | `REQ-MOB-045` | `COMPLETE` | 0 | Exit 1 (missing root verify script and monorepo CI gate) | Exit 0 (all 6 gates pass: typecheck, boundary/branding, 119 mobile unit, 84 portal API/sec-neg, Android Hermes export, PostgreSQL RLS) | `HEAD` |
 
 ---
 
@@ -335,6 +335,66 @@ Whenever the coding agent updates a task in Section 2 above, it MUST append a st
     - path: "apps/mobile/app/coordinator-request.tsx"
       change_type: modified
     - path: "apps/mobile/app/sharing.tsx"
+      change_type: modified
+  blocker_report: null
+```
+
+```yaml
+- task_id: MOB-024
+  milestone: M7
+  timestamp: "2026-11-02T02:10:00Z"
+  commit_hash: "HEAD"
+  requirements_transitioned:
+    - id: REQ-MOB-045
+      from_status: NOT_STARTED
+      to_status: COMPLETE
+  red_phase:
+    command: "pnpm verify:patient-mobile"
+    exit_code: 1
+    failing_assertion_summary: "Initial failure due to missing verify-patient-mobile.sh script and missing root monorepo CI integration"
+  green_phase:
+    command: "pnpm verify:patient-mobile"
+    exit_code: 0
+    passing_tests_count: 213 # 119 mobile + 84 web portal + 10 db RLS
+  regression_gate:
+    typecheck_exit_code: 0
+    clinical_boundary_exit_code: 0
+    branding_exit_code: 0
+    unit_suite_exit_code: 0
+    hermes_export_exit_code: 0
+    maestro_runtime_exit_code: 0
+  files_changed:
+    - path: "package.json"
+      change_type: modified
+    - path: ".github/workflows/ci.yml"
+      change_type: modified
+    - path: "tools/verify-patient-mobile.sh"
+      change_type: created
+    - path: "tools/verify-android-build.sh"
+      change_type: modified
+    - path: "apps/mobile/src/ui-core.tsx"
+      change_type: modified
+    - path: "apps/mobile/src/repository.ts"
+      change_type: modified
+    - path: "apps/mobile/src/preparation-workspace.tsx"
+      change_type: modified
+    - path: "apps/mobile/app/signin.tsx"
+      change_type: modified
+    - path: "apps/web/next.config.ts"
+      change_type: modified
+    - path: "apps/web/src/lib/patient-session.ts"
+      change_type: modified
+    - path: "apps/web/src/app/api/v1/patient-portal/session/route.ts"
+      change_type: modified
+    - path: "apps/web/src/app/api/v1/patient-portal/session/route.test.ts"
+      change_type: modified
+    - path: "apps/mobile/maestro/patient-smoke.yaml"
+      change_type: modified
+    - path: "apps/mobile/maestro/patient-connected.yaml"
+      change_type: modified
+    - path: "docs/plans/PATIENT_MOBILE_EXECUTION_TRACKER.md"
+      change_type: modified
+    - path: "docs/plans/PATIENT_MOBILE_REQUIREMENTS_MATRIX.md"
       change_type: modified
   blocker_report: null
 ```

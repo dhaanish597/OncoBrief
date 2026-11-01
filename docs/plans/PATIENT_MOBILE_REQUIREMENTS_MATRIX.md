@@ -102,7 +102,7 @@ Every requirement below contains all 21 mandatory governance attributes:
 | `REQ-MOB-042` | L | ADR Numbering De-Confliction (`0017` → `0026`, `BUG-MOB-14`) & Git Worktree Isolation | `ORIGINAL_ONCOBRIEF` | `CORE` | M0 | P0 | `MOB-000` | Duplicate `0017` ADR number; dirty main worktree | `COMPLETE` |
 | `REQ-MOB-043` | L | Comprehensive Unit, Component, Contract, RLS & Security Negative Test Suite | `V4_ENHANCEMENT_PLAN` | `CORE` | M5 | P0 | `MOB-020` | 103 mobile unit tests, 75 patient portal API tests, 20 security-negative tests | `COMPLETE` |
 | `REQ-MOB-044` | L | Full Clinician-to-Patient E2E Continuity Playwright Suite | `V4_ENHANCEMENT_PLAN` | `CORE` | M5 | P0 | `MOB-021` | 9 Playwright E2E tests: 8 standalone mobile scenarios + 20-step connected loop | `COMPLETE` |
-| `REQ-MOB-045` | L | Monorepo CI/CD Pipeline & Release Readiness Verification Gate | `V4_ENHANCEMENT_PLAN` | `CORE` | M7 | P1 | `MOB-024` | `apps/mobile` not wired into root verification gate | `NOT_STARTED` |
+| `REQ-MOB-045` | L | Monorepo CI/CD Pipeline & Release Readiness Verification Gate | `V4_ENHANCEMENT_PLAN` | `CORE` | M7 | P1 | `MOB-024` | `apps/mobile` not wired into root verification gate | `COMPLETE` |
 
 ---
 

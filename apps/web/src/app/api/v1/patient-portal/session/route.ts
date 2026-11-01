@@ -7,23 +7,10 @@ import {
   appendAuditEvent,
   withPatientPortalContext,
 } from '@oncobrief/db';
-import { requirePatientPortalSession, NO_CACHE_HEADERS } from '@/lib/patient-session';
+import { requirePatientPortalSession, NO_CACHE_HEADERS, checkRateLimit } from '@/lib/patient-session';
 
-// In-memory sliding rate limiter: max 5 login attempts per 15 minutes per IP/identifier
-const rateLimits = new Map<string, { count: number; resetAt: number }>();
-
-function checkRateLimit(key: string): boolean {
-  const now = Date.now();
-  const entry = rateLimits.get(key);
-  if (!entry || now > entry.resetAt) {
-    rateLimits.set(key, { count: 1, resetAt: now + 15 * 60 * 1000 });
-    return true;
-  }
-  if (entry.count >= 5) {
-    return false;
-  }
-  entry.count++;
-  return true;
+export async function OPTIONS() {
+  return new NextResponse(null, { status: 204, headers: NO_CACHE_HEADERS });
 }
 
 export async function POST(request: Request) {
@@ -154,7 +141,17 @@ export async function POST(request: Request) {
 
   // 4. Verify OTP Challenge
   let otpVerified = false;
-  const isDemoAuthorized = (patient.is_demo_fixture || org.is_demo_fixture) && (otpCode === '246810' || otpCode === '123456');
+  // Synthetic demo OTP bypass is strictly restricted to non-production environments OR explicit ALLOW_SYNTHETIC_TEST_OTP=true.
+  // In public production, fixed test OTP bypass is unconditionally disabled and rejected.
+  const allowSyntheticTestOtp =
+    process.env.ALLOW_SYNTHETIC_TEST_OTP === 'true' ||
+    (process.env.NODE_ENV !== 'production' && (patient.is_demo_fixture || org.is_demo_fixture));
+
+  const isDemoAuthorized =
+    allowSyntheticTestOtp &&
+    (patient.is_demo_fixture || org.is_demo_fixture) &&
+    (otpCode === '246810' || otpCode === '123456');
+
   if (isDemoAuthorized) {
     otpVerified = true;
   } else {

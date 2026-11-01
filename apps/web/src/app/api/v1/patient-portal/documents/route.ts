@@ -27,6 +27,10 @@ const EXT_BY_MIME: Record<string, string> = {
   'image/webp': '.webp',
 };
 
+export async function OPTIONS() {
+  return new NextResponse(null, { status: 204, headers: NO_CACHE_HEADERS });
+}
+
 export async function POST(request: Request) {
   const auth = await requirePatientPortalSession(request, 'documents');
   if (!auth.ok) return auth.response;

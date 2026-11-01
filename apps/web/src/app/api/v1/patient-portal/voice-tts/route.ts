@@ -15,6 +15,10 @@ const LANGUAGE_MAP: Record<string, string> = {
   'hi-IN': 'hi-IN',
 };
 
+export async function OPTIONS() {
+  return new NextResponse(null, { status: 204, headers: NO_CACHE_HEADERS });
+}
+
 export async function POST(request: Request) {
   const auth = await requirePatientPortalSession(request, 'reminders');
   if (!auth.ok) return auth.response;

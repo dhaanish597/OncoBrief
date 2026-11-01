@@ -9,9 +9,9 @@ export default function Signin() {
   const { mode, isAuthenticated, state, signInConnected, signOutConnected, switchMode, t } = useStore();
   const router = useRouter();
 
-  const [hospitalSlug, setHospitalSlug] = useState('rci');
-  const [identifier, setIdentifier] = useState('DEMO-001');
-  const [otp, setOtp] = useState('246810');
+  const [hospitalSlug, setHospitalSlug] = useState('');
+  const [identifier, setIdentifier] = useState('');
+  const [otp, setOtp] = useState('');
   const [role, setRole] = useState<'patient' | 'caregiver'>('patient');
   const [loading, setLoading] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
@@ -32,7 +32,11 @@ export default function Signin() {
       });
       router.replace('/(tabs)');
     } catch (err: unknown) {
-      setErrorMsg(err instanceof Error ? err.message : 'Authentication failed. Please verify credentials.');
+      setErrorMsg(
+        err instanceof Error
+          ? err.message
+          : 'Authentication failed. Please verify credentials. (Note: Real-world SMS verification is not configured in this test environment; use synthetic test fixtures).'
+      );
     } finally {
       setLoading(false);
     }
@@ -100,6 +104,26 @@ export default function Signin() {
                 <Copy style={{ color: '#785500', fontWeight: '600' }}>{errorMsg}</Copy>
               </Panel>
             )}
+
+            <Panel compact tone="paper">
+              <Row>
+                <Badge text="Synthetic Test Mode" tone="blue" />
+                <Copy kind="meta">Hackathon / Local Test Credentials</Copy>
+              </Row>
+              <Copy kind="meta">
+                Use isolated synthetic credentials (Hospital: rci, MRN: DEMO-001, OTP: 246810) for testing. Real-world SMS verification is not configured.
+              </Copy>
+              <Button
+                secondary
+                title="Prefill Synthetic Test Credentials"
+                testID="signin-prefill-btn"
+                onPress={() => {
+                  setHospitalSlug('rci');
+                  setIdentifier('DEMO-001');
+                  setOtp('246810');
+                }}
+              />
+            </Panel>
 
             <View style={{ gap: 12 }}>
               <Field

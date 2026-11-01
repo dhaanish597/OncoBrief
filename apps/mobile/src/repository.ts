@@ -111,7 +111,7 @@ export function defaultConnectedChecks(): Check[] {
       labelTa: 'மருத்துவக் குழுவிடம் கேட்க வேண்டிய கேள்விகளை குறித்துக் கொள்ளுங்கள்',
       done: false,
       enabled: true,
-      optional: false,
+      optional: true,
     },
   ];
 }

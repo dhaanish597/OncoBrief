@@ -68,3 +68,9 @@ appId: org.oncobrief.patient
 - extendedWaitUntil:
     visible: ".*(Your care, connected.|Meenakshi Sundaram).*"
     timeout: 8000
+
+# 11. Open Preparation & Question Editor
+- openLink: "oncobrief://prepare?stage=questions"
+- extendedWaitUntil:
+    visible: ".*(Add a question for my doctor|Your question|Suggested questions).*"
+    timeout: 8000

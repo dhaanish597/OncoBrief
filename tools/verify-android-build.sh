@@ -69,6 +69,23 @@ if ! grep -q 'android:allowBackup="false"' "${ANDROID_DIR}/app/src/main/AndroidM
   exit 1
 fi
 
+# Ensure network_security_config.xml is configured to enforce HTTPS
+if [ ! -f "${ANDROID_DIR}/app/src/main/res/xml/network_security_config.xml" ]; then
+  echo "[+] Creating network_security_config.xml to enforce HTTPS and permit local ADB traffic..."
+  mkdir -p "${ANDROID_DIR}/app/src/main/res/xml"
+  cat <<'EOF' > "${ANDROID_DIR}/app/src/main/res/xml/network_security_config.xml"
+<?xml version="1.0" encoding="utf-8"?>
+<network-security-config>
+    <base-config cleartextTrafficPermitted="false" />
+    <domain-config cleartextTrafficPermitted="true">
+        <domain includeSubdomains="false">localhost</domain>
+        <domain includeSubdomains="false">127.0.0.1</domain>
+        <domain includeSubdomains="false">10.0.2.2</domain>
+    </domain-config>
+</network-security-config>
+EOF
+fi
+
 # 4. Verify Hermes Android bundle export
 echo "[+] Exporting platform android bundle to verify Hermes bytecode..."
 npx expo export --platform android --output-dir /tmp/oncobrief-android-export >/dev/null 2>&1 || {

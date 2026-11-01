@@ -1,12 +1,17 @@
-import { beforeAll, describe, expect, it } from 'vitest';
+import { beforeAll, beforeEach, describe, expect, it } from 'vitest';
 import { setupFixtures, type Fixtures } from '@oncobrief/db/test-helpers';
 import { POST, GET, DELETE } from './route';
+import { resetRateLimitsForTest } from '@/lib/patient-session';
 
 let fx: Fixtures;
 
 beforeAll(async () => {
   fx = await setupFixtures();
 }, 120_000);
+
+beforeEach(() => {
+  resetRateLimitsForTest();
+});
 
 describe('MOB-007: Patient Portal Session API (/api/v1/patient-portal/session)', () => {
   const reqPost = (body: unknown) =>
@@ -58,6 +63,30 @@ describe('MOB-007: Patient Portal Session API (/api/v1/patient-portal/session)',
     expect(res.status).toBe(401);
     const body = await res.json();
     expect(body.error.code).toBe('invalid_credentials');
+  });
+
+  it('rejects fixed test OTP in public production environment unless ALLOW_SYNTHETIC_TEST_OTP=true (SEC-NEG-21)', async () => {
+    const originalEnv = process.env.NODE_ENV;
+    const originalAllow = process.env.ALLOW_SYNTHETIC_TEST_OTP;
+    try {
+      (process.env as Record<string, string | undefined>).NODE_ENV = 'production';
+      delete process.env.ALLOW_SYNTHETIC_TEST_OTP;
+
+      const res = await POST(
+        reqPost({
+          hospitalSlug: 'rci',
+          patientExternalId: 'DEMO-001',
+          otpCode: '246810',
+          actorRole: 'patient',
+        }),
+      );
+      expect(res.status).toBe(401);
+      const body = await res.json();
+      expect(body.error.code).toBe('invalid_credentials');
+    } finally {
+      (process.env as Record<string, string | undefined>).NODE_ENV = originalEnv;
+      if (originalAllow) process.env.ALLOW_SYNTHETIC_TEST_OTP = originalAllow;
+    }
   });
 
   it('rejects non-existent hospital with 404', async () => {
@@ -128,5 +157,36 @@ describe('MOB-007: Patient Portal Session API (/api/v1/patient-portal/session)',
     expect(res.status).toBe(403);
     const body = await res.json();
     expect(body.error.code).toBe('caregiver_not_authorized');
+  });
+
+  it('enforces brute-force rate limit throttling after 5 attempts', async () => {
+    const throttleIp = 'test-throttle:10.0.0.1';
+    for (let i = 0; i < 5; i++) {
+      await POST(
+        new Request('http://localhost/api/v1/patient-portal/session', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', 'x-forwarded-for': throttleIp },
+          body: JSON.stringify({
+            hospitalSlug: 'rci',
+            patientExternalId: 'DEMO-001',
+            otpCode: '000000',
+          }),
+        }),
+      );
+    }
+    const throttled = await POST(
+      new Request('http://localhost/api/v1/patient-portal/session', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'x-forwarded-for': throttleIp },
+        body: JSON.stringify({
+          hospitalSlug: 'rci',
+          patientExternalId: 'DEMO-001',
+          otpCode: '000000',
+        }),
+      }),
+    );
+    expect(throttled.status).toBe(429);
+    const body = await throttled.json();
+    expect(body.error.code).toBe('rate_limit_exceeded');
   });
 });
