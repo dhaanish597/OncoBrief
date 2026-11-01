@@ -20,7 +20,7 @@ export interface Check { id: string; label: string; labelTa?: string; done: bool
 export interface Grant { id: string; recipient: string; purpose: string; ids: string[]; expiresAt: string; revokedAt?: string; simulated: true; createdAt: string }
 export type DraftKey='question'|'notes'|'check'|'recipient'|'purpose'|'missingText'|'missingNote'|'observation'|'flag';
 export interface State {
-  version: 1; mode: 'demo'; locale: Locale; onboarded: boolean; reducedMotion: boolean;
+  version: 1; mode: 'demo' | 'connected'; locale: Locale; onboarded: boolean; reducedMotion: boolean;
   personaId: PersonaId;
   patientName: string; patientNameTa: string; mrn: string;
   diagnosis: string; diagnosisTa: string;
@@ -32,7 +32,60 @@ export interface State {
   observations: { id: string; text: string; intensity: number; source: 'patient-reported'; at: string }[];
   missing: { id: string; text: string; note: string; source: 'patient'; status: 'missing' | 'requested' | 'available' | 'unavailable'; documentId?: string }[];
   flags: { id: string; documentId: string; reason: string; at: string }[];
-  audit: { id: string; actor: 'demo-patient'; action: string; entityId: string; at: string }[];
+  audit: { id: string; actor: 'demo-patient' | 'connected-patient'; action: string; entityId: string; at: string }[];
+  connectedHospital?: { id: string; slug: string; name: string };
+  lastSyncedAt?: string;
+  pendingSyncCount?: number;
+  appointments?: {
+    id: string;
+    scheduledStart: string;
+    scheduledEnd: string;
+    status: string;
+    clinicianName: string;
+    department: string;
+    tokenNumber?: string;
+    estimatedWaitMinutes?: number;
+    canConfirmAttendance: boolean;
+  }[];
+  continuityMessages?: {
+    id: string;
+    locale: string;
+    body: string;
+    approvedAt: string;
+  }[];
+}
+export function createEmptyConnectedState(): State {
+  return {
+    version: 1,
+    mode: 'connected',
+    locale: 'en',
+    onboarded: false,
+    reducedMotion: false,
+    personaId: 'DEMO-001',
+    patientName: '',
+    patientNameTa: '',
+    mrn: '',
+    diagnosis: '',
+    diagnosisTa: '',
+    journeyStage: '',
+    journeyStageTa: '',
+    documents: [],
+    ledger: [],
+    checks: [],
+    questions: [],
+    notes: '',
+    selected: [],
+    packSelected: [],
+    shareSelected: [],
+    grants: [],
+    drafts: { question: '', notes: '', check: '', recipient: '', purpose: '', missingText: '', missingNote: '', observation: '', flag: '' },
+    observations: [],
+    missing: [],
+    flags: [],
+    audit: [],
+    appointments: [],
+    continuityMessages: [],
+  };
 }
 export function createDemo(personaId: PersonaId = 'DEMO-001'): State {
   const p = ONCOLOGY_PERSONAS[personaId] || ONCOLOGY_PERSONAS['DEMO-001'];
