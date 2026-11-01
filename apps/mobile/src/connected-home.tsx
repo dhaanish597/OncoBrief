@@ -7,6 +7,7 @@ import { filterJourney, labObservations } from './patient-selectors';
 import { Badge, Button, Copy, DocumentRow, LinkRow, Panel, Row, Screen, SectionHeading } from './ui';
 import { Icon, type IconName } from './icons';
 import { theme as c } from './theme';
+import { VoicePlayerBar } from './voice-player';
 
 export function ConnectedHome() {
   const { state, t, mode, client, refresh, notify } = useStore();
@@ -351,6 +352,7 @@ export function ConnectedHome() {
               </Row>
               <Copy kind="body">{msg.body}</Copy>
               <Copy kind="meta">Approved: {new Date(msg.approvedAt).toLocaleDateString()}</Copy>
+              <VoicePlayerBar messageId={msg.id} text={msg.body} defaultLanguage={msg.locale === 'ta' ? 'ta' : 'en'} />
             </View>
           ))}
         </Panel>
@@ -359,6 +361,7 @@ export function ConnectedHome() {
           <SectionHeading title={t('careUpdate')} />
           <Copy>{t('message')}</Copy>
           <Copy kind="meta">{t('messageSource')}</Copy>
+          <VoicePlayerBar text={t('message')} />
           <LinkRow title={t('openReport')} href={{ pathname: '/record/[id]', params: { id: 'd2' } }} />
         </Panel>
       )}
