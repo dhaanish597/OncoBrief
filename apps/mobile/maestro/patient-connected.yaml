@@ -2,15 +2,32 @@ appId: org.oncobrief.patient
 ---
 # 1. Start from Landing Screen
 - extendedWaitUntil:
-    visible: ".*(About signing in|Explore your care).*"
+    visible: ".*(Sign in to my hospital|Sign in with Hospital Portal|About signing in|Explore a sample patient).*"
     timeout: 10000
 
-# 2. Tap About signing in
-- tapOn: "About signing in"
+# 2. Tap Sign in to my hospital
+- runFlow:
+    when:
+      visible: "Sign in to my hospital"
+    commands:
+      - tapOn:
+          id: "landing-signin-btn"
 
-# 3. On Signin Screen - Switch to Connected Portal Mode
+- runFlow:
+    when:
+      visible: "Sign in with Hospital Portal"
+    commands:
+      - tapOn: "Sign in with Hospital Portal"
+
+- runFlow:
+    when:
+      visible: "About signing in"
+    commands:
+      - tapOn: "About signing in"
+
+# 3. On Signin Screen - Switch to Connected Portal Mode if not already
 - extendedWaitUntil:
-    visible: ".*(Connect to Live Hospital Portal|Hospital Portal Connection).*"
+    visible: ".*(Connect to Live Hospital Portal|Hospital Portal Connection|Sign In to Portal).*"
     timeout: 8000
 
 - runFlow:
@@ -29,19 +46,19 @@ appId: org.oncobrief.patient
 
 # 6. Verify authentication succeeded and landed on Connected Home
 - extendedWaitUntil:
-    visible: ".*(Meenakshi Sundaram|Connected|SUN-448120).*"
-    timeout: 12000
+    visible: ".*(CONNECTED HOSPITAL PORTAL|Verified EHR|Regional Cancer Institute).*"
+    timeout: 15000
 
 # 7. Check Records tab connected to live evidence ledger
 - tapOn:
     point: "30%,94%"
 - extendedWaitUntil:
-    visible: ".*(Medical records|Search reports|Laboratory).*"
+    visible: ".*(Medical Document Vault|Authorized Documents|Your records, together|Search reports).*"
     timeout: 8000
 
 # 8. Check Journey tab connected to live timeline
 - tapOn:
     point: "50%,94%"
 - extendedWaitUntil:
-    visible: ".*(Care journey|chronological view|evidence ledger).*"
+    visible: ".*(Care journey|chronological view|evidence ledger|The story in your records).*"
     timeout: 8000

@@ -2,8 +2,8 @@ import React, { useState } from 'react';
 import { Pressable, View } from 'react-native';
 import { useRouter, type Href } from 'expo-router';
 import { useStore } from './store';
-import { readiness, records } from './domain';
-import { filterJourney, labObservations } from './patient-selectors';
+import { records } from './domain';
+import { filterJourney, labObservations, formatChecklistProgress } from './patient-selectors';
 import { Badge, Button, Copy, DocumentRow, LinkRow, Panel, Row, Screen, SectionHeading } from './ui';
 import { Icon, type IconName } from './icons';
 import { theme as c } from './theme';
@@ -14,21 +14,24 @@ export function ConnectedHome() {
   const router = useRouter();
   const [actingOnAppt, setActingOnAppt] = useState<string | null>(null);
 
-  const prep = readiness(state);
+  const progress = formatChecklistProgress(state);
   const labs = labObservations(state);
   const latest = labs[0];
   const demoAppointments = state.ledger.filter((e) => e.kind === 'appointment');
   const recent = filterJourney(state).filter((e) => !e.observation).slice(0, 2);
+  const totalDocs = records(state).length;
+  const totalEvents = state.ledger.length;
+  const totalQuestions = state.questions.length;
+  const futureAppts = (state.appointments ?? []).length || demoAppointments.length;
 
-  const links: { label: string; icon: IconName; href: Href; color: string }[] = [
-    { label: t('labResults'), icon: 'lab', href: '/labs', color: c.purple },
-    { label: t('journey'), icon: 'journey', href: '/(tabs)/journey', color: c.teal },
-    { label: t('wellbeing'), icon: 'heart', href: '/wellbeing', color: '#C84279' },
-    { label: t('records'), icon: 'records', href: '/(tabs)/records', color: c.cobalt },
+  const quickAccessCards: { label: string; countLabel: string; icon: IconName; href: Href; color: string }[] = [
+    { label: t('records'), countLabel: `${totalDocs} records`, icon: 'records', href: '/(tabs)/records', color: c.cobalt },
+    { label: t('labResults'), countLabel: `${labs.length} results`, icon: 'lab', href: '/labs', color: c.purple },
+    { label: t('journey'), countLabel: `${totalEvents} events`, icon: 'journey', href: '/(tabs)/journey', color: c.teal },
+    { label: 'Questions', countLabel: `${totalQuestions} saved`, icon: 'insights', href: '/prepare', color: '#D97706' },
   ];
 
   const missingCount = state.missing.filter((m) => m.status === 'missing').length;
-  const readinessPct = Math.round(prep.total ? (prep.done / prep.total) * 100 : 0);
 
   const handleConfirmAttendance = async (appointmentId: string) => {
     if (!client) return;
@@ -64,52 +67,34 @@ export function ConnectedHome() {
 
   return (
     <Screen title={t('homeTitle')} intro={t('homeIntro')}>
-      {state.journeyStage && (
-        <Panel tone="blue" compact>
-          <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
-            <View style={{ flex: 1, gap: 2 }}>
-              <Copy kind="label" style={{ color: c.cobalt, fontSize: 13 }}>
-                {state.locale === 'ta' && state.patientNameTa ? state.patientNameTa : state.patientName} · {state.mrn}
-              </Copy>
-              <Copy kind="display" style={{ fontSize: 15, fontWeight: '600' }}>
-                {state.locale === 'ta' && state.journeyStageTa ? state.journeyStageTa : state.journeyStage}
-              </Copy>
+      {/* SECTION 1: PATIENT SUMMARY & IDENTITY */}
+      <Panel tone="blue" compact>
+        <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
+          <View style={{ flex: 1, gap: 3 }}>
+            <Copy kind="meta" style={{ color: c.cobalt, fontWeight: '600' }}>
+              {mode === 'connected' ? 'CONNECTED HOSPITAL PORTAL' : 'SAMPLE PATIENT PROFILE'}
+            </Copy>
+            <Copy kind="display" style={{ fontSize: 18, fontWeight: '700' }}>
+              {state.locale === 'ta' && state.patientNameTa ? state.patientNameTa : state.patientName}
+            </Copy>
+            <Copy kind="label" style={{ color: c.ink, fontSize: 13 }}>
+              MRN: {state.mrn} · {state.connectedHospital?.name || 'Apollo Cancer Centre'}
+            </Copy>
+            {state.diagnosis && (
               <Copy kind="meta">
                 {state.locale === 'ta' && state.diagnosisTa ? state.diagnosisTa : state.diagnosis}
+                {state.journeyStage ? ` · Stage ${state.journeyStage}` : ''}
               </Copy>
-            </View>
-            <Badge text={state.personaId} tone="blue" />
+            )}
           </View>
-        </Panel>
-      )}
+          <Badge text={mode === 'connected' ? 'Verified EHR' : state.personaId} tone="blue" />
+        </View>
+      </Panel>
 
-      {missingCount > 0 && (
-        <Panel tone="amber" compact>
-          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-            <Icon name="shield" color="#D97706" size={20} />
-            <View style={{ flex: 1 }}>
-              <Copy kind="label" style={{ color: '#92400E' }}>
-                {state.locale === 'ta' ? 'காணாமல் போன பதிவுகள் உள்ளன' : 'Missing Consultation Records'}
-              </Copy>
-              <Copy kind="meta">
-                {state.locale === 'ta'
-                  ? `${missingCount} ஆவணம் சரிபார்க்கப்பட வேண்டும்`
-                  : `${missingCount} record(s) pending for oncology consultation`}
-              </Copy>
-            </View>
-          </View>
-          <Button
-            secondary
-            title={state.locale === 'ta' ? 'சரிபார்க்கவும்' : 'Review Missing Records'}
-            onPress={() => router.push('/prepare')}
-          />
-        </Panel>
-      )}
-
-      {/* Connected Appointments or Demo Appointment Comparison */}
+      {/* SECTION 2: NEXT UPCOMING APPOINTMENT (PROMINENT) */}
       {mode === 'connected' && state.appointments && state.appointments.length > 0 ? (
         <Panel compact>
-          <SectionHeading icon="calendar" title="Upcoming Appointments & OPD Status" />
+          <SectionHeading icon="calendar" title="Next Appointment & Clinic Status" />
           {state.appointments.map((appt) => {
             const isScheduled = appt.status === 'scheduled';
             const isConfirmed = appt.status === 'confirmed';
@@ -134,17 +119,18 @@ export function ConnectedHome() {
                   )}
                 </Row>
 
-                <Copy kind="label" style={{ fontSize: 16 }}>
+                <Copy kind="label" style={{ fontSize: 17, color: c.ink }}>
                   {new Date(appt.scheduledStart).toLocaleDateString(state.locale === 'ta' ? 'ta-IN' : 'en-IN', {
                     weekday: 'short',
                     month: 'short',
                     day: 'numeric',
+                    year: 'numeric',
                     hour: '2-digit',
                     minute: '2-digit',
                   })}
                 </Copy>
 
-                <Copy kind="body">{appt.clinicianName}</Copy>
+                <Copy kind="body" style={{ fontWeight: '600' }}>{appt.clinicianName}</Copy>
                 <Copy kind="meta">{appt.department}</Copy>
 
                 {appt.canConfirmAttendance && isScheduled && (
@@ -187,7 +173,7 @@ export function ConnectedHome() {
               }}
             >
               <View style={{ flex: 1, gap: 2 }}>
-                <Copy kind="label">
+                <Copy kind="label" style={{ fontSize: 16 }}>
                   {new Date(`${e.date}T12:00:00Z`).toLocaleDateString(state.locale === 'ta' ? 'ta-IN' : 'en-IN', {
                     month: 'long',
                     day: 'numeric',
@@ -216,6 +202,136 @@ export function ConnectedHome() {
         </Panel>
       )}
 
+      {/* SECTION 3: IMPORTANT APPROVED CARE INSTRUCTIONS (PRIORITIZED HIGH) */}
+      {state.continuityMessages && state.continuityMessages.length > 0 ? (
+        <Panel tone="blue">
+          <SectionHeading title="Approved Care Instructions" />
+          <Copy kind="meta">Clinician-authorized instructions for your upcoming consultation and home care.</Copy>
+          {state.continuityMessages.map((msg) => (
+            <View key={msg.id} style={{ gap: 8, marginVertical: 4, paddingVertical: 4 }}>
+              <Row>
+                <Badge text="Approved by Care Team" tone="sage" />
+                <Copy kind="meta">{msg.locale === 'ta' ? 'தமிழ்' : 'English'}</Copy>
+                {msg.approvedAt && (
+                  <Copy kind="meta">· {new Date(msg.approvedAt).toLocaleDateString()}</Copy>
+                )}
+              </Row>
+              <Copy kind="body" style={{ fontSize: 15, lineHeight: 22 }}>
+                {msg.body}
+              </Copy>
+              <VoicePlayerBar
+                messageId={msg.id}
+                text={msg.body}
+                defaultLanguage={msg.locale === 'ta' ? 'ta' : 'en'}
+              />
+            </View>
+          ))}
+        </Panel>
+      ) : (
+        <Panel tone="blue">
+          <SectionHeading title={t('careUpdate')} />
+          <Copy>{t('message')}</Copy>
+          <Copy kind="meta">{t('messageSource')}</Copy>
+          <VoicePlayerBar text={t('message')} />
+          <LinkRow title={t('openReport')} href={{ pathname: '/record/[id]', params: { id: 'd2' } }} />
+        </Panel>
+      )}
+
+      {/* SECTION 4: MY VISIT PREPARATION & CHECKLIST */}
+      <Panel>
+        <SectionHeading icon="check" title={t('personalChecklist')} />
+        {progress.hasItems ? (
+          <>
+            <Row>
+              <Copy kind="label" style={{ fontSize: 15 }}>
+                {progress.displayText}
+              </Copy>
+            </Row>
+            <View
+              accessibilityRole="progressbar"
+              accessibilityLabel={t('personalChecklist')}
+              accessibilityValue={{ min: 0, max: progress.total, now: progress.done }}
+              style={{ height: 9, backgroundColor: c.deep, borderRadius: 6 }}
+            >
+              <View
+                style={{
+                  height: 9,
+                  width: `${progress.percent}%`,
+                  backgroundColor: c.cobalt,
+                  borderRadius: 6,
+                }}
+              />
+            </View>
+          </>
+        ) : (
+          <View style={{ gap: 6 }}>
+            <Copy kind="body">No checklist items yet</Copy>
+            <Copy kind="meta">Create a personal visit preparation checklist for your next clinic visit.</Copy>
+          </View>
+        )}
+        <Copy kind="meta">{t('notMedicalReadiness')}</Copy>
+
+        {missingCount > 0 && (
+          <View style={{ gap: 6, padding: 10, backgroundColor: '#FEF3C7', borderRadius: 8 }}>
+            <Row>
+              <Icon name="shield" color="#D97706" size={16} />
+              <Copy kind="label" style={{ color: '#92400E', fontSize: 13 }}>
+                {missingCount} missing document task(s) requested by your clinic
+              </Copy>
+            </Row>
+          </View>
+        )}
+
+        <Row>
+          <Button
+            title={progress.hasItems ? t('reviewPreparation') : 'Create my checklist'}
+            onPress={() => router.push('/prepare')}
+          />
+          <Button
+            secondary
+            title="Add a question"
+            onPress={() => router.push({ pathname: '/prepare', params: { stage: 'questions' } })}
+          />
+        </Row>
+      </Panel>
+
+      {/* SECTION 5: QUICK ACCESS (GROUNDED REAL COUNTS) */}
+      <Panel>
+        <SectionHeading title={t('quickActions')} />
+        <View style={{ flexDirection: 'row', gap: 8, flexWrap: 'wrap' }}>
+          {quickAccessCards.map((card) => (
+            <Pressable
+              key={card.label}
+              accessibilityRole="button"
+              accessibilityLabel={`${card.label}, ${card.countLabel}`}
+              onPress={() => router.push(card.href)}
+              style={{
+                flex: 1,
+                minWidth: '45%',
+                minHeight: 88,
+                padding: 12,
+                backgroundColor: c.bg,
+                borderRadius: 12,
+                justifyContent: 'space-between',
+                borderWidth: 1,
+                borderColor: c.line,
+              }}
+            >
+              <Row wrap={false}>
+                <Icon name={card.icon} color={card.color} size={22} />
+                <Copy kind="label" style={{ fontSize: 14, color: c.ink, flex: 1 }}>
+                  {card.label}
+                </Copy>
+              </Row>
+              <Copy kind="meta" style={{ fontSize: 12, color: c.cobalt, fontWeight: '600' }}>
+                {card.countLabel}
+              </Copy>
+            </Pressable>
+          ))}
+        </View>
+      </Panel>
+
+      {/* SECTION 6: RECENT RECORDS & RECENT EVENTS PREVIEWS */}
       {latest && (
         <Panel compact>
           <SectionHeading icon="lab" title={t('latestLab')} action={t('viewAll')} onPress={() => router.push('/labs')} />
@@ -227,7 +343,7 @@ export function ConnectedHome() {
           >
             <Row>
               <Copy kind="label">{t('haemoglobin')}</Copy>
-              <Copy kind="display" style={{ fontSize: 27 }}>
+              <Copy kind="display" style={{ fontSize: 25 }}>
                 {latest.value}
               </Copy>
               <Copy kind="label">{latest.unit}</Copy>
@@ -235,72 +351,10 @@ export function ConnectedHome() {
             <Copy kind="meta">
               {t('recorded')} {latest.date} · {latest.facility}
             </Copy>
-            {labs[1] && (
-              <Copy kind="meta">
-                {t('earlierResult')}: {labs[1].value} {labs[1].unit} · {labs[1].date}
-              </Copy>
-            )}
             <Badge text={t(latest.status === 'clinician-confirmed' ? 'confirmedShort' : 'extractedShort')} tone="amber" />
           </Pressable>
         </Panel>
       )}
-
-      <Panel>
-        <SectionHeading icon="check" title={t('personalChecklist')} />
-        <Row>
-          <Copy kind="label">
-            {prep.done}/{prep.total} {t('complete')} ({readinessPct}%)
-          </Copy>
-        </Row>
-        <View
-          accessibilityRole="progressbar"
-          accessibilityLabel={t('personalChecklist')}
-          accessibilityValue={{ min: 0, max: prep.total, now: prep.done }}
-          style={{ height: 9, backgroundColor: c.deep, borderRadius: 6 }}
-        >
-          <View
-            style={{
-              height: 9,
-              width: `${prep.total ? (prep.done / prep.total) * 100 : 0}%`,
-              backgroundColor: c.cobalt,
-              borderRadius: 6,
-            }}
-          />
-        </View>
-        <Copy kind="meta">{t('notMedicalReadiness')}</Copy>
-        <Button secondary title={t('reviewPreparation')} onPress={() => router.push('/prepare')} />
-      </Panel>
-
-      <Panel>
-        <SectionHeading title={t('quickActions')} />
-        <View style={{ flexDirection: 'row', gap: 7 }}>
-          {links.map((link) => (
-            <Pressable
-              key={link.icon}
-              accessibilityRole="button"
-              accessibilityLabel={link.label}
-              onPress={() => router.push(link.href)}
-              style={{
-                flex: 1,
-                minHeight: 93,
-                padding: 9,
-                backgroundColor: c.bg,
-                borderRadius: 12,
-                alignItems: 'center',
-                justifyContent: 'center',
-                gap: 9,
-                borderWidth: 1,
-                borderColor: c.line,
-              }}
-            >
-              <Icon name={link.icon} color={link.color} />
-              <Copy kind="meta" style={{ textAlign: 'center', color: c.ink, fontSize: 11 }}>
-                {link.label}
-              </Copy>
-            </Pressable>
-          ))}
-        </View>
-      </Panel>
 
       <Panel>
         <SectionHeading title={t('recent')} action={t('viewAll')} onPress={() => router.push('/(tabs)/records')} />
@@ -324,55 +378,18 @@ export function ConnectedHome() {
         ))}
       </Panel>
 
-      <Panel>
-        <SectionHeading title={t('outstanding')} action={t('manage')} onPress={() => router.push('/prepare')} />
-        {state.checks
-          .filter((check) => check.enabled && !check.done)
-          .slice(0, 3)
-          .map((check) => (
-            <LinkRow
-              key={check.id}
-              title={state.locale === 'ta' && check.labelTa ? check.labelTa : check.label}
-              subtitle={t('notMedicalReadiness')}
-              href="/prepare"
-            />
-          ))}
-        {state.checks.every((check) => !check.enabled || check.done) && <Copy>{t('noTasks')}</Copy>}
-        <LinkRow title={t('openChecklist')} href="/checklist" />
-      </Panel>
-
-      {state.continuityMessages && state.continuityMessages.length > 0 ? (
-        <Panel tone="blue">
-          <SectionHeading title="Approved Care Instructions" />
-          {state.continuityMessages.map((msg) => (
-            <View key={msg.id} style={{ gap: 6, marginVertical: 4 }}>
-              <Row>
-                <Badge text="Approved by Care Team" tone="sage" />
-                <Copy kind="meta">{msg.locale === 'ta' ? 'தமிழ்' : 'English'}</Copy>
-              </Row>
-              <Copy kind="body">{msg.body}</Copy>
-              <Copy kind="meta">Approved: {new Date(msg.approvedAt).toLocaleDateString()}</Copy>
-              <VoicePlayerBar messageId={msg.id} text={msg.body} defaultLanguage={msg.locale === 'ta' ? 'ta' : 'en'} />
-            </View>
-          ))}
-        </Panel>
-      ) : (
-        <Panel tone="blue">
-          <SectionHeading title={t('careUpdate')} />
-          <Copy>{t('message')}</Copy>
-          <Copy kind="meta">{t('messageSource')}</Copy>
-          <VoicePlayerBar text={t('message')} />
-          <LinkRow title={t('openReport')} href={{ pathname: '/record/[id]', params: { id: 'd2' } }} />
-        </Panel>
-      )}
-
+      {/* SECTION 7: ADMINISTRATIVE HELP & CAREGIVER SHARING */}
       <LinkRow
         title="Care Coordinator Help"
-        subtitle="Request medical certificates, scheduling, or records support"
+        subtitle="Request medical certificates, scheduling assistance, or record transfers"
         href="/coordinator-request"
       />
 
-      <LinkRow title={t('sharing')} href="/sharing" />
+      <LinkRow
+        title={t('sharing')}
+        subtitle="Manage caregiver access and temporary doctor share links"
+        href="/sharing"
+      />
     </Screen>
   );
 }

@@ -32,6 +32,9 @@ export interface PatientPortalSnapshotResponse {
     dateOfBirth?: string;
     gender?: string;
     primaryPhone?: string;
+    stage?: string;
+    diagnosis?: string;
+    primaryLanguage?: string;
   };
   summary: {
     diagnosis: string;
@@ -46,7 +49,7 @@ export interface PatientPortalSnapshotResponse {
     mimeType: string;
     byteSize: number;
     sha256Hex: string;
-    clinicianStatus: 'verified' | 'pending_clinician_review' | 'processing';
+    clinicianStatus: string;
     patientReviewStatus: 'unreviewed' | 'confirmed_by_patient' | 'discrepancy_flagged';
     recordOrigin: string;
   }[];
@@ -75,12 +78,16 @@ export interface PatientPortalSnapshotResponse {
     body: string;
     approvedAt: string;
   }[];
-  preparation: {
-    questions: { id: string; text: string; answered: boolean; at: string }[];
-    symptomNotes: string;
-    companionName: string;
-    packSelectedDocumentIds: string[];
-  };
+  preparation?: {
+    questions?: { id: string; text: string; answered: boolean; at: string }[];
+    questionsJson?: any;
+    checksJson?: any;
+    checks?: any;
+    symptomNotes?: string;
+    companionName?: string;
+    packSelectedDocumentIds?: string[];
+    updatedAt?: string;
+  } | null;
   caregivers: {
     id: string;
     fullName: string;
@@ -99,10 +106,13 @@ export interface PatientPortalSnapshotResponse {
   tasks?: {
     id: string;
     title: string;
-    category: string;
+    category?: string;
     status: string;
     dueDate?: string;
+    dueOn?: string;
     description?: string;
+    detail?: string;
+    priority?: string;
   }[];
   lastSyncedAt?: string;
 }

@@ -1,4 +1,4 @@
-import { timeline, type State, type Evidence } from './domain';
+import { timeline, readiness, type State, type Evidence } from './domain';
 export interface LabObservation {
   id:string;test:string;value:number;unit:string;date:string;documentId:string;documentName:string;
   facility:string;quote:string;page:number;version:string;status:Evidence['status'];patientReviewed:boolean;
@@ -55,4 +55,36 @@ export function validDateRange(from:string,to:string) {
 export function wellbeingHistory(s:State,from='',to='',timeZone?:string) {
   if (!validDateRange(from,to)) return [];
   return s.observations.filter(o => { const day=calendarDay(o.at,timeZone);return (!from || day>=from) && (!to || day<=to); }).sort((a,b) => b.at.localeCompare(a.at));
+}
+
+export interface ChecklistProgress {
+  hasItems: boolean;
+  done: number;
+  total: number;
+  percent: number;
+  percentageText: string | null;
+  displayText: string;
+}
+
+export function formatChecklistProgress(s: State): ChecklistProgress {
+  const prep = readiness(s);
+  if (prep.total === 0) {
+    return {
+      hasItems: false,
+      done: 0,
+      total: 0,
+      percent: 0,
+      percentageText: null,
+      displayText: 'No checklist items yet',
+    };
+  }
+  const pct = Math.round((prep.done / prep.total) * 100);
+  return {
+    hasItems: true,
+    done: prep.done,
+    total: prep.total,
+    percent: pct,
+    percentageText: `${pct}%`,
+    displayText: `${prep.done} of ${prep.total} completed · ${pct}%`,
+  };
 }

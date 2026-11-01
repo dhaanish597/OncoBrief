@@ -2,23 +2,24 @@ appId: org.oncobrief.patient
 ---
 # 1. Assert landing or home screen
 - extendedWaitUntil:
-    visible: ".*(Explore your care|Your care, connected.|One step at a time).*"
+    visible: ".*(Explore a sample patient|Sign in to my hospital|Meenakshi Sundaram).*"
     timeout: 10000
 
 # 2. Complete onboarding if on landing screen
 - runFlow:
     when:
-      visible: "Explore your care"
+      visible: "Sign in to my hospital"
     commands:
-      - tapOn: "Explore your care"
+      - tapOn:
+          id: "landing-demo-btn"
       - extendedWaitUntil:
-          visible: ".*(A space to make sense|Open my demo workspace).*"
+          visible: "Collect your records.*"
           timeout: 8000
-      - tapOn: "Open my demo workspace"
+      - tapOn: "Explore a sample patient"
 
 # 3. Verify Home Screen loaded with oncology cohort
 - extendedWaitUntil:
-    visible: ".*(Meenakshi Sundaram|Your care, connected.|Stage IIA).*"
+    visible: ".*(Meenakshi Sundaram|Apollo Cancer Centre|Stage IIA).*"
     timeout: 10000
 
 # 4. Verify Records Tab (Tab 2, ~30% width, 94% height)

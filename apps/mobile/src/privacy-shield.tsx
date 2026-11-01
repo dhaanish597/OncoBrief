@@ -34,7 +34,7 @@ export function PrivacyShieldBoundary({ children }: { children: ReactNode }) {
           <View style={styles.content}>
             <Text style={styles.title}>OncoBrief</Text>
             <Text style={styles.subtitle}>
-              Patient privacy protection active. Returning to your workspace...
+              Patient privacy protection active. Returning to your records...
             </Text>
           </View>
         </View>

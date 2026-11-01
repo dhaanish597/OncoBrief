@@ -66,7 +66,7 @@ export default function CoordinatorRequest() {
         setTitle('');
         setDescription('');
       } else {
-        notify('Coordinator requests are simulated in demo workspace.');
+        notify('Coordinator requests are simulated in sample patient mode.');
         setRequestsList((prev) => [
           {
             id: `req-${Date.now()}`,

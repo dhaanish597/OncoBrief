@@ -5,6 +5,7 @@ import { useRouter } from 'expo-router';
 import { useStore } from './store';
 import { categories } from './i18n';
 import { readiness } from './domain';
+import { formatChecklistProgress } from './patient-selectors';
 import { Copy, Button, LinkRow, Panel } from './ui';
 import { theme as c } from './theme';
 import { buildRecordsChartAccessibilityLabel, buildReadinessChartAccessibilityLabel, buildHistoryChartAccessibilityLabel } from './accessibility';
@@ -18,8 +19,58 @@ export function RecordsChart() {
   </Svg></View><Copy kind="meta">{t('recordsGraphInfo')}</Copy>{categories.map(cat => <LinkRow key={cat} title={`${t(cat)} · ${state.documents.filter(d => d.category===cat).length}`} onPress={() => router.push({ pathname:'/(tabs)/records',params:{ category:cat } })}/>)}</View>;
 }
 export function ReadinessChart() {
-  const { t,state }=useStore();const router=useRouter(); const { done,total }=readiness(state); const length=2*Math.PI*54;
-  return <Panel tone="blue"><Copy kind="title">{t('readinessTitle')}</Copy><View style={{ alignItems:'center' }}><Svg width={150} height={150} viewBox="0 0 150 150" accessible={true} accessibilityRole="summary" accessibilityLabel={buildReadinessChartAccessibilityLabel(done, total, state.locale)}><Circle cx={75} cy={75} r={54} fill="none" stroke={c.paper} strokeWidth={7}/><Circle cx={75} cy={75} r={54} fill="none" stroke={c.cobalt} strokeWidth={7} strokeDasharray={`${total ? done/total*length : 0} ${length}`} rotation={-90} origin="75,75"/><SvgText x={75} y={84} fontSize={28} fill={c.cobalt} textAnchor="middle">{done}/{total}</SvgText></Svg></View><Copy>{done} {t('of')} {total} {t('complete')}</Copy><Copy kind="meta">{t('readinessDetail')}</Copy><Button title={t('prepare')} onPress={() => router.push('/prepare')}/></Panel>;
+  const { t, state } = useStore();
+  const router = useRouter();
+  const progress = formatChecklistProgress(state);
+  const length = 2 * Math.PI * 54;
+
+  if (!progress.hasItems) {
+    return (
+      <Panel tone="blue">
+        <Copy kind="title">{t('readinessTitle')}</Copy>
+        <Copy kind="body">No checklist items yet</Copy>
+        <Copy kind="meta">Create a personal visit preparation checklist to track your records, tasks, and questions.</Copy>
+        <Button title="Create my checklist" onPress={() => router.push('/prepare')} />
+      </Panel>
+    );
+  }
+
+  return (
+    <Panel tone="blue">
+      <Copy kind="title">{t('readinessTitle')}</Copy>
+      <View style={{ alignItems: 'center' }}>
+        <Svg
+          width={150}
+          height={150}
+          viewBox="0 0 150 150"
+          accessible={true}
+          accessibilityRole="summary"
+          accessibilityLabel={buildReadinessChartAccessibilityLabel(progress.done, progress.total, state.locale)}
+        >
+          <Circle cx={75} cy={75} r={54} fill="none" stroke={c.paper} strokeWidth={7} />
+          <Circle
+            cx={75}
+            cy={75}
+            r={54}
+            fill="none"
+            stroke={c.cobalt}
+            strokeWidth={7}
+            strokeDasharray={`${(progress.done / progress.total) * length} ${length}`}
+            rotation={-90}
+            origin="75,75"
+          />
+          <SvgText x={75} y={84} fontSize={28} fill={c.cobalt} textAnchor="middle">
+            {progress.done}/{progress.total}
+          </SvgText>
+        </Svg>
+      </View>
+      <Copy>
+        {progress.done} {t('of')} {progress.total} {t('complete')} ({progress.percent}%)
+      </Copy>
+      <Copy kind="meta">{t('readinessDetail')}</Copy>
+      <Button title={t('prepare')} onPress={() => router.push('/prepare')} />
+    </Panel>
+  );
 }
 export function LabChart() {
   const { t,state }=useStore();const router=useRouter();

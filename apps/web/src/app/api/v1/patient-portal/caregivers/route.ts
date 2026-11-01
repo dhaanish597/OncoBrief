@@ -34,6 +34,7 @@ export async function GET(request: Request) {
       phoneNumber: r.phone_number,
       preferredLocale: r.preferred_locale,
       syncReminders: r.sync_reminders,
+      isActive: r.is_active,
       scopes: r.sync_reminders ? ['appointments', 'reminders'] : ['appointments'],
     }));
 
@@ -184,11 +185,11 @@ export async function DELETE(request: Request) {
   }
 
   const url = new URL(request.url);
-  const caregiverId = url.searchParams.get('id');
+  const caregiverId = url.searchParams.get('id') || url.searchParams.get('caregiverId');
 
   if (!caregiverId) {
     return NextResponse.json(
-      { error: { code: 'bad_request', message: 'id query parameter is required' } },
+      { error: { code: 'bad_request', message: 'id or caregiverId query parameter is required' } },
       { status: 400, headers: NO_CACHE_HEADERS },
     );
   }

@@ -7,6 +7,7 @@ import {
   type DocumentRecord,
   type Category,
   type Evidence,
+  type Check,
 } from './domain';
 import { PatientPortalApiClient, type PatientPortalSnapshotResponse } from './api-client';
 import { OfflineSyncQueue } from './sync-queue';
@@ -76,6 +77,43 @@ export class DemoRepository {
     this.error = null;
     this.onChange();
   }
+}
+
+export function defaultConnectedChecks(): Check[] {
+  return [
+    {
+      id: 'conn-c1',
+      label: 'Collect previous imaging films or reports (CT/PET/Mammogram)',
+      labelTa: 'முந்தைய ஸ்கேன் படங்கள் அல்லது அறிக்கைகளை எடுத்து வாருங்கள்',
+      done: false,
+      enabled: true,
+      optional: false,
+    },
+    {
+      id: 'conn-c2',
+      label: 'Carry government photo ID and hospital registration card',
+      labelTa: 'அரசு புகைப்பட அடையாள அட்டை மற்றும் மருத்துவமனை அட்டையை எடுத்து வாருங்கள்',
+      done: false,
+      enabled: true,
+      optional: false,
+    },
+    {
+      id: 'conn-c3',
+      label: 'List all current prescription and over-the-counter medications',
+      labelTa: 'தற்போதைய மருந்துகள் மற்றும் மாத்திரைகளின் பட்டியலை கொண்டு வாருங்கள்',
+      done: false,
+      enabled: true,
+      optional: false,
+    },
+    {
+      id: 'conn-c4',
+      label: 'Write down key questions and symptoms for your oncology team',
+      labelTa: 'மருத்துவக் குழுவிடம் கேட்க வேண்டிய கேள்விகளை குறித்துக் கொள்ளுங்கள்',
+      done: false,
+      enabled: true,
+      optional: false,
+    },
+  ];
 }
 
 export class ConnectedPatientRepository {
@@ -212,6 +250,35 @@ export class ConnectedPatientRepository {
     const diagnosis = snapshot.summary?.diagnosis ?? (snapshot.patient as any)?.diagnosis ?? '';
     const journeyStage = snapshot.summary?.journeyStage ?? (snapshot.patient as any)?.stage ?? '';
 
+    const checksFromJson = Array.isArray(snapshot.preparation?.checksJson)
+      ? (snapshot.preparation.checksJson as any[]).map((c, i) => ({
+          id: c.id ?? `prep-c-${i}`,
+          label: c.label ?? c.title ?? 'Preparation item',
+          labelTa: c.labelTa,
+          done: !!c.done,
+          enabled: c.enabled !== false,
+          optional: !!c.optional,
+        }))
+      : [];
+
+    const checks: Check[] = checksFromJson.length > 0
+      ? checksFromJson
+      : this.state.checks && this.state.checks.length > 0
+      ? this.state.checks
+      : defaultConnectedChecks();
+
+    const questions = (
+      (snapshot.preparation?.questionsJson as any[]) ??
+      (snapshot.preparation?.questions as any[]) ??
+      this.state.questions ??
+      []
+    ).map((q, i) => ({
+      id: q.id ?? `q-${i}`,
+      text: q.text ?? '',
+      answered: !!q.answered,
+      at: q.at ?? new Date().toISOString(),
+    }));
+
     this.state = {
       ...this.state,
       mode: 'connected',
@@ -224,12 +291,20 @@ export class ConnectedPatientRepository {
       journeyStageTa: journeyStage,
       documents,
       ledger,
-      questions: snapshot.preparation?.questions ?? [],
-      notes: snapshot.preparation?.symptomNotes ?? '',
-      packSelected: snapshot.preparation?.packSelectedDocumentIds ?? [],
+      checks,
+      questions,
+      notes: snapshot.preparation?.symptomNotes ?? this.state.notes ?? '',
+      packSelected: snapshot.preparation?.packSelectedDocumentIds ?? this.state.packSelected ?? [],
       appointments: snapshot.appointments ?? [],
       continuityMessages,
-      tasks: snapshot.tasks ?? [],
+      tasks: (snapshot.tasks ?? []).map((t) => ({
+        id: t.id,
+        title: t.title,
+        category: t.category ?? 'record_gap',
+        status: t.status,
+        dueDate: t.dueDate ?? t.dueOn,
+        description: t.description ?? t.detail,
+      })),
       caregivers: snapshot.caregivers ?? [],
       shareGrants: snapshot.shareGrants ?? [],
       lastSyncedAt: snapshot.lastSyncedAt ?? new Date().toISOString(),

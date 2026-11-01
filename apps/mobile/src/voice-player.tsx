@@ -1,9 +1,8 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { View, Platform, StyleSheet } from 'react-native';
+import { View, Platform } from 'react-native';
+import * as Speech from 'expo-speech';
 import { useStore } from './store';
-import { VoiceTtsService, type VoiceSynthesisResult } from './voice-tts';
 import { Copy, Button, Row, Panel, Badge, Chip } from './ui';
-import { theme as c } from './theme';
 
 interface VoicePlayerBarProps {
   messageId?: string;
@@ -12,23 +11,41 @@ interface VoicePlayerBarProps {
 }
 
 export function VoicePlayerBar({ messageId, text, defaultLanguage = 'en' }: VoicePlayerBarProps) {
-  const { client, mode, state } = useStore();
+  const { state } = useStore();
   const [language, setLanguage] = useState<'en' | 'ta'>(defaultLanguage);
   const [status, setStatus] = useState<'idle' | 'loading' | 'playing' | 'stopped'>('idle');
-  const [result, setResult] = useState<VoiceSynthesisResult | null>(null);
   const [showTranscript, setShowTranscript] = useState(false);
-  const audioRef = useRef<HTMLAudioElement | null>(null);
-  const timeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const [supportedVoices, setSupportedVoices] = useState<string[]>(['en-IN', 'ta-IN']);
 
   useEffect(() => {
+    // Detect available Indic speech voices on native Android
+    if (Platform.OS !== 'web') {
+      Speech.getAvailableVoicesAsync()
+        .then((voices) => {
+          if (voices && voices.length > 0) {
+            const langs = Array.from(new Set(voices.map((v) => v.language)));
+            setSupportedVoices(langs);
+          }
+        })
+        .catch(() => {});
+    }
+
     return () => {
-      if (timeoutRef.current) clearTimeout(timeoutRef.current);
-      if (audioRef.current) {
-        audioRef.current.pause();
-        audioRef.current = null;
+      if (Platform.OS !== 'web') {
+        void Speech.stop().catch(() => {});
+      } else if (typeof window !== 'undefined' && 'speechSynthesis' in window) {
+        window.speechSynthesis.cancel();
       }
     };
   }, []);
+
+  const spokenText =
+    text ||
+    (language === 'ta'
+      ? state.locale === 'ta' && state.diagnosisTa
+        ? `மருத்துவக் குழுவின் ஆலோசனை: ${state.diagnosisTa} சிகிச்சை திட்டத்திற்கு தேவையான ஆவணங்களை கொண்டு வாருங்கள்.`
+        : 'மருத்துவக் குழுவின் ஆலோசனை: உங்கள் அடுத்த சந்திப்புக்கு முன் தேவையான அனைத்து முந்தைய அறிக்கைகளையும் கொண்டு வாருங்கள்.'
+      : 'Care team instruction: Please bring all previous imaging films, biopsy slides, and pathology reports to your oncology consultation.');
 
   const handlePlay = async () => {
     if (status === 'playing') {
@@ -37,48 +54,56 @@ export function VoicePlayerBar({ messageId, text, defaultLanguage = 'en' }: Voic
     }
 
     setStatus('loading');
-    try {
-      const service = new VoiceTtsService({ client, mode });
-      const res = await service.synthesize({
-        messageId,
-        text,
-        language,
-      });
-      setResult(res);
+    const speechLang = language === 'ta' ? 'ta-IN' : 'en-IN';
 
-      setStatus('playing');
-      const playbackDuration = Math.max(res.durationEstimateMs || 3000, 2500);
-      timeoutRef.current = setTimeout(() => {
-        setStatus('stopped');
-      }, Math.min(playbackDuration, 5000));
-
-      if (Platform.OS === 'web' && typeof Audio !== 'undefined') {
-        try {
-          if (audioRef.current) {
-            audioRef.current.pause();
-          }
-          const audio = new Audio(`data:${res.mimeType};base64,${res.audioBase64}`);
-          audioRef.current = audio;
-          audio.onended = () => {
-            if (timeoutRef.current) clearTimeout(timeoutRef.current);
+    if (Platform.OS !== 'web') {
+      try {
+        await Speech.stop();
+        Speech.speak(spokenText, {
+          language: speechLang,
+          rate: 0.85,
+          pitch: 1.0,
+          onStart: () => {
+            setStatus('playing');
+          },
+          onDone: () => {
             setStatus('stopped');
-          };
-          await audio.play().catch(() => {});
-        } catch {}
+          },
+          onStopped: () => {
+            setStatus('stopped');
+          },
+          onError: () => {
+            setStatus('stopped');
+          },
+        });
+      } catch {
+        setStatus('stopped');
       }
-    } catch {
-      setStatus('stopped');
+    } else {
+      if (typeof window !== 'undefined' && 'speechSynthesis' in window) {
+        try {
+          window.speechSynthesis.cancel();
+          const utterance = new SpeechSynthesisUtterance(spokenText);
+          utterance.lang = speechLang;
+          utterance.rate = 0.9;
+          utterance.onstart = () => setStatus('playing');
+          utterance.onend = () => setStatus('stopped');
+          utterance.onerror = () => setStatus('stopped');
+          window.speechSynthesis.speak(utterance);
+        } catch {
+          setStatus('stopped');
+        }
+      } else {
+        setStatus('stopped');
+      }
     }
   };
 
   const handleStop = () => {
-    if (timeoutRef.current) {
-      clearTimeout(timeoutRef.current);
-      timeoutRef.current = null;
-    }
-    if (audioRef.current) {
-      audioRef.current.pause();
-      audioRef.current = null;
+    if (Platform.OS !== 'web') {
+      void Speech.stop().catch(() => {});
+    } else if (typeof window !== 'undefined' && 'speechSynthesis' in window) {
+      window.speechSynthesis.cancel();
     }
     setStatus('stopped');
   };
@@ -91,7 +116,7 @@ export function VoicePlayerBar({ messageId, text, defaultLanguage = 'en' }: Voic
             status === 'playing'
               ? 'Speaking (Audio Active)'
               : status === 'loading'
-              ? 'Loading Audio...'
+              ? 'Preparing Audio...'
               : 'Voice Reminder'
           }
           tone={status === 'playing' ? 'sage' : 'blue'}
@@ -103,18 +128,30 @@ export function VoicePlayerBar({ messageId, text, defaultLanguage = 'en' }: Voic
         <Chip
           title="English (en-IN)"
           active={language === 'en'}
-          onPress={() => setLanguage('en')}
+          onPress={() => {
+            if (status === 'playing') handleStop();
+            setLanguage('en');
+          }}
         />
         <Chip
           title="தமிழ் (ta-IN)"
           active={language === 'ta'}
-          onPress={() => setLanguage('ta')}
+          onPress={() => {
+            if (status === 'playing') handleStop();
+            setLanguage('ta');
+          }}
         />
       </Row>
 
       <Row>
         <Button
-          title={status === 'playing' ? 'Stop Listening' : status === 'loading' ? 'Preparing Voice...' : 'Listen to Message'}
+          title={
+            status === 'playing'
+              ? 'Stop Listening'
+              : status === 'loading'
+              ? 'Preparing Voice...'
+              : `Listen to Message (${language === 'ta' ? 'தமிழ்' : 'English'})`
+          }
           disabled={status === 'loading'}
           onPress={handlePlay}
         />
@@ -126,25 +163,12 @@ export function VoicePlayerBar({ messageId, text, defaultLanguage = 'en' }: Voic
       </Row>
 
       {showTranscript && (
-        <View style={styles.transcriptBox}>
-          <Copy kind="label">Voice Transcript ({language === 'ta' ? 'தமிழ்' : 'English'}):</Copy>
-          <Copy kind="body">
-            {result?.transcript || text || (language === 'ta' ? 'உறுதிப்படுத்தப்பட்ட மருத்துவக் குழு வழிமுறைகள்.' : 'Verified care instructions.')}
-          </Copy>
+        <View style={{ gap: 6, padding: 12, backgroundColor: '#F3F4F6', borderRadius: 8 }}>
+          <Copy kind="label">Approved Instruction Transcript ({language === 'ta' ? 'தமிழ்' : 'English'}):</Copy>
+          <Copy kind="body">{spokenText}</Copy>
+          <Copy kind="meta">Source: Authorized oncology clinical instruction · Non-diagnostic</Copy>
         </View>
       )}
     </Panel>
   );
 }
-
-const styles = StyleSheet.create({
-  transcriptBox: {
-    padding: 10,
-    backgroundColor: c.bg,
-    borderRadius: 8,
-    borderWidth: 1,
-    borderColor: c.line,
-    gap: 4,
-    marginTop: 6,
-  },
-});

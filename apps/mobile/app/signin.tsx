@@ -9,9 +9,9 @@ export default function Signin() {
   const { mode, isAuthenticated, state, signInConnected, signOutConnected, switchMode, t } = useStore();
   const router = useRouter();
 
-  const [hospitalSlug, setHospitalSlug] = useState('apollo-chennai');
+  const [hospitalSlug, setHospitalSlug] = useState('rci');
   const [identifier, setIdentifier] = useState('DEMO-001');
-  const [otp, setOtp] = useState('123456');
+  const [otp, setOtp] = useState('246810');
   const [role, setRole] = useState<'patient' | 'caregiver'>('patient');
   const [loading, setLoading] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
@@ -148,7 +148,7 @@ export default function Signin() {
                   testID="signin-submit-btn"
                 />
                 <Button
-                  title="Switch to Offline Demo Workspace"
+                  title="Explore a sample patient"
                   secondary
                   onPress={() => {
                     switchMode('demo');
@@ -163,8 +163,8 @@ export default function Signin() {
         <View style={styles.container}>
           <Panel tone="blue">
             <Row>
-              <Badge text="Demo Mode" tone="blue" />
-              <Copy kind="label">Synthetic Offline Workspace</Copy>
+              <Badge text="Sample Mode" tone="blue" />
+              <Copy kind="label">Sample Patient Profile</Copy>
             </Row>
             <Copy>{t('demoInfo')}</Copy>
           </Panel>
