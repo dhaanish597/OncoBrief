@@ -18,9 +18,11 @@ export function VoicePlayerBar({ messageId, text, defaultLanguage = 'en' }: Voic
   const [result, setResult] = useState<VoiceSynthesisResult | null>(null);
   const [showTranscript, setShowTranscript] = useState(false);
   const audioRef = useRef<HTMLAudioElement | null>(null);
+  const timeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
     return () => {
+      if (timeoutRef.current) clearTimeout(timeoutRef.current);
       if (audioRef.current) {
         audioRef.current.pause();
         audioRef.current = null;
@@ -44,25 +46,25 @@ export function VoicePlayerBar({ messageId, text, defaultLanguage = 'en' }: Voic
       });
       setResult(res);
 
+      setStatus('playing');
+      const playbackDuration = Math.max(res.durationEstimateMs || 3000, 2500);
+      timeoutRef.current = setTimeout(() => {
+        setStatus('stopped');
+      }, Math.min(playbackDuration, 5000));
+
       if (Platform.OS === 'web' && typeof Audio !== 'undefined') {
-        if (audioRef.current) {
-          audioRef.current.pause();
-        }
-        const audio = new Audio(`data:${res.mimeType};base64,${res.audioBase64}`);
-        audioRef.current = audio;
-        audio.onended = () => setStatus('stopped');
-        audio.onerror = () => setStatus('stopped');
-        await audio.play().catch(() => {
-          // If autoplay fails, fallback to stopped
-          setStatus('stopped');
-        });
-        setStatus('playing');
-      } else {
-        // Native / Simulated playback indicator
-        setStatus('playing');
-        setTimeout(() => {
-          setStatus('stopped');
-        }, Math.min(res.durationEstimateMs || 3000, 5000));
+        try {
+          if (audioRef.current) {
+            audioRef.current.pause();
+          }
+          const audio = new Audio(`data:${res.mimeType};base64,${res.audioBase64}`);
+          audioRef.current = audio;
+          audio.onended = () => {
+            if (timeoutRef.current) clearTimeout(timeoutRef.current);
+            setStatus('stopped');
+          };
+          await audio.play().catch(() => {});
+        } catch {}
       }
     } catch {
       setStatus('stopped');
@@ -70,6 +72,10 @@ export function VoicePlayerBar({ messageId, text, defaultLanguage = 'en' }: Voic
   };
 
   const handleStop = () => {
+    if (timeoutRef.current) {
+      clearTimeout(timeoutRef.current);
+      timeoutRef.current = null;
+    }
     if (audioRef.current) {
       audioRef.current.pause();
       audioRef.current = null;

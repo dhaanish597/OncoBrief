@@ -145,6 +145,21 @@ export async function DELETE(request: Request) {
   }
 
   const result = await withPatientPortalContext(session, async (q) => {
+    const existing = await q.query<{ id: string; expires_at: Date; revoked_at: Date | null }>(
+      'SELECT id, expires_at, revoked_at FROM patient_share_grant WHERE id = $1 AND patient_id = $2',
+      [grantId, session.patientId],
+    );
+    if (existing.rowCount === 0) {
+      return { status: 404, error: 'not_found', message: 'Share grant not found' };
+    }
+    const grantRow = existing.rows[0]!;
+    if (grantRow.revoked_at !== null) {
+      return { status: 410, error: 'already_revoked', message: 'Share grant already revoked' };
+    }
+    if (new Date(grantRow.expires_at).getTime() <= Date.now()) {
+      return { status: 410, error: 'expired', message: 'Share grant has expired' };
+    }
+
     const revoked = await revokePatientShareGrant(grantId, session, q);
     if (!revoked) {
       return { status: 404, error: 'not_found', message: 'Share grant not found or already revoked' };

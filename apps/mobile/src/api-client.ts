@@ -201,9 +201,14 @@ export class PatientPortalApiClient {
     documentId: string,
     pageNumber: number,
   ): Promise<{ pageNumber: number; text: string; hasAttachment: boolean }> {
-    return this.request(`/api/v1/patient-portal/documents/${documentId}/pages/${pageNumber}`, {
+    const res = await this.request<any>(`/api/v1/patient-portal/documents/${documentId}/pages/${pageNumber}`, {
       method: 'GET',
     });
+    return {
+      pageNumber: res.page?.pageNumber ?? res.pageNumber ?? pageNumber,
+      text: res.page?.plainText ?? res.text ?? '',
+      hasAttachment: !!res.documentUrl,
+    };
   }
 
   async uploadDocument(params: {

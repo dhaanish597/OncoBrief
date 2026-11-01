@@ -100,8 +100,8 @@ Every requirement below contains all 21 mandatory governance attributes:
 | `REQ-MOB-040` | K | Native Android Prebuild, Hermes Bundle & Debug/Release APK Generation (`assembleDebug`) | `OFFICIAL_HACKATHON` | `CORE` | M6 | P0 | `MOB-022` | Only JS/Web tested; no `android/` or `.apk` verified | `NOT_STARTED` |
 | `REQ-MOB-041` | K | Native Android Emulator/Device Installation & Runtime Smoke Verification (`adb install` + Maestro) | `OFFICIAL_HACKATHON` | `CORE` | M6 | P0 | `MOB-023` | `0%` native runtime verification on branch | `NOT_STARTED` |
 | `REQ-MOB-042` | L | ADR Numbering De-Confliction (`0017` → `0026`, `BUG-MOB-14`) & Git Worktree Isolation | `ORIGINAL_ONCOBRIEF` | `CORE` | M0 | P0 | `MOB-000` | Duplicate `0017` ADR number; dirty main worktree | `COMPLETE` |
-| `REQ-MOB-043` | L | Comprehensive Unit, Component, Contract, RLS & Security Negative Test Suite | `V4_ENHANCEMENT_PLAN` | `CORE` | M5 | P0 | `MOB-020` | 36 unit tests (local reducer only); 0 backend/security tests | `NOT_STARTED` |
-| `REQ-MOB-044` | L | Full Clinician-to-Patient E2E Continuity Playwright Suite | `V4_ENHANCEMENT_PLAN` | `CORE` | M5 | P0 | `MOB-021` | 5 browser tests against offline mock state only | `NOT_STARTED` |
+| `REQ-MOB-043` | L | Comprehensive Unit, Component, Contract, RLS & Security Negative Test Suite | `V4_ENHANCEMENT_PLAN` | `CORE` | M5 | P0 | `MOB-020` | 103 mobile unit tests, 75 patient portal API tests, 20 security-negative tests | `COMPLETE` |
+| `REQ-MOB-044` | L | Full Clinician-to-Patient E2E Continuity Playwright Suite | `V4_ENHANCEMENT_PLAN` | `CORE` | M5 | P0 | `MOB-021` | 9 Playwright E2E tests: 8 standalone mobile scenarios + 20-step connected loop | `COMPLETE` |
 | `REQ-MOB-045` | L | Monorepo CI/CD Pipeline & Release Readiness Verification Gate | `V4_ENHANCEMENT_PLAN` | `CORE` | M7 | P1 | `MOB-024` | `apps/mobile` not wired into root verification gate | `NOT_STARTED` |
 
 ---
@@ -1020,7 +1020,7 @@ Every requirement below contains all 21 mandatory governance attributes:
 - **Target User:** Engineering & QA
 - **User Story:** As an SDET, I need every requirement and security boundary backed by deterministic unit, database RLS, and API contract tests that fail before implementation and pass after implementation.
 - **Existing Implementation (`757f495`):** 36 unit tests in `apps/mobile/test/mobile-app.test.ts` testing only offline reducer logic; 0 API contract, DB RLS, or security negative tests for mobile.
-- **Current Status:** `NOT_STARTED`
+- **Current Status:** `COMPLETE`
 - **Exact Source Files:** `apps/mobile/test/*.test.ts`, `packages/db/test/patient-portal*.test.ts`, `apps/web/src/app/api/v1/patient-portal/**/*.test.ts`
 - **API / Data Dependency:** Node `--test` runner + `tsx`.
 - **Security Dependency:** Verifies `SEC-NEG-01` through `SEC-NEG-20`.
@@ -1039,7 +1039,7 @@ Every requirement below contains all 21 mandatory governance attributes:
 - **Target User:** Engineering & QA
 - **User Story:** As a QA architect, I want an automated end-to-end test that proves an action taken by a clinician or coordinator on the backend is visible in the patient mobile app, and an upload, flag, attendance confirmation, or caregiver update in the mobile app is immediately persisted and visible to the clinician platform.
 - **Existing Implementation (`757f495`):** 5 Playwright tests in `apps/mobile/e2e/patient-app.spec.ts` testing only local in-memory mock actions.
-- **Current Status:** `NOT_STARTED`
+- **Current Status:** `COMPLETE`
 - **Exact Source Files:** `apps/mobile/e2e/patient-app.spec.ts`, `apps/mobile/e2e/clinician-patient-continuity.spec.ts` (new), `apps/mobile/playwright.config.ts`
 - **API / Data Dependency:** Next.js API server + Expo web server + test database.
 - **Security Dependency:** Asserts zero `pageerror` and zero `console.error` events throughout all E2E flows.

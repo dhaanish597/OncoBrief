@@ -42,7 +42,9 @@
   "devDependencies": {
     "@playwright/test": "^1.49.1",
     "@react-native/metro-config": "0.88.0",
+    "@types/pg": "^8.11.10",
     "@types/react": "~19.3.0",
+    "pg": "^8.13.1",
     "tsx": "^4.23.0",
     "typescript": "~6.0.3"
   }

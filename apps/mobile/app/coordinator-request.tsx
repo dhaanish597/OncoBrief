@@ -14,13 +14,27 @@ export default function CoordinatorRequest() {
   const [description, setDescription] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
+  const [requestsList, setRequestsList] = useState<
+    Array<{ id: string; title: string; description?: string; category: string; status: string }>
+  >([]);
 
-  const existingRequests = (state.tasks || []).filter(
-    (task) =>
-      task.category === 'administrative' ||
-      task.category === 'scheduling' ||
-      task.category === 'follow_up',
-  );
+  React.useEffect(() => {
+    if (mode === 'connected' && client) {
+      client.getRequests().then((res) => {
+        if (res?.requests) {
+          setRequestsList(
+            res.requests.map((r) => ({
+              id: r.id,
+              title: r.title,
+              description: r.detail || undefined,
+              category: 'administrative',
+              status: r.status,
+            })),
+          );
+        }
+      }).catch(() => {});
+    }
+  }, [mode, client]);
 
   const handleSubmit = async () => {
     if (!title.trim()) {
@@ -32,17 +46,37 @@ export default function CoordinatorRequest() {
     setErrorMsg(null);
     try {
       if (mode === 'connected' && client) {
-        await client.createCoordinatorRequest({
+        const created = await client.createCoordinatorRequest({
           title: title.trim(),
           category,
           description: description.trim() || undefined,
         });
+        setRequestsList((prev) => [
+          {
+            id: created.id,
+            title: created.title,
+            description: description.trim() || undefined,
+            category: created.category || category,
+            status: created.status,
+          },
+          ...prev,
+        ]);
         await refresh();
         notify('Request sent to hospital coordinator.');
         setTitle('');
         setDescription('');
       } else {
         notify('Coordinator requests are simulated in demo workspace.');
+        setRequestsList((prev) => [
+          {
+            id: `req-${Date.now()}`,
+            title: title.trim(),
+            description: description.trim() || undefined,
+            category,
+            status: 'open',
+          },
+          ...prev,
+        ]);
         setTitle('');
         setDescription('');
       }
@@ -52,6 +86,16 @@ export default function CoordinatorRequest() {
       setSubmitting(false);
     }
   };
+
+  const existingRequests = [
+    ...requestsList,
+    ...(state.tasks || []).filter(
+      (task) =>
+        task.category === 'administrative' ||
+        task.category === 'scheduling' ||
+        task.category === 'follow_up',
+    ),
+  ];
 
   return (
     <Screen back title="Care Coordinator Help">

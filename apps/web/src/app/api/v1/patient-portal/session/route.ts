@@ -40,19 +40,17 @@ export async function POST(request: Request) {
 
   const {
     hospitalSlug,
-    patientExternalId,
-    otpCode,
     actorRole = 'patient',
     caregiverPhone,
     deviceLabel,
   } = body as {
     hospitalSlug?: string;
-    patientExternalId?: string;
-    otpCode?: string;
     actorRole?: 'patient' | 'caregiver';
     caregiverPhone?: string;
     deviceLabel?: string;
   };
+  const patientExternalId = ((body.patientExternalId ?? body.identifier) as string | undefined)?.trim();
+  const otpCode = ((body.otpCode ?? body.otp) as string | undefined)?.trim();
 
   if (!hospitalSlug || typeof hospitalSlug !== 'string' ||
       !patientExternalId || typeof patientExternalId !== 'string' ||
@@ -75,7 +73,7 @@ export async function POST(request: Request) {
   if (!checkRateLimit(rateLimitKey)) {
     return NextResponse.json(
       { error: { code: 'rate_limit_exceeded', message: 'Too many login attempts. Please wait 15 minutes.' } },
-      { status: 429, headers: NO_CACHE_HEADERS },
+      { status: 429, headers: { ...NO_CACHE_HEADERS, 'Retry-After': '900' } },
     );
   }
 
@@ -208,12 +206,23 @@ export async function POST(request: Request) {
   return NextResponse.json(
     {
       sessionToken: created.token,
+      token: created.token,
       expiresAt: created.session.expiresAt.toISOString(),
       hospitalId: org.id,
       patientId: patient.id,
       patientExternalId,
       actorRole,
       grantedScopes,
+      organization: {
+        id: org.id,
+        slug: org.slug,
+        name: org.name,
+      },
+      patient: {
+        id: patient.id,
+        displayName: patient.display_name,
+        mrn: patient.demo_code ?? '',
+      },
     },
     { status: 201, headers: NO_CACHE_HEADERS },
   );

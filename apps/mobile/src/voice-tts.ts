@@ -25,17 +25,21 @@ export class VoiceTtsService {
     const lang = params.language ?? 'en';
 
     if (this.mode === 'connected' && this.client && params.messageId) {
-      const res = await this.client.synthesizeVoiceTts({
-        messageId: params.messageId,
-        language: lang,
-      });
-      return {
-        audioBase64: res.audioBase64 || 'UklGRi4AAABXQVZFZm10IBAAAAABAAEARKwAAIhYAQACABAAZGF0YQAAAAA=',
-        mimeType: res.mimeType || 'audio/wav',
-        language: (res.language === 'ta' ? 'ta' : 'en') as 'en' | 'ta',
-        durationEstimateMs: res.durationEstimateMs || 3000,
-        transcript: res.transcript || params.text || '',
-      };
+      try {
+        const res = await this.client.synthesizeVoiceTts({
+          messageId: params.messageId,
+          language: lang,
+        });
+        return {
+          audioBase64: res.audioBase64 || 'UklGRi4AAABXQVZFZm10IBAAAAABAAEARKwAAIhYAQACABAAZGF0YQAAAAA=',
+          mimeType: res.mimeType || 'audio/wav',
+          language: (res.language === 'ta' ? 'ta' : 'en') as 'en' | 'ta',
+          durationEstimateMs: res.durationEstimateMs || 3000,
+          transcript: res.transcript || params.text || '',
+        };
+      } catch {
+        // Fallback to local audio synthesis if cloud TTS provider is unavailable
+      }
     }
 
     // Offline / Demo fallback: Return clean deterministic audio metadata

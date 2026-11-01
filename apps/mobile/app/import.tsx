@@ -9,6 +9,7 @@ import { validateFile, type Category } from '../src/domain';
 import { matchesSignature, validateImportCandidate } from '../src/file-validation';
 import { retainSample } from '../src/storage';
 import { categories } from '../src/i18n';
+import { bytesToBase64 } from '../src/crypto-envelope';
 import { Screen, Copy, Button, Panel, Toggle, Row, Chip, Badge } from '../src/ui';
 import { NotebookArt } from '../src/art';
 
@@ -106,8 +107,9 @@ export default function Import() {
       let base64 = '';
       if (Platform.OS === 'web') {
         const buf = await (await fetch(sample.uri)).arrayBuffer();
-        bytes = new Uint8Array(buf).slice(0, 8);
-        base64 = btoa(String.fromCharCode(...new Uint8Array(buf)));
+        const uint = new Uint8Array(buf);
+        bytes = uint.slice(0, 8);
+        base64 = bytesToBase64(uint);
       } else {
         base64 = await FS.readAsStringAsync(sample.uri, { encoding: FS.EncodingType.Base64 });
         bytes = Uint8Array.from(atob(base64.slice(0, 16)), (c) => c.charCodeAt(0));

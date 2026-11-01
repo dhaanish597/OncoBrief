@@ -34,7 +34,12 @@ interface Store {
 const Context = createContext<Store | null>(null);
 
 export function Provider({ children }: { children: ReactNode }) {
-  const [mode, setMode] = useState<'demo' | 'connected'>('demo');
+  const [mode, setMode] = useState<'demo' | 'connected'>(() => {
+    if (typeof window !== 'undefined' && window.sessionStorage) {
+      return (window.sessionStorage.getItem('oncobrief_portal_mode') as 'demo' | 'connected') || 'demo';
+    }
+    return 'demo';
+  });
   const [demoRepo] = useState(() => new DemoRepository({ load: loadState, save: saveState, erase: eraseState }));
   const [connectedRepo] = useState(() => new ConnectedPatientRepository());
   const [, render] = useState(0);
@@ -55,6 +60,9 @@ export function Provider({ children }: { children: ReactNode }) {
     connectedRepo.onChange = onConnectedChange;
 
     void demoRepo.load();
+    if (mode === 'connected' && connectedRepo.isAuthenticated) {
+      void connectedRepo.refreshSnapshot();
+    }
 
     AccessibilityInfo.isReduceMotionEnabled().then(setSystemReduced).catch(() => {});
     const sub = AccessibilityInfo.addEventListener('reduceMotionChanged', setSystemReduced);
@@ -101,6 +109,9 @@ export function Provider({ children }: { children: ReactNode }) {
 
   const switchMode = useCallback((newMode: 'demo' | 'connected') => {
     setMode(newMode);
+    if (typeof window !== 'undefined' && window.sessionStorage) {
+      window.sessionStorage.setItem('oncobrief_portal_mode', newMode);
+    }
     render((n) => n + 1);
   }, []);
 

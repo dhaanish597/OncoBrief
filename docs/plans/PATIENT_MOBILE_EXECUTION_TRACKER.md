@@ -100,8 +100,8 @@ The implementation loop may terminate as `RELEASE_READY` **if and only if** all 
 | `MOB-017` | M3 | H | Consented Caregiver Management Screen (`app/sharing.tsx`) & Time-Bounded Revocable Share Grants UI | `MOB-010`, `MOB-011`, `MOB-012` | `REQ-MOB-032`, `REQ-MOB-033` | `COMPLETE` | 0 | Exit 0 (caregivers and share grants with instant revocation and scoped consent) | Exit 0 (90 pass, 0 fail; full caregiver management, scope control, instant revocation, 72h share grants) | `3ef938e` |
 | `MOB-018` | M4 | I | AES-256-GCM + `expo-secure-store` Encrypted Local Persistence (`SEC-MOB-01`), Web `localStorage` Persistence (`BUG-MOB-08`), Hash-Chained Audit Log (`SEC-MOB-07`) & `useDraft` Debounce (`BUG-MOB-13`) | `MOB-004`, `MOB-012` | `REQ-MOB-034`, `REQ-MOB-035`, `REQ-MOB-037` | `COMPLETE` | 0 | Exit 1 (MODULE_NOT_FOUND, missing crypto-envelope, SubtleCrypto algorithm name) | Exit 0 (99 pass, 0 fail; AES-256-GCM envelope, zero plaintext PHI on disk, web localStorage, 250-entry SHA-256 audit chain, debounced useDraft) | `2974697` |
 | `MOB-019` | M4 | I | Privacy Shield Overlay on Backgrounding, Android `FLAG_SECURE`, and Removal of External `medlineplus.gov` Leakage (`SEC-MOB-05`, `SEC-MOB-06`) | `MOB-018` | `REQ-MOB-036` | `COMPLETE` | 0 | Exit 1 (MODULE_NOT_FOUND, missing privacy-shield module) | Exit 0 (103 pass, 0 fail; PrivacyShieldBoundary AppState veil, zero medlineplus.gov leaks, allowBackup=false, screen capture protection active) | `6e29b60` |
-| `MOB-020` | M5 | L | Full Security Negative Test Suite (`SEC-NEG-01`..`20`) & Cross-Package Integration Verification | `MOB-006`..`MOB-019` | `REQ-MOB-043` | `NOT_STARTED` | 0 | Pending | Pending | — |
-| `MOB-021` | M5 | L | Playwright E2E Suite Expansion & 20-Step Clinician-to-Patient Continuity Verification (`clinician-patient-continuity.spec.ts`) | `MOB-005`, `MOB-013`..`MOB-020` | `REQ-MOB-044` | `NOT_STARTED` | 0 | Pending | Pending | — |
+| `MOB-020` | M5 | L | Full Security Negative Test Suite (`SEC-NEG-01`..`20`) & Cross-Package Integration Verification | `MOB-006`..`MOB-019` | `REQ-MOB-043` | `COMPLETE` | 0 | Exit 1 (missing canonical security-negative suite and route handlers) | Exit 0 (20/20 pass in 560ms; all 75 patient-portal tests pass) | `9b6b31f` |
+| `MOB-021` | M5 | L | Playwright E2E Suite Expansion & 20-Step Clinician-to-Patient Continuity Verification (`clinician-patient-continuity.spec.ts`) | `MOB-005`, `MOB-013`..`MOB-020` | `REQ-MOB-044` | `COMPLETE` | 0 | Exit 1 (missing multi-server connected continuity orchestration) | Exit 0 (9/9 E2E pass in 46.7s; 20-step loop green with 0 unhandled errors) | `9b6b31f` |
 | `MOB-022` | M6 | K | Native Android Configuration (`allowBackup=false`), Hermes Bytecode Bundle Verification & Gradle `assembleDebug` APK Build | `MOB-019`, `MOB-021` | `REQ-MOB-040` | `NOT_STARTED` | 0 | Pending | Pending | — |
 | `MOB-023` | M6 | K | Native Android Emulator/Device APK Installation (`adb install`), Runtime Crash Check (`adb logcat`) & Maestro Native Smoke Flow | `MOB-022` | `REQ-MOB-041` | `NOT_STARTED` | 0 | Pending | Pending | — |
 | `MOB-024` | M7 | L | Monorepo Root Verification Script (`pnpm verify:patient-mobile`), CI Workflow Integration & Final Release Readiness Sign-Off | `MOB-020`..`MOB-023` | `REQ-MOB-045` | `NOT_STARTED` | 0 | Pending | Pending | — |
@@ -252,5 +252,89 @@ Whenever the coding agent updates a task in Section 2 above, it MUST append a st
       change_type: modified
     - path: "apps/mobile/test/clinical-safety-remediation.test.ts"
       change_type: created
+  blocker_report: null
+
+- task_id: MOB-020
+  title: "Full Security Negative Test Suite (SEC-NEG-01..20) & Cross-Package Integration Verification"
+  status: COMPLETE
+  worktree_branch: oncobrief-patient-app
+  commit_sha: "9b6b31f"
+  requirements_updated:
+    - id: REQ-MOB-043
+      from_status: NOT_STARTED
+      to_status: COMPLETE
+  red_phase:
+    command: "pnpm --filter @oncobrief/web exec vitest run src/app/api/v1/patient-portal/security-negative.test.ts"
+    exit_code: 1
+    failing_assertion_summary: "Suite failed initially due to unhandled rate limiting, route params, and snapshot scope redaction"
+  green_phase:
+    command: "pnpm --filter @oncobrief/web exec vitest run src/app/api/v1/patient-portal/security-negative.test.ts"
+    exit_code: 0
+    passing_tests_count: 20
+  regression_gate:
+    typecheck_exit_code: 0
+    clinical_boundary_exit_code: 0
+    branding_exit_code: 0
+    unit_suite_exit_code: 0
+  files_changed:
+    - path: "apps/web/src/app/api/v1/patient-portal/security-negative.test.ts"
+      change_type: created
+    - path: "apps/web/src/app/api/v1/patient-portal/session/route.ts"
+      change_type: modified
+    - path: "apps/web/src/app/api/v1/patient-portal/shares/route.ts"
+      change_type: modified
+    - path: "apps/web/src/app/api/v1/patient-portal/snapshot/route.ts"
+      change_type: modified
+  blocker_report: null
+
+- task_id: MOB-021
+  title: "Playwright E2E Suite Expansion & 20-Step Clinician-to-Patient Continuity Verification"
+  status: COMPLETE
+  worktree_branch: oncobrief-patient-app
+  commit_sha: "9b6b31f"
+  requirements_updated:
+    - id: REQ-MOB-044
+      from_status: NOT_STARTED
+      to_status: COMPLETE
+  red_phase:
+    command: "pnpm --filter @oncobrief/mobile exec playwright test e2e/clinician-patient-continuity.spec.ts"
+    exit_code: 1
+    failing_assertion_summary: "Suite failed initially due to multi-server backend wiring and page error assertion filtering on offline replay"
+  green_phase:
+    command: "pnpm --filter @oncobrief/mobile exec playwright test"
+    exit_code: 0
+    passing_tests_count: 9
+  regression_gate:
+    typecheck_exit_code: 0
+    clinical_boundary_exit_code: 0
+    branding_exit_code: 0
+    unit_suite_exit_code: 0
+  files_changed:
+    - path: "apps/mobile/e2e/clinician-patient-continuity.spec.ts"
+      change_type: created
+    - path: "apps/mobile/e2e/patient-app.spec.ts"
+      change_type: created
+    - path: "apps/web/tools/serve-portal.ts"
+      change_type: created
+    - path: "apps/mobile/playwright.config.ts"
+      change_type: modified
+    - path: "apps/mobile/src/api-client.ts"
+      change_type: modified
+    - path: "apps/mobile/src/repository.ts"
+      change_type: modified
+    - path: "apps/mobile/src/store.tsx"
+      change_type: modified
+    - path: "apps/mobile/src/voice-player.tsx"
+      change_type: modified
+    - path: "apps/mobile/src/voice-tts.ts"
+      change_type: modified
+    - path: "apps/mobile/app/import.tsx"
+      change_type: modified
+    - path: "apps/mobile/app/record/[id].tsx"
+      change_type: modified
+    - path: "apps/mobile/app/coordinator-request.tsx"
+      change_type: modified
+    - path: "apps/mobile/app/sharing.tsx"
+      change_type: modified
   blocker_report: null
 ```

@@ -47,8 +47,10 @@ export default function RecordDetail() {
     if (mode === 'connected' && client) {
       setLoadingPage(true);
       try {
-        const page = await client.getDocumentPage(doc!.id, 1);
-        setInspectedPage({ text: page.text, pageNumber: page.pageNumber });
+        const raw = await client.getDocumentPage(doc!.id, 1);
+        const text = (raw as any).page?.plainText ?? raw.text ?? '';
+        const pageNumber = (raw as any).page?.pageNumber ?? raw.pageNumber ?? 1;
+        setInspectedPage({ text, pageNumber });
       } catch {
         notify('Could not load authorized source page.');
       } finally {

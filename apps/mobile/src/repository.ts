@@ -91,11 +91,23 @@ export class ConnectedPatientRepository {
 
   constructor(options: { client?: PatientPortalApiClient } = {}) {
     this.client = options.client ?? new PatientPortalApiClient();
+    if (typeof window !== 'undefined' && window.sessionStorage) {
+      const savedToken = window.sessionStorage.getItem('oncobrief_portal_token');
+      if (savedToken) {
+        this.sessionToken = savedToken;
+        this.isAuthenticated = true;
+        this.client.setToken(savedToken);
+      }
+    }
     this.syncQueue = new OfflineSyncQueue();
     this.syncQueue.onSessionExpired = () => {
       this.error = 'unauthorized';
       this.isAuthenticated = false;
       this.sessionToken = null;
+      if (typeof window !== 'undefined' && window.sessionStorage) {
+        window.sessionStorage.removeItem('oncobrief_portal_token');
+        window.sessionStorage.removeItem('oncobrief_portal_mode');
+      }
       this.onChange();
     };
     this.syncQueue.onQueueChange = () => {
@@ -114,6 +126,10 @@ export class ConnectedPatientRepository {
     this.sessionToken = sess.token;
     this.isAuthenticated = true;
     this.state.connectedHospital = sess.organization;
+    if (typeof window !== 'undefined' && window.sessionStorage) {
+      window.sessionStorage.setItem('oncobrief_portal_token', sess.token);
+      window.sessionStorage.setItem('oncobrief_portal_mode', 'connected');
+    }
     await this.refreshSnapshot();
   }
 
@@ -127,6 +143,10 @@ export class ConnectedPatientRepository {
     this.isAuthenticated = false;
     this.syncQueue.clear();
     this.state = createEmptyConnectedState();
+    if (typeof window !== 'undefined' && window.sessionStorage) {
+      window.sessionStorage.removeItem('oncobrief_portal_token');
+      window.sessionStorage.removeItem('oncobrief_portal_mode');
+    }
     this.error = null;
     this.onChange();
   }
@@ -150,10 +170,10 @@ export class ConnectedPatientRepository {
   }
 
   hydrateSnapshot(snapshot: PatientPortalSnapshotResponse) {
-    const documents: DocumentRecord[] = (snapshot.documents ?? []).map((d) => ({
+    const documents: DocumentRecord[] = (snapshot.documents ?? []).map((d: any) => ({
       id: d.id,
-      name: d.filename,
-      category: (d.mimeType?.includes('pdf') ? 'pathology' : 'laboratory') as Category,
+      name: d.filename ?? d.originalFilename ?? 'Document',
+      category: ((d.mimeType?.includes('pdf') || d.documentType?.includes('pathology')) ? 'pathology' : 'laboratory') as Category,
       date: d.documentDate ?? '',
       facility: d.issuingFacility ?? '',
       mimeType: d.mimeType ?? 'application/pdf',
@@ -182,23 +202,33 @@ export class ConnectedPatientRepository {
       },
     }));
 
+    const continuityMessages = (snapshot.continuityMessages ?? []).map((m: any) => ({
+      id: m.id,
+      locale: m.locale,
+      body: m.body ?? m.bodyRendered ?? '',
+      approvedAt: m.approvedAt,
+    }));
+
+    const diagnosis = snapshot.summary?.diagnosis ?? (snapshot.patient as any)?.diagnosis ?? '';
+    const journeyStage = snapshot.summary?.journeyStage ?? (snapshot.patient as any)?.stage ?? '';
+
     this.state = {
       ...this.state,
       mode: 'connected',
       patientName: snapshot.patient.displayName,
       patientNameTa: snapshot.patient.displayName,
       mrn: snapshot.patient.mrn,
-      diagnosis: snapshot.summary?.diagnosis ?? '',
-      diagnosisTa: snapshot.summary?.diagnosis ?? '',
-      journeyStage: snapshot.summary?.journeyStage ?? '',
-      journeyStageTa: snapshot.summary?.journeyStage ?? '',
+      diagnosis,
+      diagnosisTa: diagnosis,
+      journeyStage,
+      journeyStageTa: journeyStage,
       documents,
       ledger,
       questions: snapshot.preparation?.questions ?? [],
       notes: snapshot.preparation?.symptomNotes ?? '',
       packSelected: snapshot.preparation?.packSelectedDocumentIds ?? [],
       appointments: snapshot.appointments ?? [],
-      continuityMessages: snapshot.continuityMessages ?? [],
+      continuityMessages,
       tasks: snapshot.tasks ?? [],
       caregivers: snapshot.caregivers ?? [],
       shareGrants: snapshot.shareGrants ?? [],
@@ -209,18 +239,8 @@ export class ConnectedPatientRepository {
   }
 
   apply(action: Action) {
-    // 1. Optimistic local state update
-    if (action.type === 'review') {
-      const doc = this.state.documents.find((d) => d.id === action.id);
-      if (doc) doc.patientReviewed = true;
-    } else if (action.type === 'flag') {
-      this.state.flags.push({
-        id: `flag-${Date.now()}`,
-        documentId: action.id,
-        reason: action.reason,
-        at: new Date().toISOString(),
-      });
-    }
+    // 1. Optimistic local state update via canonical domain reducer
+    this.state = reduce(this.state, action);
 
     // 2. Enqueue mutation
     this.syncQueue.enqueue(action);
