@@ -96,6 +96,14 @@ export interface PatientPortalSnapshotResponse {
     sharedDocumentIds: string[];
     isRevoked: boolean;
   }[];
+  tasks?: {
+    id: string;
+    title: string;
+    category: string;
+    status: string;
+    dueDate?: string;
+    description?: string;
+  }[];
   lastSyncedAt?: string;
 }
 

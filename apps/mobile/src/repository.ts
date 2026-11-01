@@ -149,7 +149,7 @@ export class ConnectedPatientRepository {
     }
   }
 
-  private hydrateSnapshot(snapshot: PatientPortalSnapshotResponse) {
+  hydrateSnapshot(snapshot: PatientPortalSnapshotResponse) {
     const documents: DocumentRecord[] = (snapshot.documents ?? []).map((d) => ({
       id: d.id,
       name: d.filename,
@@ -199,6 +199,7 @@ export class ConnectedPatientRepository {
       packSelected: snapshot.preparation?.packSelectedDocumentIds ?? [],
       appointments: snapshot.appointments ?? [],
       continuityMessages: snapshot.continuityMessages ?? [],
+      tasks: snapshot.tasks ?? [],
       lastSyncedAt: snapshot.lastSyncedAt ?? new Date().toISOString(),
       pendingSyncCount: this.syncQueue.size(),
     };

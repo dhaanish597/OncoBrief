@@ -53,6 +53,14 @@ export interface State {
     body: string;
     approvedAt: string;
   }[];
+  tasks?: {
+    id: string;
+    title: string;
+    category: string;
+    status: string;
+    dueDate?: string;
+    description?: string;
+  }[];
 }
 export function createEmptyConnectedState(): State {
   return {
@@ -85,6 +93,7 @@ export function createEmptyConnectedState(): State {
     audit: [],
     appointments: [],
     continuityMessages: [],
+    tasks: [],
   };
 }
 export function createDemo(personaId: PersonaId = 'DEMO-001'): State {
