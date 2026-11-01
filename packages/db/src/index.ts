@@ -29,3 +29,4 @@ export * from './services/admin';
 export * from './services/appointments';
 export * from './services/encounters';
 export * from './services/tumor-board';
+export * from './services/patient-portal';

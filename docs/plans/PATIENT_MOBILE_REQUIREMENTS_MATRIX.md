@@ -66,7 +66,7 @@ Every requirement below contains all 21 mandatory governance attributes:
 | `REQ-MOB-006` | B | CI Clinical Boundary Scanner Coverage for `apps/mobile` (`BUG-MOB-03`) | `OFFICIAL_HACKATHON` | `CORE` | M1 | P0 | `MOB-001` | `tools/check-clinical-boundary.ts` skips `apps/mobile` | `COMPLETE` |
 | `REQ-MOB-007` | B | Factual-Only Vital & Wellbeing Self-Log Without Scoring | `MOBILE_EXTENSION` | `OPTIONAL` | M1 | P1 | `MOB-002` | Partial; needs explicit non-monitored disclaimer | `COMPLETE` |
 | `REQ-MOB-008` | B | Prohibition of Autonomous Triage, Risk Scoring & Dosing Advice | `OFFICIAL_HACKATHON` | `REJECTED_OUT_OF_SCOPE` | M1 | P0 | `MOB-001` | Guarded only by local regex in `mobile-app.test.ts` | `COMPLETE` |
-| `REQ-MOB-009` | C | Patient Portal Database Schema & RLS (`0022_patient_portal_foundation.sql`) | `V4_ENHANCEMENT_PLAN` | `CORE` | M2 | P0 | `MOB-006` | Missing (`0` patient-portal tables in `packages/db`) | `NOT_STARTED` |
+| `REQ-MOB-009` | C | Patient Portal Database Schema & RLS (`0022_patient_portal_foundation.sql`) | `V4_ENHANCEMENT_PLAN` | `CORE` | M2 | P0 | `MOB-006` | Missing (`0` patient-portal tables in `packages/db`) | `COMPLETE` |
 | `REQ-MOB-010` | C | Patient OTP/Session Authentication API (`POST/DELETE /api/v1/patient-portal/session`) | `V4_ENHANCEMENT_PLAN` | `CORE` | M2 | P0 | `MOB-007` | Fake offline toggle in `app/signin.tsx` | `NOT_STARTED` |
 | `REQ-MOB-011` | C | Patient Portal Snapshot API (`GET /api/v1/patient-portal/snapshot`) | `V4_ENHANCEMENT_PLAN` | `CORE` | M2 | P0 | `MOB-008` | Missing (`0` network calls in `apps/mobile`) | `NOT_STARTED` |
 | `REQ-MOB-012` | C | Hybrid Repository Architecture (`ConnectedPatientRepository` + `DemoRepository` + `OfflineSyncQueue`) | `V4_ENHANCEMENT_PLAN` | `CORE` | M3 | P0 | `MOB-012` | Local `DemoRepository` only (`src/repository.ts`) | `NOT_STARTED` |
@@ -290,7 +290,7 @@ Every requirement below contains all 21 mandatory governance attributes:
 - **Target User:** Patient / Clinician / Backend Platform
 - **User Story:** As a backend architect, I need tenant-isolated, patient-scoped database tables so every action taken in the patient mobile app is durably stored, auditable, and visible to the oncology care team under strict RLS.
 - **Existing Implementation (`757f495`):** Missing (`0` patient-portal tables in `packages/db/migrations`).
-- **Current Status:** `NOT_STARTED`
+- **Current Status:** `COMPLETE`
 - **Exact Source Files:** `packages/db/migrations/0022_patient_portal_foundation.sql` (new), `packages/db/src/services/patient-portal.ts` (new), `packages/db/src/index.ts`
 - **API / Data Dependency:** Depends on `hospital`, `patient`, `document`, `task`, `appointment`, `caregiver_contact`, `continuity_message`, and `audit_event` tables.
 - **Security Dependency:** `ENABLE ROW LEVEL SECURITY` and `FORCE ROW LEVEL SECURITY` on all 5 new tables (`patient_portal_session`, `patient_document_review`, `patient_discrepancy_flag`, `patient_preparation_state`, `patient_share_grant`), scoped by `app.current_hospital_id()` and `current_setting('app.current_patient_id', true)`.
