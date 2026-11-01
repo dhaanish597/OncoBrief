@@ -1,5 +1,5 @@
 import React,{ useState } from 'react';
-import { Linking,Pressable,View } from 'react-native';
+import { Pressable,View } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useStore } from './store';
 import { comparison,filterLabs,historyRanges,historyStart,labObservations,referencePosition,validDateRange,type HistoryRange,type LabObservation } from './patient-selectors';
@@ -24,6 +24,7 @@ export function LaboratoryOverview() {
 }
 export function LabDetail({ test='haemoglobin',initialId }:{ test?:string;initialId?:string }) {
   const { t,state,notify }=useStore();const router=useRouter();const all=labObservations(state).filter(o => o.test===test);const [range,setRange]=useState<HistoryRange>('All');const [selected,setSelected]=useState(initialId || all[0]?.id);const [variant,setVariant]=useState<'line'|'columns'>('line');
+  const [showGlossary, setShowGlossary] = useState(false);
   const start=historyStart(all,range);const data=filterLabs(all,{ from:start });const chosen=data.find(o => o.id===selected) || data[0];const latest=all[0];
   if (!latest || !chosen) return <Empty title={t('noLabData')}/>;
   const diff=comparison(latest,all[1]);const ref=referencePosition(chosen);const commonRange=ref && data.every(o => o.facility===chosen.facility && o.unit===chosen.unit && referencePosition(o)?.low===ref.low && referencePosition(o)?.high===ref.high) ? { low:ref.low,high:ref.high } : undefined;
@@ -33,6 +34,6 @@ export function LabDetail({ test='haemoglobin',initialId }:{ test?:string;initia
     <Panel tone="blue"><Copy kind="label">{t('selectedResult')}</Copy><Copy kind="title">{chosen.value} {chosen.unit} · {chosen.date}</Copy><Copy kind="meta">{chosen.facility} · {t('version')} {chosen.version}</Copy><ReferenceBar observation={chosen}/><Copy kind="meta">{t('referenceNote')}</Copy><Button secondary title={t('sourceReport')} onPress={() => router.push({ pathname:'/record/[id]',params:{ id:chosen.documentId } })}/></Panel>
     <Panel><SectionHeading icon="insights" title={t('highlights')}/><Copy kind="title">{t(diff.kind==='no-earlier' ? 'noEarlier' : diff.kind==='incompatible' ? 'incompatible' : diff.kind)}</Copy>{diff.delta!==undefined && <Copy kind="display" style={{ fontSize:26,color:c.teal }}>{diff.delta>0 ? '+' : ''}{diff.delta} {latest.unit}</Copy>}<Copy kind="meta">{all[1] ? `${all[1].date} → ${latest.date}` : latest.date}</Copy><Copy>{t('noInterpretation')}</Copy></Panel>
     <Panel><SectionHeading title={t('resultHistory')} action={t('viewAll')} onPress={() => router.push('/labs')}/>{data.map(o => <View key={o.id} style={{ gap:7,paddingVertical:10,borderBottomWidth:1,borderColor:c.line }}><LinkRow title={`${o.date} · ${o.value} ${o.unit}`} subtitle={`${o.facility} · ${o.documentName}`} onPress={() => router.push({ pathname:'/record/[id]',params:{ id:o.documentId } })}/><Row><Badge text={t(o.status==='clinician-confirmed' ? 'confirmedShort' : 'extractedShort')} tone={o.status==='clinician-confirmed' ? 'blue' : 'amber'}/>{o.patientReviewed && <Badge text={t('reviewedShort')} tone="sage"/>}</Row></View>)}</Panel>
-    <Panel><Copy kind="title">{t('generalPurpose')}</Copy><Copy>{t('haemoglobinPurpose')}</Copy><Copy kind="meta">{t('glossaryInfo')}</Copy><LinkRow title={t('glossarySource')} onPress={() => void Linking.openURL('https://medlineplus.gov/lab-tests/hemoglobin-test/').catch(() => notify(t('error')))}/><Button secondary title={t('addQuestion')} onPress={() => router.push({ pathname:'/prepare',params:{ stage:'questions' } })}/></Panel>
+    <Panel><Copy kind="title">{t('generalPurpose')}</Copy><Copy>{t('haemoglobinPurpose')}</Copy><Copy kind="meta">{t('glossaryInfo')}</Copy><LinkRow title={t('glossarySource')} onPress={() => setShowGlossary(prev => !prev)}/>{showGlossary && <View style={{ padding:12,backgroundColor:c.sand,borderRadius:8,gap:6 }}><Copy kind="meta">{t('referenceNote')}</Copy><Copy kind="meta">{t('glossaryInfo')}</Copy></View>}<Button secondary title={t('addQuestion')} onPress={() => router.push({ pathname:'/prepare',params:{ stage:'questions' } })}/></Panel>
   </View>;
 }
