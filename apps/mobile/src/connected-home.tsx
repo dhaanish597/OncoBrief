@@ -340,12 +340,34 @@ export function ConnectedHome() {
         <LinkRow title={t('openChecklist')} href="/checklist" />
       </Panel>
 
-      <Panel tone="blue">
-        <SectionHeading title={t('careUpdate')} />
-        <Copy>{t('message')}</Copy>
-        <Copy kind="meta">{t('messageSource')}</Copy>
-        <LinkRow title={t('openReport')} href={{ pathname: '/record/[id]', params: { id: 'd2' } }} />
-      </Panel>
+      {state.continuityMessages && state.continuityMessages.length > 0 ? (
+        <Panel tone="blue">
+          <SectionHeading title="Approved Care Instructions" />
+          {state.continuityMessages.map((msg) => (
+            <View key={msg.id} style={{ gap: 6, marginVertical: 4 }}>
+              <Row>
+                <Badge text="Approved by Care Team" tone="sage" />
+                <Copy kind="meta">{msg.locale === 'ta' ? 'தமிழ்' : 'English'}</Copy>
+              </Row>
+              <Copy kind="body">{msg.body}</Copy>
+              <Copy kind="meta">Approved: {new Date(msg.approvedAt).toLocaleDateString()}</Copy>
+            </View>
+          ))}
+        </Panel>
+      ) : (
+        <Panel tone="blue">
+          <SectionHeading title={t('careUpdate')} />
+          <Copy>{t('message')}</Copy>
+          <Copy kind="meta">{t('messageSource')}</Copy>
+          <LinkRow title={t('openReport')} href={{ pathname: '/record/[id]', params: { id: 'd2' } }} />
+        </Panel>
+      )}
+
+      <LinkRow
+        title="Care Coordinator Help"
+        subtitle="Request medical certificates, scheduling, or records support"
+        href="/coordinator-request"
+      />
 
       <LinkRow title={t('sharing')} href="/sharing" />
     </Screen>

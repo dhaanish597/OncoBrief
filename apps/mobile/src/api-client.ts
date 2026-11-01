@@ -255,6 +255,15 @@ export class PatientPortalApiClient {
     });
   }
 
+  async updatePreparation(params: {
+    questions: { id: string; text: string; answered: boolean; at: string }[];
+    symptomNotes: string;
+    companionName: string;
+    packSelectedDocumentIds: string[];
+  }): Promise<{ updated: boolean }> {
+    return this.syncPreparation(params);
+  }
+
   // 5. Attendance API
   async confirmAttendance(params: {
     appointmentId: string;
@@ -340,6 +349,26 @@ export class PatientPortalApiClient {
       method: 'POST',
       body: JSON.stringify(params),
     });
+  }
+
+  async createCoordinatorRequest(params: {
+    title: string;
+    description?: string;
+    detail?: string;
+    category?: string;
+  }): Promise<{ id: string; title: string; category?: string; status: string; createdAt: string }> {
+    const res = await this.createRequest({
+      title: params.title,
+      detail: params.description ?? params.detail,
+      category: params.category,
+    });
+    return {
+      id: res.requestId,
+      title: res.title,
+      category: params.category,
+      status: res.status,
+      createdAt: res.createdAt,
+    };
   }
 
   // 9. Revocable Share Grants API
