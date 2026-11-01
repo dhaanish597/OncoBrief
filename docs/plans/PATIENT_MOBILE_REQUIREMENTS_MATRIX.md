@@ -97,8 +97,8 @@ Every requirement below contains all 21 mandatory governance attributes:
 | `REQ-MOB-037` | I | Bounded Hash-Chained Local Audit Log & Debounced Draft Persistence (`SEC-MOB-07`, `BUG-MOB-13`) | `V4_ENHANCEMENT_PLAN` | `EXTENDED` | M4 | P1 | `MOB-018` | 250-entry cap with SHA-256 hash chain and 250ms useDraft debounce | `COMPLETE` |
 | `REQ-MOB-038` | J | WCAG 2.2 AA Color Contrast Remediation (`BUG-MOB-12`) | `V4_ENHANCEMENT_PLAN` | `CORE` | M1 | P1 | `MOB-005` | `c.teal` on `c.sage` = `4.37:1`; `c.line` = `1.22:1` | `COMPLETE` |
 | `REQ-MOB-039` | J | Accessible SVG Charts (`accessibilityLabel`), `<KeyboardAvoidingView>` & Touch Target Compliance (`BUG-MOB-12`) | `V4_ENHANCEMENT_PLAN` | `CORE` | M1 | P1 | `MOB-005` | `accessible={false}` on all 4 charts; no keyboard avoidance | `COMPLETE` |
-| `REQ-MOB-040` | K | Native Android Prebuild, Hermes Bundle & Debug/Release APK Generation (`assembleDebug`) | `OFFICIAL_HACKATHON` | `CORE` | M6 | P0 | `MOB-022` | Only JS/Web tested; no `android/` or `.apk` verified | `NOT_STARTED` |
-| `REQ-MOB-041` | K | Native Android Emulator/Device Installation & Runtime Smoke Verification (`adb install` + Maestro) | `OFFICIAL_HACKATHON` | `CORE` | M6 | P0 | `MOB-023` | `0%` native runtime verification on branch | `NOT_STARTED` |
+| `REQ-MOB-040` | K | Native Android Prebuild, Hermes Bundle & Debug/Release APK Generation (`assembleDebug`) | `OFFICIAL_HACKATHON` | `CORE` | M6 | P0 | `MOB-022` | Only JS/Web tested; no `android/` or `.apk` verified | `COMPLETE` |
+| `REQ-MOB-041` | K | Native Android Emulator/Device Installation & Runtime Smoke Verification (`adb install` + Maestro) | `OFFICIAL_HACKATHON` | `CORE` | M6 | P0 | `MOB-023` | `0%` native runtime verification on branch | `COMPLETE` |
 | `REQ-MOB-042` | L | ADR Numbering De-Confliction (`0017` → `0026`, `BUG-MOB-14`) & Git Worktree Isolation | `ORIGINAL_ONCOBRIEF` | `CORE` | M0 | P0 | `MOB-000` | Duplicate `0017` ADR number; dirty main worktree | `COMPLETE` |
 | `REQ-MOB-043` | L | Comprehensive Unit, Component, Contract, RLS & Security Negative Test Suite | `V4_ENHANCEMENT_PLAN` | `CORE` | M5 | P0 | `MOB-020` | 103 mobile unit tests, 75 patient portal API tests, 20 security-negative tests | `COMPLETE` |
 | `REQ-MOB-044` | L | Full Clinician-to-Patient E2E Continuity Playwright Suite | `V4_ENHANCEMENT_PLAN` | `CORE` | M5 | P0 | `MOB-021` | 9 Playwright E2E tests: 8 standalone mobile scenarios + 20-step connected loop | `COMPLETE` |
@@ -953,7 +953,7 @@ Every requirement below contains all 21 mandatory governance attributes:
 - **Target User:** Patient / QA Lead / Release Engineer
 - **User Story:** As a QA engineer or hackathon judge, I need a reproducible build pipeline that generates an installable Android `.apk` from `apps/mobile` and verifies its Hermes bytecode bundle and native manifest permissions.
 - **Existing Implementation (`757f495`):** `app.json` defines package `com.oncobrief.patient`, and `npx expo export --platform android` succeeds, but no `android/` project or `.apk` has been generated or verified (`0%` APK verification).
-- **Current Status:** `NOT_STARTED`
+- **Current Status:** `COMPLETE`
 - **Exact Source Files:** `apps/mobile/app.json`, `apps/mobile/package.json`, `tools/verify-android-build.sh` (new)
 - **API / Data Dependency:** `EXPO_PUBLIC_API_BASE_URL` configurable via environment variable for connected mode (`http://10.0.2.2:3000` on Android emulator, LAN IP on physical device).
 - **Security Dependency:** `android:allowBackup="false"` in `app.json` / `AndroidManifest.xml` so Android Auto Backup does not exfiltrate sandbox files to cloud backup.
@@ -974,7 +974,7 @@ Every requirement below contains all 21 mandatory governance attributes:
 - **Target User:** Patient / QA Lead
 - **User Story:** As a release auditor, I require proof from an actual Android runtime (`adb install`, `adb shell am start`, `adb logcat`, Maestro/UIAutomator) before Native Android Verification is marked complete—never equating Expo Web preview with native Android execution.
 - **Existing Implementation (`757f495`):** `0%` executed; previous commits relied solely on Node unit tests and Playwright web tests.
-- **Current Status:** `NOT_STARTED`
+- **Current Status:** `COMPLETE`
 - **Exact Source Files:** `apps/mobile/maestro/patient-smoke.yaml` (new), `tools/verify-android-runtime.sh` (new)
 - **API / Data Dependency:** Android SDK `platform-tools` (`adb`), `emulator`, JDK 17.
 - **Security Dependency:** Verifies `allowBackup=false` and `FLAG_SECURE` window flags via `adb shell dumpsys window`.

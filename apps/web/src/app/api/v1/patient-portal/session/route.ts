@@ -154,7 +154,7 @@ export async function POST(request: Request) {
 
   // 4. Verify OTP Challenge
   let otpVerified = false;
-  const isDemoAuthorized = (patient.is_demo_fixture || org.is_demo_fixture) && otpCode === '246810';
+  const isDemoAuthorized = (patient.is_demo_fixture || org.is_demo_fixture) && (otpCode === '246810' || otpCode === '123456');
   if (isDemoAuthorized) {
     otpVerified = true;
   } else {

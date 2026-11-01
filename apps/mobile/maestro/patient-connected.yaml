@@ -1,0 +1,47 @@
+appId: org.oncobrief.patient
+---
+# 1. Start from Landing Screen
+- extendedWaitUntil:
+    visible: ".*(About signing in|Explore your care).*"
+    timeout: 10000
+
+# 2. Tap About signing in
+- tapOn: "About signing in"
+
+# 3. On Signin Screen - Switch to Connected Portal Mode
+- extendedWaitUntil:
+    visible: ".*(Connect to Live Hospital Portal|Hospital Portal Connection).*"
+    timeout: 8000
+
+- runFlow:
+    when:
+      visible: "Connect to Live Hospital Portal"
+    commands:
+      - tapOn: "Connect to Live Hospital Portal"
+
+# 4. Verify fields and credentials
+- extendedWaitUntil:
+    visible: ".*(Sign In to Portal|Hospital Identifier).*"
+    timeout: 8000
+
+# 5. Tap Sign In to Portal to authenticate against live PostgreSQL backend
+- tapOn: "Sign In to Portal"
+
+# 6. Verify authentication succeeded and landed on Connected Home
+- extendedWaitUntil:
+    visible: ".*(Meenakshi Sundaram|Connected|SUN-448120).*"
+    timeout: 12000
+
+# 7. Check Records tab connected to live evidence ledger
+- tapOn:
+    point: "30%,94%"
+- extendedWaitUntil:
+    visible: ".*(Medical records|Search reports|Laboratory).*"
+    timeout: 8000
+
+# 8. Check Journey tab connected to live timeline
+- tapOn:
+    point: "50%,94%"
+- extendedWaitUntil:
+    visible: ".*(Care journey|chronological view|evidence ledger).*"
+    timeout: 8000

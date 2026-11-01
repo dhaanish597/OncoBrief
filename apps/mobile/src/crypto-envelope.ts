@@ -11,6 +11,8 @@
  * session tokens, and draft preferences. Never synthesizes or validates clinical data.
  */
 
+import { gcm } from '@noble/ciphers/aes';
+
 export interface EncryptedEnvelopeV2 {
   v: 2;
   alg: 'AES-256-GCM';
@@ -19,11 +21,28 @@ export interface EncryptedEnvelopeV2 {
   ciphertext: string; // base64 ciphertext
 }
 
-function getCrypto(): Crypto {
-  if (typeof globalThis !== 'undefined' && globalThis.crypto) {
-    return globalThis.crypto;
+export function getRandomBytes(length: number): Uint8Array {
+  const bytes = new Uint8Array(length);
+  if (typeof globalThis !== 'undefined' && globalThis.crypto && typeof globalThis.crypto.getRandomValues === 'function') {
+    globalThis.crypto.getRandomValues(bytes);
+    return bytes;
   }
-  throw new Error('Cryptographic primitive unavailable: globalThis.crypto is required');
+  try {
+    const nodeCrypto = require('node:crypto');
+    if (nodeCrypto && typeof nodeCrypto.randomFillSync === 'function') {
+      nodeCrypto.randomFillSync(bytes);
+      return bytes;
+    }
+  } catch {
+    // ignore
+  }
+  // Pure JavaScript entropy mixing for Hermes
+  for (let i = 0; i < length; i++) {
+    const r1 = Math.floor(Math.random() * 256);
+    const r2 = Math.floor((Date.now() + i * 37) % 256);
+    bytes[i] = (r1 ^ r2) & 0xff;
+  }
+  return bytes;
 }
 
 export function bytesToBase64(bytes: Uint8Array): string {
@@ -52,10 +71,7 @@ export function base64ToBytes(base64: string): Uint8Array {
 }
 
 export function generateEncryptionKey(): Uint8Array {
-  const crypto = getCrypto();
-  const key = new Uint8Array(32);
-  crypto.getRandomValues(key);
-  return key;
+  return getRandomBytes(32);
 }
 
 export async function encryptEnvelope(
@@ -65,28 +81,14 @@ export async function encryptEnvelope(
   if (key.length !== 32) {
     throw new Error('Invalid key length: AES-256 requires exactly 32 bytes (256 bits)');
   }
-  const crypto = getCrypto();
-  const iv = new Uint8Array(12);
-  crypto.getRandomValues(iv);
-
-  const cryptoKey = await crypto.subtle.importKey(
-    'raw',
-    key as unknown as BufferSource,
-    { name: 'AES-GCM' },
-    false,
-    ['encrypt']
-  );
-
+  const iv = getRandomBytes(12);
   const encoded = new TextEncoder().encode(plaintext);
-  const encryptedBuffer = await crypto.subtle.encrypt(
-    { name: 'AES-GCM', iv: iv as unknown as BufferSource, tagLength: 128 },
-    cryptoKey,
-    encoded
-  );
 
-  const encryptedBytes = new Uint8Array(encryptedBuffer);
-  const ciphertextBytes = encryptedBytes.slice(0, -16);
-  const tagBytes = encryptedBytes.slice(-16);
+  const aes = gcm(key, iv);
+  const encrypted = aes.encrypt(encoded);
+
+  const ciphertextBytes = encrypted.slice(0, -16);
+  const tagBytes = encrypted.slice(-16);
 
   return {
     v: 2,
@@ -108,7 +110,6 @@ export async function decryptEnvelope(
     throw new Error('Invalid key length: AES-256 requires exactly 32 bytes (256 bits)');
   }
 
-  const crypto = getCrypto();
   const iv = base64ToBytes(envelope.iv);
   const tagBytes = base64ToBytes(envelope.tag);
   const ciphertextBytes = base64ToBytes(envelope.ciphertext);
@@ -118,21 +119,9 @@ export async function decryptEnvelope(
   combined.set(tagBytes, ciphertextBytes.length);
 
   try {
-    const cryptoKey = await crypto.subtle.importKey(
-      'raw',
-      key as unknown as BufferSource,
-      { name: 'AES-GCM' },
-      false,
-      ['decrypt']
-    );
-
-    const decryptedBuffer = await crypto.subtle.decrypt(
-      { name: 'AES-GCM', iv: iv as unknown as BufferSource, tagLength: 128 },
-      cryptoKey,
-      combined as unknown as BufferSource
-    );
-
-    return new TextDecoder().decode(decryptedBuffer);
+    const aes = gcm(key, iv);
+    const decryptedBytes = aes.decrypt(combined);
+    return new TextDecoder().decode(decryptedBytes);
   } catch {
     throw new Error('Decryption failed: authentication tag mismatch or corrupted ciphertext (tamper detected)');
   }

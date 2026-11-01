@@ -17,8 +17,10 @@
     "build:apk": "eas build --platform android --profile preview"
   },
   "dependencies": {
+    "@noble/ciphers": "^1.2.1",
     "expo": "~58.0.21",
     "expo-constants": "~58.0.14",
+    "expo-crypto": "~58.0.0",
     "expo-document-picker": "~58.0.4",
     "expo-file-system": "~58.0.13",
     "expo-font": "~58.0.11",
