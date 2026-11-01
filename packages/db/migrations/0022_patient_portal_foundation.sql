@@ -303,6 +303,82 @@ LANGUAGE sql SECURITY DEFINER SET search_path = public AS $$
 $$;
 ALTER FUNCTION portal_lookup_share(text) OWNER TO oncobrief_migrator;
 
+CREATE OR REPLACE FUNCTION portal_lookup_hospital(p_hospital_slug text)
+RETURNS TABLE (
+  id uuid,
+  slug text,
+  name text,
+  is_demo_fixture boolean
+)
+LANGUAGE sql SECURITY DEFINER SET search_path = public AS $$
+  SELECT o.id, o.slug, o.name, o.is_demo_fixture
+  FROM organization o
+  WHERE o.slug = p_hospital_slug
+  LIMIT 1;
+$$;
+ALTER FUNCTION portal_lookup_hospital(text) OWNER TO oncobrief_migrator;
+
+CREATE OR REPLACE FUNCTION portal_lookup_patient_by_identifier(p_hospital_slug text, p_external_id text)
+RETURNS TABLE (
+  org_id uuid,
+  org_slug text,
+  org_name text,
+  org_is_demo boolean,
+  patient_id uuid,
+  demo_code text,
+  display_name text,
+  patient_is_demo boolean
+)
+LANGUAGE plpgsql SECURITY DEFINER SET search_path = public AS $$
+DECLARE
+  v_org_id uuid;
+  v_org_slug text;
+  v_org_name text;
+  v_org_is_demo boolean;
+BEGIN
+  SELECT o.id, o.slug, o.name, o.is_demo_fixture
+  INTO v_org_id, v_org_slug, v_org_name, v_org_is_demo
+  FROM organization o
+  WHERE o.slug = p_hospital_slug
+  LIMIT 1;
+
+  IF v_org_id IS NULL THEN
+    RETURN;
+  END IF;
+
+  PERFORM set_config('app.org_id', v_org_id::text, true);
+
+  RETURN QUERY
+  SELECT v_org_id, v_org_slug, v_org_name, v_org_is_demo,
+         p.id, p.demo_code, p.display_name, p.is_demo_fixture
+  FROM patient p
+  LEFT JOIN patient_identifier pi ON pi.patient_id = p.id AND pi.org_id = v_org_id
+  WHERE p.org_id = v_org_id
+    AND (p.demo_code = p_external_id OR pi.value = p_external_id)
+  LIMIT 1;
+END;
+$$;
+ALTER FUNCTION portal_lookup_patient_by_identifier(text, text) OWNER TO oncobrief_migrator;
+
+CREATE OR REPLACE FUNCTION portal_lookup_caregiver_contact(p_org_id uuid, p_patient_id uuid, p_phone text)
+RETURNS TABLE (
+  caregiver_id uuid,
+  is_active boolean,
+  revoked_at timestamptz
+)
+LANGUAGE plpgsql SECURITY DEFINER SET search_path = public AS $$
+BEGIN
+  PERFORM set_config('app.org_id', p_org_id::text, true);
+
+  RETURN QUERY
+  SELECT c.id, c.is_active, c.revoked_at
+  FROM caregiver_contact c
+  WHERE c.org_id = p_org_id AND c.patient_id = p_patient_id AND c.phone_number = p_phone
+  LIMIT 1;
+END;
+$$;
+ALTER FUNCTION portal_lookup_caregiver_contact(uuid, uuid, text) OWNER TO oncobrief_migrator;
+
 -- ---------------------------------------------------------------------------
 -- 9. Grants for application runtime role
 -- ---------------------------------------------------------------------------
@@ -317,6 +393,9 @@ TO oncobrief_app;
 
 GRANT EXECUTE ON FUNCTION portal_lookup_session(text) TO oncobrief_app;
 GRANT EXECUTE ON FUNCTION portal_lookup_share(text) TO oncobrief_app;
+GRANT EXECUTE ON FUNCTION portal_lookup_hospital(text) TO oncobrief_app;
+GRANT EXECUTE ON FUNCTION portal_lookup_patient_by_identifier(text, text) TO oncobrief_app;
+GRANT EXECUTE ON FUNCTION portal_lookup_caregiver_contact(uuid, uuid, text) TO oncobrief_app;
 GRANT EXECUTE ON FUNCTION portal_current_org_id() TO oncobrief_app;
 GRANT EXECUTE ON FUNCTION portal_current_patient_id() TO oncobrief_app;
 GRANT EXECUTE ON FUNCTION portal_actor_role() TO oncobrief_app;
