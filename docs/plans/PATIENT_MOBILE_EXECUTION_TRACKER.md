@@ -397,4 +397,37 @@ Whenever the coding agent updates a task in Section 2 above, it MUST append a st
     - path: "docs/plans/PATIENT_MOBILE_REQUIREMENTS_MATRIX.md"
       change_type: modified
   blocker_report: null
+
+- task_id: MOB-025
+  milestone: M7.1
+  timestamp: "2026-11-02T09:16:00Z"
+  commit_hash: "HEAD"
+  requirements_transitioned:
+    - id: REQ-MOB-010
+      from_status: COMPLETE
+      to_status: COMPLETE
+  red_phase:
+    command: "pnpm --filter @oncobrief/web test -- src/app/api/v1/patient-portal/session/route.test.ts"
+    exit_code: 1
+    failing_assertion_summary: "SEC-NEG-21-OVERRIDE-REJECTED failed: fixed test OTP 246810 was previously accepted in NODE_ENV=production if ALLOW_SYNTHETIC_TEST_OTP=true"
+  green_phase:
+    command: "pnpm --filter @oncobrief/web test -- src/app/api/v1/patient-portal/session/route.test.ts"
+    exit_code: 0
+    passing_tests_count: 10
+  regression_gate:
+    typecheck_exit_code: 0
+    clinical_boundary_exit_code: 0
+    branding_exit_code: 0
+    unit_suite_exit_code: 0
+    hermes_export_exit_code: 0
+    portal_suite_exit_code: 0
+    e2e_suite_exit_code: 0
+  files_changed:
+    - path: "apps/web/src/app/api/v1/patient-portal/session/route.ts"
+      change_type: modified
+    - path: "apps/web/src/app/api/v1/patient-portal/session/route.test.ts"
+      change_type: modified
+    - path: "docs/plans/PATIENT_MOBILE_EXECUTION_TRACKER.md"
+      change_type: modified
+  blocker_report: null
 ```

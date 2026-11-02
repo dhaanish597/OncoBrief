@@ -141,14 +141,12 @@ export async function POST(request: Request) {
 
   // 4. Verify OTP Challenge
   let otpVerified = false;
-  // Synthetic demo OTP bypass is strictly restricted to non-production environments OR explicit ALLOW_SYNTHETIC_TEST_OTP=true.
-  // In public production, fixed test OTP bypass is unconditionally disabled and rejected.
-  const allowSyntheticTestOtp =
-    process.env.ALLOW_SYNTHETIC_TEST_OTP === 'true' ||
-    (process.env.NODE_ENV !== 'production' && (patient.is_demo_fixture || org.is_demo_fixture));
-
+  // In genuine production mode (NODE_ENV === 'production'), fixed synthetic test OTPs are UNCONDITIONALLY rejected,
+  // regardless of environment variables or fixture flags (SEC-NEG-21).
+  // Fixed synthetic demo OTP is ONLY allowed in non-production environments (test / development) AND ONLY for designated demo fixtures.
+  const isProduction = process.env.NODE_ENV === 'production';
   const isDemoAuthorized =
-    allowSyntheticTestOtp &&
+    !isProduction &&
     (patient.is_demo_fixture || org.is_demo_fixture) &&
     (otpCode === '246810' || otpCode === '123456');
 

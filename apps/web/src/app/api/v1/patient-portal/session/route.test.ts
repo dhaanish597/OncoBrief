@@ -65,7 +65,7 @@ describe('MOB-007: Patient Portal Session API (/api/v1/patient-portal/session)',
     expect(body.error.code).toBe('invalid_credentials');
   });
 
-  it('rejects fixed test OTP in public production environment unless ALLOW_SYNTHETIC_TEST_OTP=true (SEC-NEG-21)', async () => {
+  it('rejects fixed test OTP unconditionally in production environment (SEC-NEG-21)', async () => {
     const originalEnv = process.env.NODE_ENV;
     const originalAllow = process.env.ALLOW_SYNTHETIC_TEST_OTP;
     try {
@@ -86,6 +86,34 @@ describe('MOB-007: Patient Portal Session API (/api/v1/patient-portal/session)',
     } finally {
       (process.env as Record<string, string | undefined>).NODE_ENV = originalEnv;
       if (originalAllow) process.env.ALLOW_SYNTHETIC_TEST_OTP = originalAllow;
+    }
+  });
+
+  it('rejects fixed test OTP in production even when ALLOW_SYNTHETIC_TEST_OTP=true (SEC-NEG-21-OVERRIDE-REJECTED)', async () => {
+    const originalEnv = process.env.NODE_ENV;
+    const originalAllow = process.env.ALLOW_SYNTHETIC_TEST_OTP;
+    try {
+      (process.env as Record<string, string | undefined>).NODE_ENV = 'production';
+      process.env.ALLOW_SYNTHETIC_TEST_OTP = 'true';
+
+      const res = await POST(
+        reqPost({
+          hospitalSlug: 'rci',
+          patientExternalId: 'DEMO-001',
+          otpCode: '246810',
+          actorRole: 'patient',
+        }),
+      );
+      expect(res.status).toBe(401);
+      const body = await res.json();
+      expect(body.error.code).toBe('invalid_credentials');
+    } finally {
+      (process.env as Record<string, string | undefined>).NODE_ENV = originalEnv;
+      if (originalAllow !== undefined) {
+        process.env.ALLOW_SYNTHETIC_TEST_OTP = originalAllow;
+      } else {
+        delete process.env.ALLOW_SYNTHETIC_TEST_OTP;
+      }
     }
   });
 
