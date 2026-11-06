@@ -27,12 +27,12 @@ pnpm branding:check
 
 # Stage 3: Mobile client unit, selector, and domain tests
 echo ""
-echo "[+] Step 3/6: Running mobile unit tests (119 specs)..."
+echo "[+] Step 3/6: Running mobile unit tests..."
 pnpm --filter @oncobrief/mobile test
 
 # Stage 4: Patient portal backend API & canonical security-negative suite
 echo ""
-echo "[+] Step 4/6: Running patient portal backend and security-negative tests (84 specs)..."
+echo "[+] Step 4/6: Running patient portal backend and security-negative tests..."
 pnpm --filter @oncobrief/web test -- src/app/api/v1/patient-portal --fileParallelism=false
 
 # Stage 5: Android & iOS Hermes bytecode bundle compilation
@@ -40,6 +40,7 @@ echo ""
 echo "[+] Step 5/6: Verifying Android and iOS Hermes bytecode bundle exports..."
 pnpm --filter @oncobrief/mobile export:android
 pnpm --filter @oncobrief/mobile export:ios
+VERIFY_MOBILE_EXPORTS=1 pnpm --filter @oncobrief/mobile exec node --import tsx --test test/ios-config.test.ts
 
 # Stage 6: Database/RLS integration verification
 echo ""
