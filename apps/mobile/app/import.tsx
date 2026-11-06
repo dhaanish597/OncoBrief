@@ -167,7 +167,7 @@ export default function Import() {
       if (retainedUri && Platform.OS !== 'web') {
         try {
           await FS.deleteAsync(retainedUri, { idempotent: true });
-        } catch {}
+        } catch { /* Best-effort cleanup; preserve the original flow if unavailable. */ }
       }
       setError(t('invalidFile'));
     } finally {

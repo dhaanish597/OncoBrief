@@ -29,13 +29,13 @@ jobs:
       - uses: pnpm/action-setup@v4
       - uses: actions/setup-node@v4
         with:
-          node-version: 22
+          node-version: 24
           cache: pnpm
 
       - run: pnpm install --frozen-lockfile
 
       - name: Migrate and seed (this is what the tests run against)
-        run: pnpm demo:reset
+        run: pnpm db:migrate && pnpm demo:reset
 
       - name: Typecheck, lint, clinical-boundary scan, unit + integration tests
         run: pnpm verify
@@ -45,7 +45,7 @@ jobs:
 
       - name: Build, then run the E2E demo flow
         # Playwright's webServer starts `pnpm start` against the build above.
-        run: pnpm --filter @oncobrief/web build && pnpm --filter @oncobrief/web test:e2e
+        run: pnpm demo:reset && pnpm --filter @oncobrief/web build && pnpm --filter @oncobrief/web test:e2e
 
   patient-mobile:
     name: Patient Mobile Verification Gate (REQ-MOB-045)
@@ -71,13 +71,13 @@ jobs:
       - uses: pnpm/action-setup@v4
       - uses: actions/setup-node@v4
         with:
-          node-version: 22
+          node-version: 24
           cache: pnpm
 
       - run: pnpm install --frozen-lockfile
 
       - name: Migrate and seed test database
-        run: pnpm demo:reset
+        run: pnpm db:migrate && pnpm demo:reset
 
       - name: Patient mobile verification gate (REQ-MOB-045)
         run: pnpm verify:patient-mobile

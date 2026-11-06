@@ -106,6 +106,7 @@ export interface AssistantContext {
   selectedDocumentId?: string;
   selectedEvidenceId?: string;
   languageCode?: string;
+  /** Defaults to a cited ledger-only response on provider failure; false explicitly fails closed. */
   allowDeterministicFallbackOnError?: boolean;
 }
 
@@ -462,7 +463,7 @@ export async function runAssistant(
     };
   }
 
-  let evidence: PromptEvidence[] = [];
+  const evidence: PromptEvidence[] = [];
   let guidelineSpans: GuidelineSearchResult[] = [];
   let retrievalFailed = false;
   let llmFailedResponse: string | null = null;
@@ -832,7 +833,13 @@ export async function runAssistant(
           rawAnswer = completion.content.trim();
           mode = 'nvidia-llm';
         } catch (error) {
-          if (context.allowDeterministicFallbackOnError) {
+          logAssistant({
+            requestId, intent, latencyMs: Date.now() - startedAt,
+            provider: 'nvidia', model: process.env.NVIDIA_MODEL ?? 'configured-default',
+            toolUsed: intent, success: false,
+            providerStatus: error instanceof NvidiaLlmError ? error.statusCode : undefined,
+          });
+          if (context.allowDeterministicFallbackOnError !== false) {
             rawAnswer = synthesizeDeterministicGroundedAnswer(intent, evidence, message, conflict);
             mode = 'deterministic';
           } else {
@@ -840,15 +847,6 @@ export async function runAssistant(
               error instanceof NvidiaLlmError
                 ? 'I couldn\u2019t reach the language service right now. Please try again.'
                 : 'I couldn\u2019t complete that request right now. Please try again.';
-            logAssistant({
-              requestId,
-              intent,
-              latencyMs: Date.now() - startedAt,
-              provider: 'nvidia',
-              model: process.env.NVIDIA_MODEL ?? 'configured-model',
-              toolUsed: intent,
-              success: false,
-            });
             return {
               ...state,
               grounded: false,
@@ -1051,6 +1049,7 @@ interface AssistantLogEntry {
   model: string;
   toolUsed: string;
   success: boolean;
+  providerStatus?: number;
 }
 
 /**

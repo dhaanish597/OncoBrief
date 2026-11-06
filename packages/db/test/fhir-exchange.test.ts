@@ -6,12 +6,11 @@ import {
   getFhirEndpoint,
   getLinkedFhirResources,
   importExternalFhirBundle,
-  linkFhirResource,
   listFhirEndpoints,
   recordExchangeTransaction,
   registerFhirEndpoint,
 } from '../src/services/fhir-exchange';
-import { appClientForOrg, appClientNoTenant, setupFixtures, withSuperuser, type Fixtures } from './helpers';
+import { appClientNoTenant, setupFixtures, withSuperuser, type Fixtures } from './helpers';
 import { LocalFsStorageAdapter } from '../../adapters/src/local-fs-storage';
 import { LocalMultimodalOcrAdapter } from '../../adapters/src/local-multimodal-ocr';
 import { RuleBasedExtractor } from '../../adapters/src/rule-based-extractor';
@@ -102,6 +101,7 @@ describe('FHIR Interoperability & Security Suite (0023_fhir_interoperability)', 
 
         const fetched = await getFhirEndpoint(q, f.org1, endpointId);
         expect(fetched).not.toBeNull();
+        if (!fetched) throw new Error('Registered endpoint missing');
         expect(fetched.name).toBe('Apollo Hospital HIS');
         expect(fetched.is_active).toBe(true);
 
@@ -245,10 +245,10 @@ describe('FHIR Interoperability & Security Suite (0023_fhir_interoperability)', 
         expect(exportRes.bundle.type).toBe('document');
 
         // Check entries
-        const entries = exportRes.bundle.entry || [];
-        expect(entries.some((e: any) => e.resource?.resourceType === 'Composition')).toBe(true);
-        expect(entries.some((e: any) => e.resource?.resourceType === 'Patient')).toBe(true);
-        expect(entries.some((e: any) => e.resource?.resourceType === 'Provenance')).toBe(true);
+        const entries = Array.isArray(exportRes.bundle.entry) ? exportRes.bundle.entry : [];
+        expect(entries.some((e: { resource?: { resourceType?: string } }) => e.resource?.resourceType === 'Composition')).toBe(true);
+        expect(entries.some((e: { resource?: { resourceType?: string } }) => e.resource?.resourceType === 'Patient')).toBe(true);
+        expect(entries.some((e: { resource?: { resourceType?: string } }) => e.resource?.resourceType === 'Provenance')).toBe(true);
       });
     });
   });

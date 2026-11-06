@@ -22,7 +22,6 @@ export function ConnectedHome() {
   const totalDocs = records(state).length;
   const totalEvents = state.ledger.length;
   const totalQuestions = state.questions.length;
-  const futureAppts = (state.appointments ?? []).length || demoAppointments.length;
 
   const quickAccessCards: { label: string; countLabel: string; icon: IconName; href: Href; color: string }[] = [
     { label: t('records'), countLabel: `${totalDocs} records`, icon: 'records', href: '/(tabs)/records', color: c.cobalt },
@@ -78,7 +77,7 @@ export function ConnectedHome() {
               {state.locale === 'ta' && state.patientNameTa ? state.patientNameTa : state.patientName}
             </Copy>
             <Copy kind="label" style={{ color: c.ink, fontSize: 13 }}>
-              MRN: {state.mrn} · {state.connectedHospital?.name || 'Apollo Cancer Centre'}
+              MRN: {state.mrn || 'Unavailable'} · {state.connectedHospital?.name || 'Hospital unavailable'}
             </Copy>
             {state.diagnosis && (
               <Copy kind="meta">
@@ -130,8 +129,8 @@ export function ConnectedHome() {
                   })}
                 </Copy>
 
-                <Copy kind="body" style={{ fontWeight: '600' }}>{appt.clinicianName}</Copy>
-                <Copy kind="meta">{appt.department}</Copy>
+                <Copy kind="body" style={{ fontWeight: '600' }}>{appt.clinicianName || 'Clinician unavailable'}</Copy>
+                <Copy kind="meta">{appt.department || 'Location unavailable'}</Copy>
 
                 {appt.canConfirmAttendance && isScheduled && (
                   <Row>
@@ -174,12 +173,12 @@ export function ConnectedHome() {
             >
               <View style={{ flex: 1, gap: 2 }}>
                 <Copy kind="label" style={{ fontSize: 16 }}>
-                  {new Date(`${e.date}T12:00:00Z`).toLocaleDateString(state.locale === 'ta' ? 'ta-IN' : 'en-IN', {
+                  {e.date ? new Date(`${e.date}T12:00:00Z`).toLocaleDateString(state.locale === 'ta' ? 'ta-IN' : 'en-IN', {
                     month: 'long',
                     day: 'numeric',
                     year: 'numeric',
                     timeZone: 'UTC',
-                  })}
+                  }) : 'Date unavailable'}
                 </Copy>
                 <Copy kind="meta">{state.documents.find((d) => d.id === e.source.documentId)?.name}</Copy>
               </View>
@@ -372,7 +371,7 @@ export function ConnectedHome() {
           <LinkRow
             key={e.id}
             title={state.locale === 'ta' ? e.titleTa : e.title}
-            subtitle={e.date}
+            subtitle={e.date || 'Date unavailable'}
             href={{ pathname: '/record/[id]', params: { id: e.source.documentId } }}
           />
         ))}

@@ -7,6 +7,23 @@ import type {
   FhirTransactionResponse,
 } from '@oncobrief/ports';
 
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === 'object' && value !== null && !Array.isArray(value);
+}
+
+function isOperationOutcome(value: unknown): value is FhirOperationOutcome {
+  if (!isRecord(value) || value.resourceType !== 'OperationOutcome' || !Array.isArray(value.issue)) return false;
+  if (value.id !== undefined && typeof value.id !== 'string') return false;
+  return value.issue.every((issue: unknown) =>
+    isRecord(issue) &&
+    typeof issue.severity === 'string' &&
+    ['fatal', 'error', 'warning', 'information'].includes(issue.severity) &&
+    typeof issue.code === 'string' &&
+    (issue.diagnostics === undefined || typeof issue.diagnostics === 'string') &&
+    (issue.expression === undefined || (Array.isArray(issue.expression) && issue.expression.every((item: unknown) => typeof item === 'string')))
+  );
+}
+
 export class FhirHttpError extends Error {
   constructor(
     message: string,
@@ -195,7 +212,7 @@ export class HttpFhirClientAdapter implements FhirClientPort {
     return headers;
   }
 
-  private async executeWithRetry<T>(fn: () => Promise<Response>): Promise<Response> {
+  private async executeWithRetry(fn: () => Promise<Response>): Promise<Response> {
     let lastError: unknown;
     for (let attempt = 0; attempt <= this.maxRetries; attempt++) {
       try {
@@ -210,10 +227,10 @@ export class HttpFhirClientAdapter implements FhirClientPort {
           continue;
         }
         return response;
-      } catch (err: any) {
+      } catch (err: unknown) {
         lastError = err;
         // Don't retry aborts, SSRF errors, or non-transient network breaks if maxed
-        if (err?.message?.includes('[SSRF_PROTECTED]')) {
+        if (err instanceof Error && err.message.includes('[SSRF_PROTECTED]')) {
           throw err;
         }
         if (attempt < this.maxRetries) {
@@ -286,7 +303,7 @@ export class HttpFhirClientAdapter implements FhirClientPort {
     res: Response
   ): Promise<{ data: T; etag?: string; status: number; location?: string }> {
     const text = await res.text();
-    let json: any = null;
+    let json: unknown = null;
     if (text) {
       try {
         json = JSON.parse(text);
@@ -299,8 +316,8 @@ export class HttpFhirClientAdapter implements FhirClientPort {
       let operationOutcome: FhirOperationOutcome | undefined;
       let diagMessage = `FHIR HTTP ${res.status} ${res.statusText}`;
 
-      if (json && json.resourceType === 'OperationOutcome') {
-        operationOutcome = json as FhirOperationOutcome;
+      if (isOperationOutcome(json)) {
+        operationOutcome = json;
         const firstIssue = operationOutcome.issue?.[0];
         if (firstIssue?.diagnostics) {
           diagMessage = `${diagMessage}: ${firstIssue.diagnostics}`;
@@ -373,10 +390,11 @@ export class HttpFhirClientAdapter implements FhirClientPort {
       signal: AbortSignal.timeout(this.timeoutMs),
     });
     const result = await this.handleResponse<T>(res);
-    const dataAny = result.data as any;
-    const versionId = this.parseEtagVersion(result.etag) || dataAny?.meta?.versionId;
+    const data: Record<string, unknown> = isRecord(result.data) ? result.data : {};
+    const meta: Record<string, unknown> = isRecord(data.meta) ? data.meta : {};
+    const versionId = this.parseEtagVersion(result.etag) || (typeof meta.versionId === 'string' ? meta.versionId : undefined);
     return {
-      id: dataAny?.id || '',
+      id: (typeof data.id === 'string' ? data.id : ''),
       versionId,
       etag: result.etag,
       resource: result.data,
@@ -402,10 +420,11 @@ export class HttpFhirClientAdapter implements FhirClientPort {
       signal: AbortSignal.timeout(this.timeoutMs),
     });
     const result = await this.handleResponse<T>(res);
-    const dataAny = result.data as any;
-    const versionId = this.parseEtagVersion(result.etag) || dataAny?.meta?.versionId;
+    const data: Record<string, unknown> = isRecord(result.data) ? result.data : {};
+    const meta: Record<string, unknown> = isRecord(data.meta) ? data.meta : {};
+    const versionId = this.parseEtagVersion(result.etag) || (typeof meta.versionId === 'string' ? meta.versionId : undefined);
     return {
-      id: dataAny?.id || id,
+      id: (typeof data.id === 'string' ? data.id : id),
       versionId,
       etag: result.etag,
       resource: result.data,

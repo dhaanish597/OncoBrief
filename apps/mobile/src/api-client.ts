@@ -10,7 +10,7 @@ export interface PatientPortalSessionResponse {
   patient: {
     id: string;
     displayName: string;
-    mrn: string;
+    mrn: string | null;
     dateOfBirth?: string;
   };
   organization: {
@@ -28,13 +28,13 @@ export interface PatientPortalSnapshotResponse {
   patient: {
     id: string;
     displayName: string;
-    mrn: string;
+    mrn: string | null;
     dateOfBirth?: string;
     gender?: string;
     primaryPhone?: string;
-    stage?: string;
-    diagnosis?: string;
-    primaryLanguage?: string;
+    stage?: string | null;
+    diagnosis?: string | null;
+    primaryLanguage?: string | null;
   };
   summary: {
     diagnosis: string;
@@ -44,31 +44,45 @@ export interface PatientPortalSnapshotResponse {
   documents: {
     id: string;
     filename: string;
+    originalFilename?: string;
+    documentType?: string;
     documentDate: string | null;
     issuingFacility: string | null;
-    mimeType: string;
-    byteSize: number;
-    sha256Hex: string;
+    mimeType: string | null;
+    byteSize: number | null;
+    sha256Hex: string | null;
     clinicianStatus: string;
     patientReviewStatus: 'unreviewed' | 'confirmed_by_patient' | 'discrepancy_flagged';
-    recordOrigin: string;
+    recordOrigin: string | null;
   }[];
   timeline: {
     id: string;
     title: string;
-    date: string;
+    date: string | null;
     category: string;
     sourceDocumentId: string;
-    quote: string;
+    quote: string | null;
+    state?: string;
+    evidenceFactId?: string;
+    sourcePage?: number | null;
+    sourceSpanId?: string | null;
+    documentVersion?: number | null;
+    extractionMethod?: string | null;
+    extractorName?: string | null;
+    extractorVersion?: string | null;
+    extractedAt?: string | null;
+    reviewerId?: string | null;
+    reviewedAt?: string | null;
+    sourceDocumentName?: string | null;
   }[];
   appointments: {
     id: string;
     scheduledStart: string;
     scheduledEnd: string;
     status: string;
-    clinicianName: string;
-    department: string;
-    tokenNumber?: string;
+    clinicianName: string | null;
+    department: string | null;
+    tokenNumber?: string | null;
     estimatedWaitMinutes?: number;
     canConfirmAttendance: boolean;
   }[];
@@ -76,13 +90,14 @@ export interface PatientPortalSnapshotResponse {
     id: string;
     locale: string;
     body: string;
+    bodyRendered?: string;
     approvedAt: string;
   }[];
   preparation?: {
     questions?: { id: string; text: string; answered: boolean; at: string }[];
-    questionsJson?: any;
-    checksJson?: any;
-    checks?: any;
+    questionsJson?: { id?: string; text?: string; answered?: boolean; at?: string }[];
+    checksJson?: { id?: string; label?: string; title?: string; labelTa?: string; done?: boolean; enabled?: boolean; optional?: boolean }[];
+    checks?: { id?: string; label?: string; done?: boolean }[];
     symptomNotes?: string;
     companionName?: string;
     packSelectedDocumentIds?: string[];
@@ -109,13 +124,22 @@ export interface PatientPortalSnapshotResponse {
     category?: string;
     status: string;
     dueDate?: string;
-    dueOn?: string;
+    dueOn?: string | null;
     description?: string;
-    detail?: string;
+    detail?: string | null;
     priority?: string;
   }[];
   lastSyncedAt?: string;
 }
+
+export interface PreparationSyncPayload {
+  questions: { id: string; text: string; answered: boolean; at: string }[];
+  symptomNotes: string;
+  companionName: string;
+  packSelectedDocumentIds: string[];
+  checks?: { id: string; label: string; labelTa?: string; done: boolean; enabled: boolean; optional: boolean }[];
+}
+export interface PreparationSyncAction { type: 'preparation'; preparation: PreparationSyncPayload }
 
 export interface ApiClientOptions {
   baseUrl?: string;
@@ -211,7 +235,7 @@ export class PatientPortalApiClient {
     documentId: string,
     pageNumber: number,
   ): Promise<{ pageNumber: number; text: string; hasAttachment: boolean }> {
-    const res = await this.request<any>(`/api/v1/patient-portal/documents/${documentId}/pages/${pageNumber}`, {
+    const res = await this.request<{ page?: { pageNumber?: number; plainText?: string }; pageNumber?: number; text?: string; documentUrl?: string }>(`/api/v1/patient-portal/documents/${documentId}/pages/${pageNumber}`, {
       method: 'GET',
     });
     return {
@@ -258,12 +282,7 @@ export class PatientPortalApiClient {
   }
 
   // 4. Preparation API
-  async syncPreparation(params: {
-    questions: { id: string; text: string; answered: boolean; at: string }[];
-    symptomNotes: string;
-    companionName: string;
-    packSelectedDocumentIds: string[];
-  }): Promise<{ updated: boolean }> {
+  async syncPreparation(params: PreparationSyncPayload): Promise<{ updated: boolean }> {
     return this.request('/api/v1/patient-portal/preparation', {
       method: 'PUT',
       body: JSON.stringify(params),
@@ -358,7 +377,7 @@ export class PatientPortalApiClient {
 
   async createRequest(params: {
     title: string;
-    detail?: string;
+    detail?: string | null;
     category?: string;
   }): Promise<{ requestId: string; title: string; status: string; createdAt: string }> {
     return this.request('/api/v1/patient-portal/requests', {
@@ -370,7 +389,7 @@ export class PatientPortalApiClient {
   async createCoordinatorRequest(params: {
     title: string;
     description?: string;
-    detail?: string;
+    detail?: string | null;
     category?: string;
   }): Promise<{ id: string; title: string; category?: string; status: string; createdAt: string }> {
     const res = await this.createRequest({
@@ -441,13 +460,16 @@ export class PatientPortalApiClient {
       id?: string;
       reason?: string;
       params?: Record<string, unknown>;
+      preparation?: PreparationSyncPayload;
     };
     idempotencyKey?: string;
   }): Promise<unknown> {
-    const { action, idempotencyKey } = item;
-    const headers = idempotencyKey ? { 'X-Idempotency-Key': idempotencyKey } : {};
+    const { action } = item;
 
     switch (action.type) {
+      case 'preparation':
+        if (!action.preparation) throw new Error('Missing approved preparation payload');
+        return this.syncPreparation(action.preparation);
       case 'review':
         return this.reviewDocument(action.id!);
       case 'flag':
@@ -461,7 +483,7 @@ export class PatientPortalApiClient {
           action: 'confirm',
         });
       default:
-        return { ok: true };
+        throw new Error(`Unsupported queued mutation: ${action.type}`);
     }
   }
 }

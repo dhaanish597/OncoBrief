@@ -15,6 +15,7 @@ describe('MOB-012: ConnectedPatientRepository', () => {
 
   it('hydrates patient snapshot on successful sign-in', async () => {
     const mockClient = {
+      getToken: () => null,
       async createSession() {
         return {
           token: 'sess_test_123',
@@ -97,6 +98,7 @@ describe('MOB-012: ConnectedPatientRepository', () => {
 
   it('clears all sensitive patient data on signOut() (prevent cross-patient data bleed)', async () => {
     const mockClient = {
+      setToken: (_token: string | null) => {},
       async revokeSession() {
         return { ok: true };
       },

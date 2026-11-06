@@ -1,6 +1,7 @@
-import { beforeAll, describe, expect, it } from 'vitest';
+import { beforeAll, describe, expect, it, vi } from 'vitest';
+import * as db from '@oncobrief/db';
 import { setupFixtures, type Fixtures } from '@oncobrief/db/test-helpers';
-import { createPatientPortalSession } from '@oncobrief/db';
+import { createPatientPortalSession, withTenantClient } from '@oncobrief/db';
 import { PUT } from './route';
 
 let fx: Fixtures;
@@ -63,5 +64,77 @@ describe('MOB-009: Patient Preparation Sync API (/api/v1/patient-portal/preparat
     const body = await res.json();
     expect(body.success).toBe(true);
     expect(body.updatedAt).toBeTruthy();
+
+    // Check a fresh transaction: a response assembled before COMMIT cannot
+    // establish that preparation or its audit entry was actually persisted.
+    await withTenantClient(
+      { orgId: fx.org1, role: 'clinician', userId: fx.clinicians.clinician },
+      async (q) => {
+        const stored = await q.query<{
+          id: string;
+          questions_json: Array<{ id: string; text: string }>;
+          symptom_notes: string;
+        }>(
+          `SELECT id, questions_json, symptom_notes FROM patient_preparation_state
+           WHERE org_id = $1 AND patient_id = $2`,
+          [fx.org1, fx.patients.demo1],
+        );
+        expect(stored.rows).toHaveLength(1);
+        expect(stored.rows[0]).toMatchObject({
+          id: body.id,
+          questions_json: [{ id: 'q1', text: 'When should I report mild nausea to the clinic?' }],
+          symptom_notes: 'Slight loss of appetite on day 3',
+        });
+
+        const audit = await q.query<{
+          actor_user_id: string | null;
+          actor_role: string;
+          metadata_json: Record<string, unknown>;
+        }>(
+          `SELECT actor_user_id, actor_role, metadata_json FROM audit_event
+           WHERE org_id = $1 AND entity_kind = 'patient_preparation_state'
+             AND entity_id = $2 AND action = 'patient.updated'`,
+          [fx.org1, body.id],
+        );
+        expect(audit.rows).toHaveLength(1);
+        expect(audit.rows[0]).toMatchObject({
+          actor_user_id: null,
+          actor_role: 'patient',
+          metadata_json: {
+            patientId: fx.patients.demo1,
+            caregiverContactId: null,
+            checksCount: 2,
+            questionsCount: 1,
+          },
+        });
+      },
+    );
+  });
+
+  it('rolls back preparation and does not report success when audit writing fails', async () => {
+    const baseline = await PUT(reqPrep(patientToken, { symptomNotes: 'Original persisted notes' }));
+    expect(baseline.status).toBe(200);
+
+    const auditFailure = vi.spyOn(db, 'appendAuditEvent').mockRejectedValueOnce(new Error('audit unavailable'));
+    try {
+      await expect(PUT(reqPrep(patientToken, {
+        questions: [{ id: 'unsaved', text: 'Which documents should I bring?' }],
+        symptomNotes: 'This failed update must not persist',
+      }))).rejects.toThrow('audit unavailable');
+    } finally {
+      auditFailure.mockRestore();
+    }
+
+    await withTenantClient(
+      { orgId: fx.org1, role: 'clinician', userId: fx.clinicians.clinician },
+      async (q) => {
+        const stored = await q.query<{ symptom_notes: string }>(
+          `SELECT symptom_notes FROM patient_preparation_state
+           WHERE org_id = $1 AND patient_id = $2`,
+          [fx.org1, fx.patients.demo1],
+        );
+        expect(stored.rows[0]?.symptom_notes).toBe('Original persisted notes');
+      },
+    );
   });
 });

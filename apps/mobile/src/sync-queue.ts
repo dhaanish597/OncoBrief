@@ -1,9 +1,9 @@
 import { type Action } from './domain';
-import type { PatientPortalApiClient } from './api-client';
+import type { PatientPortalApiClient, PreparationSyncAction } from './api-client';
 
 export interface QueuedMutation {
   id: string;
-  action: Action;
+  action: Action | PreparationSyncAction;
   idempotencyKey: string;
   createdAt: string;
   status: 'pending' | 'in_flight' | 'failed' | 'completed';
@@ -14,8 +14,13 @@ export interface QueuedMutation {
 export class OfflineSyncQueue {
   private queue: QueuedMutation[] = [];
   private inFlight = false;
+  private activeFlush: Promise<{ processed: number; failed: number }> | null = null;
   onSessionExpired: (() => void) | null = null;
   onQueueChange: (() => void) | null = null;
+
+  async waitForIdle(): Promise<void> {
+    await this.activeFlush;
+  }
 
   size(): number {
     return this.queue.length;
@@ -25,7 +30,7 @@ export class OfflineSyncQueue {
     return [...this.queue];
   }
 
-  enqueue(action: Action, customKey?: string): QueuedMutation {
+  enqueue(action: Action | PreparationSyncAction, customKey?: string): QueuedMutation {
     const item: QueuedMutation = {
       id: `mut_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`,
       action,
@@ -45,7 +50,14 @@ export class OfflineSyncQueue {
     if (this.onQueueChange) this.onQueueChange();
   }
 
-  async flush(client: PatientPortalApiClient): Promise<{ processed: number; failed: number }> {
+  flush(client: PatientPortalApiClient): Promise<{ processed: number; failed: number }> {
+    if (!this.activeFlush) {
+      this.activeFlush = this.flushPending(client).finally(() => { this.activeFlush = null; });
+    }
+    return this.activeFlush;
+  }
+
+  private async flushPending(client: PatientPortalApiClient): Promise<{ processed: number; failed: number }> {
     if (this.inFlight) return { processed: 0, failed: 0 };
     this.inFlight = true;
 
@@ -60,7 +72,7 @@ export class OfflineSyncQueue {
 
         try {
           await client.executeMutation({
-            action: item.action as unknown as { type: string; id?: string; reason?: string },
+            action: item.action,
             idempotencyKey: item.idempotencyKey,
           });
 

@@ -590,6 +590,18 @@ export interface PatientPortalSnapshot {
     displayDate: string | null;
     state: string;
     documentId: string;
+    evidenceFactId: string;
+    verbatimQuote: string | null;
+    sourcePage: number | null;
+    sourceSpanId: string | null;
+    sourceDocumentName: string | null;
+    documentVersion: number | null;
+    extractionMethod: string | null;
+    extractorName: string | null;
+    extractorVersion: string | null;
+    extractedAt: string | null;
+    reviewerId: string | null;
+    reviewedAt: string | null;
   }>;
   documents: Array<{
     id: string;
@@ -724,29 +736,82 @@ export async function getPatientPortalSnapshot(
       }));
     }
 
-    // 4. Timeline
-    const tRes = await q.query<{
-      id: string;
-      fact_type: string;
-      value_text: string;
-      display_date: Date | null;
-      state: string;
-      document_id: string;
-    }>(
-      `SELECT te.id, te.fact_type, te.value_text, te.display_date, te.state, te.document_id
-       FROM timeline_event te
-       WHERE te.patient_id = $1 AND te.org_id = $2
-       ORDER BY te.display_date DESC NULLS LAST, te.updated_at DESC`,
-      [session.patientId, session.orgId],
-    );
-    const timeline = tRes.rows.map((r) => ({
-      id: r.id,
-      factType: r.fact_type,
-      valueText: r.value_text,
-      displayDate: r.display_date ? r.display_date.toISOString().split('T')[0]! : null,
-      state: r.state,
-      documentId: r.document_id,
-    }));
+    // 4. Timeline and its provenance require the same document-access scope.
+    let timeline: PatientPortalSnapshot['timeline'] = [];
+    if (session.grantedScopes.includes('documents')) {
+      const tRes = await q.query<{
+        id: string;
+        fact_type: string;
+        value_text: string;
+        display_date: Date | null;
+        state: string;
+        document_id: string;
+        evidence_fact_id: string;
+        verbatim_quote: string | null;
+        source_page: number | null;
+        source_span_id: string | null;
+        source_document_name: string | null;
+        document_version: number | null;
+        extraction_method: string | null;
+        extractor_name: string | null;
+        extractor_version: string | null;
+        extracted_at: Date | null;
+        reviewer_id: string | null;
+        reviewed_at: Date | null;
+      }>(
+        `SELECT te.id, te.fact_type, te.value_text, te.display_date, te.state, te.document_id,
+                te.evidence_fact_id, ef.verbatim_quote,
+                source_span.page_number AS source_page, source_span.id AS source_span_id,
+                d.original_filename AS source_document_name, d.doc_version AS document_version,
+                ef.extractor_kind AS extraction_method, ef.extractor_name, ef.extractor_version,
+                ef.created_at AS extracted_at,
+                CASE WHEN es.state IN ('verified', 'corrected') THEN es.last_actor_id END AS reviewer_id,
+                CASE WHEN es.state IN ('verified', 'corrected') THEN es.last_changed_at END AS reviewed_at
+         FROM timeline_event te
+         LEFT JOIN evidence_fact ef ON ef.id = te.evidence_fact_id
+           AND ef.org_id = te.org_id AND ef.patient_id = te.patient_id
+           AND ef.document_id = te.document_id
+         LEFT JOIN document d ON d.id = ef.document_id
+           AND d.org_id = te.org_id AND d.patient_id = te.patient_id
+         LEFT JOIN evidence_state es ON es.evidence_fact_id = ef.id
+           AND es.org_id = te.org_id AND es.patient_id = te.patient_id
+         LEFT JOIN LATERAL (
+           SELECT ts.id, dp.page_number
+           FROM evidence_span_link esl
+           JOIN text_span ts ON ts.id = esl.text_span_id AND ts.org_id = esl.org_id
+           JOIN document_page dp ON dp.id = ts.page_id AND dp.org_id = ts.org_id
+             AND dp.document_id = ts.document_id
+           WHERE esl.evidence_fact_id = ef.id AND esl.org_id = te.org_id
+             AND ts.document_id = ef.document_id
+           ORDER BY esl.ordinal, dp.page_number, ts.span_index, ts.id
+           LIMIT 1
+         ) source_span ON true
+         WHERE te.patient_id = $1 AND te.org_id = $2
+           AND te.state NOT IN ('rejected', 'superseded')
+         ORDER BY te.display_date DESC NULLS LAST, te.updated_at DESC`,
+        [session.patientId, session.orgId],
+      );
+      timeline = tRes.rows.map((r) => ({
+        id: r.id,
+        factType: r.fact_type,
+        valueText: r.value_text,
+        displayDate: r.display_date ? r.display_date.toISOString().split('T')[0]! : null,
+        state: r.state,
+        documentId: r.document_id,
+        evidenceFactId: r.evidence_fact_id,
+        verbatimQuote: r.verbatim_quote,
+        sourcePage: r.source_page,
+        sourceSpanId: r.source_span_id,
+        sourceDocumentName: r.source_document_name,
+        documentVersion: r.document_version,
+        extractionMethod: r.extraction_method,
+        extractorName: r.extractor_name,
+        extractorVersion: r.extractor_version,
+        extractedAt: r.extracted_at?.toISOString() ?? null,
+        reviewerId: r.reviewer_id,
+        reviewedAt: r.reviewed_at?.toISOString() ?? null,
+      }));
+    }
 
     // Derive stage/diagnosis from timeline if available
     let stage: string | null = null;

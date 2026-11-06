@@ -10,7 +10,6 @@ let fx: Fixtures;
 let demo1Token: string;
 let caregiverToken: string;
 let testCaregiverId: string;
-let activeCaregiverSessionToken: string;
 
 beforeAll(async () => {
   fx = await setupFixtures();
@@ -47,7 +46,6 @@ beforeAll(async () => {
     grantedScopes: ['appointments', 'reminders'],
   });
   caregiverToken = cgSess.token;
-  activeCaregiverSessionToken = cgSess.token;
 }, 120_000);
 
 describe('MOB-010: Patient Caregiver Consent & Management API (/api/v1/patient-portal/caregivers)', () => {
@@ -89,7 +87,6 @@ describe('MOB-010: Patient Caregiver Consent & Management API (/api/v1/patient-p
   });
 
   let createdCaregiverId: string;
-  let createdCaregiverToken: string;
 
   it('allows patient to register new caregiver with scopes (POST) (REQ-MOB-032)', async () => {
     const res = await POST(
@@ -116,7 +113,7 @@ describe('MOB-010: Patient Caregiver Consent & Management API (/api/v1/patient-p
       caregiverContactId: createdCaregiverId,
       grantedScopes: ['appointments'],
     });
-    createdCaregiverToken = newCgSess.token;
+    expect(newCgSess.token).toBeTruthy();
   });
 
   it('revoking caregiver invalidates active sessions in patient_portal_session (DELETE) (SEC-NEG-13)', async () => {

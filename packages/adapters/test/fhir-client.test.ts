@@ -170,7 +170,8 @@ describe('HttpFhirClientAdapter and SyntheticFhirServer', () => {
       try {
         await client.readResource('Observation', 'non-existent-id');
         expect.unreachable('Should have thrown 404');
-      } catch (err: any) {
+      } catch (err: unknown) {
+        if (!(err instanceof FhirHttpError)) throw err;
         expect(err).toBeInstanceOf(FhirHttpError);
         expect(err.statusCode).toBe(404);
         expect(err.operationOutcome?.resourceType).toBe('OperationOutcome');
@@ -300,7 +301,7 @@ describe('HttpFhirClientAdapter and SyntheticFhirServer', () => {
         baseUrl: 'https://allowed.hospital.org/fhir/r4',
         allowedHostnames: ['allowed.hospital.org'],
         fetchFn: async (input) => {
-          const urlStr = typeof input === 'string' ? input : (input as any).url;
+          const urlStr = typeof input === 'string' ? input : input instanceof URL ? input.toString() : input.url;
           if (urlStr.includes('/metadata')) {
             // Malicious 302 redirect pointing to AWS IMDS
             return new Response(null, {
@@ -321,7 +322,7 @@ describe('HttpFhirClientAdapter and SyntheticFhirServer', () => {
       const client = new HttpFhirClientAdapter({
         baseUrl: 'https://allowed.hospital.org/fhir/r4',
         allowedHostnames: ['allowed.hospital.org'],
-        fetchFn: async (input) => {
+        fetchFn: async (_input) => {
           return new Response(null, {
             status: 302,
             headers: { Location: 'https://evil-hacker.com/fhir/metadata' },
@@ -372,4 +373,28 @@ describe('HttpFhirClientAdapter and SyntheticFhirServer', () => {
       expect(interceptedAuth).toBe(`Basic ${expectedEncoded}`);
     });
   });
+});
+
+it('retains HTTP failure details when OperationOutcome has malformed issues', async () => {
+  const malformedOutcome = { resourceType: 'OperationOutcome', issue: [{ diagnostics: { unsafe: true } }] };
+  const client = new HttpFhirClientAdapter({
+    baseUrl: 'https://synthetic-his.hospital.local/fhir/r4',
+    maxRetries: 0,
+    fetchFn: async () => new Response(JSON.stringify(malformedOutcome), { status: 400 }),
+  });
+  await expect(client.readResource('Patient', 'synthetic')).rejects.toMatchObject({
+    statusCode: 400,
+    operationOutcome: undefined,
+    responseBody: JSON.stringify(malformedOutcome),
+  });
+});
+
+it('ignores non-string resource identity metadata in a successful response', async () => {
+  const client = new HttpFhirClientAdapter({
+    baseUrl: 'https://synthetic-his.hospital.local/fhir/r4',
+    fetchFn: async () => new Response(JSON.stringify({ id: 42, meta: { versionId: {} } }), { status: 201 }),
+  });
+  const created = await client.createResource('Patient', { resourceType: 'Patient' });
+  expect(created.id).toBe('');
+  expect(created.versionId).toBeUndefined();
 });

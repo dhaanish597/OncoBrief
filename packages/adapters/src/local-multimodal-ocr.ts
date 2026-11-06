@@ -723,7 +723,7 @@ export class LocalMultimodalOcrAdapter implements AsyncOcrPort, OcrPort {
           const cleaned = payload
             .replace(/^Exif\0\0/, '')
             .replace(/<[^>]+>/g, ' ')
-            .replace(/[\x00-\x08\x0B\x0C\x0E-\x1F\x7F]+/g, '\n');
+            .replace(/[^\t\n\r\x20-\x7E\u0080-\uFFFF]+/g, '\n');
           for (const l of cleaned.split(/\r?\n/)) {
             const trimmed = l.trim();
             if (trimmed.length >= 4 && /[A-Za-z0-9]{2,}/.test(trimmed)) {

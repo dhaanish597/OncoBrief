@@ -12,7 +12,7 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: { code: 'forbidden' } }, { status: 403 });
   }
 
-  let body: any;
+  let body: Partial<Parameters<typeof exportPatientFhirBundle>[1]>;
   try {
     body = await request.json();
   } catch {
@@ -23,11 +23,13 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: { code: 'missing_patient_id' } }, { status: 400 });
   }
 
+  const { patientId } = body;
+
   try {
     const result = await withTenant(tenantCtx(session), async (q) => {
       return exportPatientFhirBundle(q, {
         orgId: session.orgId,
-        patientId: body.patientId,
+        patientId,
         exportKind: body.exportKind ?? 'nrces_health_document',
         consentId: body.consentId,
         verifiedOnly: body.verifiedOnly !== false,
@@ -43,8 +45,8 @@ export async function POST(request: Request) {
         'Content-Type': 'application/fhir+json',
       },
     });
-  } catch (err: any) {
-    const msg = err?.message || String(err);
+  } catch (err: unknown) {
+    const msg = err instanceof Error ? err.message : String(err);
     const status = msg.includes('consent_not_granted') ? 403 : msg.includes('not_found') ? 404 : 400;
     return NextResponse.json(
       { error: { code: 'fhir_export_failed', message: msg } },

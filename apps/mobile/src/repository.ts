@@ -125,6 +125,8 @@ export class ConnectedPatientRepository {
   syncQueue: OfflineSyncQueue;
   error: 'read' | 'write' | 'network' | 'unauthorized' | null = null;
   ready = true;
+  private preparationCompanionName = '';
+  private sessionIdentity: string | null = null;
   onChange: () => void = () => {};
 
   constructor(options: { client?: PatientPortalApiClient } = {}) {
@@ -160,7 +162,21 @@ export class ConnectedPatientRepository {
     otp: string;
     actorRole?: 'patient' | 'caregiver';
   }): Promise<void> {
+    // Finish an existing request before createSession can replace the client's bearer token.
+    await this.syncQueue.waitForIdle();
+    const previousToken = this.client.getToken();
     const sess = await this.client.createSession(params);
+    const identity = JSON.stringify([sess.organization.id, sess.patient.id, sess.actorRole, sess.caregiverContactId ?? null]);
+    if (this.syncQueue.size() > 0 && identity !== this.sessionIdentity) {
+      try { await this.client.revokeSession(); } catch { /* Rejected replacement session cannot use the pending queue. */ }
+      this.client.setToken(previousToken);
+      this.isAuthenticated = false;
+      this.error = 'unauthorized';
+      this.onChange();
+      throw new Error('Pending hospital changes belong to another patient. Explicitly discard them before switching accounts.');
+    }
+    if (this.sessionIdentity !== identity) this.state = createEmptyConnectedState();
+    this.sessionIdentity = identity;
     this.sessionToken = sess.token;
     this.isAuthenticated = true;
     this.state.connectedHospital = sess.organization;
@@ -172,6 +188,7 @@ export class ConnectedPatientRepository {
   }
 
   async signOut(): Promise<void> {
+    await this.syncQueue.waitForIdle();
     try {
       await this.client.revokeSession();
     } catch {
@@ -180,6 +197,8 @@ export class ConnectedPatientRepository {
     this.sessionToken = null;
     this.isAuthenticated = false;
     this.syncQueue.clear();
+    this.sessionIdentity = null;
+    this.client.setToken(null);
     this.state = createEmptyConnectedState();
     if (typeof window !== 'undefined' && window.sessionStorage) {
       window.sessionStorage.removeItem('oncobrief_portal_token');
@@ -208,50 +227,60 @@ export class ConnectedPatientRepository {
   }
 
   hydrateSnapshot(snapshot: PatientPortalSnapshotResponse) {
-    const documents: DocumentRecord[] = (snapshot.documents ?? []).map((d: any) => ({
+    const hasPendingPreparation = this.syncQueue.peekAll().some((item) => item.action.type === 'preparation');
+    if (!hasPendingPreparation) this.preparationCompanionName = snapshot.preparation?.companionName ?? '';
+    const documents: DocumentRecord[] = (snapshot.documents ?? []).map((d) => ({
       id: d.id,
       name: d.filename ?? d.originalFilename ?? 'Document',
-      category: ((d.mimeType?.includes('pdf') || d.documentType?.includes('pathology')) ? 'pathology' : 'laboratory') as Category,
+      category: (d.documentType?.includes('pathology') ? 'pathology' : 'other') as Category,
       date: d.documentDate ?? '',
       facility: d.issuingFacility ?? '',
-      mimeType: d.mimeType ?? 'application/pdf',
-      size: d.byteSize ?? 0,
-      version: '1',
+      mimeType: d.mimeType,
+      size: d.byteSize,
+      version: null,
       extraction: 'unavailable',
       patientReviewed: d.patientReviewStatus === 'confirmed_by_patient',
       clinicianVerified: d.clinicianStatus === 'verified',
-      addedAt: d.documentDate ?? new Date().toISOString(),
+      addedAt: null,
     }));
 
-    const ledger: Evidence[] = (snapshot.timeline ?? []).map((t) => ({
+    const ledger: Evidence[] = (snapshot.timeline ?? []).filter((t) => t.state !== 'rejected' && t.state !== 'superseded').map((t) => ({
       id: t.id,
       kind: 'document',
       title: t.title,
       titleTa: t.title,
-      date: t.date,
-      status: 'clinician-confirmed',
+      date: t.date ?? '',
+      status: t.state === 'verified' || t.state === 'corrected' ? 'clinician-confirmed' : t.state === 'conflicting' ? 'conflicting' : 'extracted',
       source: {
         documentId: t.sourceDocumentId,
-        page: 1,
-        quote: t.quote,
-        version: '1',
-        method: 'synthetic-fixture',
-        confidence: 'not-applicable',
+        page: t.sourcePage ?? null,
+        quote: t.quote ?? null,
+        version: typeof t.documentVersion === 'number' ? String(t.documentVersion) : null,
+        method: t.extractionMethod ?? null,
+        confidence: null,
+        evidenceFactId: t.evidenceFactId ?? null,
+        spanId: t.sourceSpanId ?? null,
+        extractorName: t.extractorName ?? null,
+        extractorVersion: t.extractorVersion ?? null,
+        extractedAt: t.extractedAt ?? null,
+        reviewer: t.reviewerId ?? null,
+        reviewedAt: t.reviewedAt ?? null,
+        documentName: t.sourceDocumentName ?? null,
       },
     }));
 
-    const continuityMessages = (snapshot.continuityMessages ?? []).map((m: any) => ({
+    const continuityMessages = (snapshot.continuityMessages ?? []).map((m) => ({
       id: m.id,
       locale: m.locale,
       body: m.body ?? m.bodyRendered ?? '',
       approvedAt: m.approvedAt,
     }));
 
-    const diagnosis = snapshot.summary?.diagnosis ?? (snapshot.patient as any)?.diagnosis ?? '';
-    const journeyStage = snapshot.summary?.journeyStage ?? (snapshot.patient as any)?.stage ?? '';
+    const diagnosis = snapshot.summary?.diagnosis ?? snapshot.patient?.diagnosis ?? '';
+    const journeyStage = snapshot.summary?.journeyStage ?? snapshot.patient?.stage ?? '';
 
     const checksFromJson = Array.isArray(snapshot.preparation?.checksJson)
-      ? (snapshot.preparation.checksJson as any[]).map((c, i) => ({
+      ? snapshot.preparation.checksJson.map((c, i) => ({
           id: c.id ?? `prep-c-${i}`,
           label: c.label ?? c.title ?? 'Preparation item',
           labelTa: c.labelTa,
@@ -268,8 +297,8 @@ export class ConnectedPatientRepository {
       : defaultConnectedChecks();
 
     const questions = (
-      (snapshot.preparation?.questionsJson as any[]) ??
-      (snapshot.preparation?.questions as any[]) ??
+      snapshot.preparation?.questionsJson ??
+      snapshot.preparation?.questions ??
       this.state.questions ??
       []
     ).map((q, i) => ({
@@ -284,17 +313,17 @@ export class ConnectedPatientRepository {
       mode: 'connected',
       patientName: snapshot.patient.displayName,
       patientNameTa: snapshot.patient.displayName,
-      mrn: snapshot.patient.mrn,
+      mrn: snapshot.patient.mrn ?? '',
       diagnosis,
       diagnosisTa: diagnosis,
       journeyStage,
       journeyStageTa: journeyStage,
       documents,
       ledger,
-      checks,
-      questions,
-      notes: snapshot.preparation?.symptomNotes ?? this.state.notes ?? '',
-      packSelected: snapshot.preparation?.packSelectedDocumentIds ?? this.state.packSelected ?? [],
+      checks: hasPendingPreparation ? this.state.checks : checks,
+      questions: hasPendingPreparation ? this.state.questions : questions,
+      notes: hasPendingPreparation ? this.state.notes : snapshot.preparation?.symptomNotes ?? this.state.notes ?? '',
+      packSelected: hasPendingPreparation ? this.state.packSelected : snapshot.preparation?.packSelectedDocumentIds ?? this.state.packSelected ?? [],
       appointments: snapshot.appointments ?? [],
       continuityMessages,
       tasks: (snapshot.tasks ?? []).map((t) => ({
@@ -302,8 +331,8 @@ export class ConnectedPatientRepository {
         title: t.title,
         category: t.category ?? 'record_gap',
         status: t.status,
-        dueDate: t.dueDate ?? t.dueOn,
-        description: t.description ?? t.detail,
+        dueDate: t.dueDate ?? t.dueOn ?? undefined,
+        description: t.description ?? t.detail ?? undefined,
       })),
       caregivers: snapshot.caregivers ?? [],
       shareGrants: snapshot.shareGrants ?? [],
@@ -317,21 +346,36 @@ export class ConnectedPatientRepository {
     // 1. Optimistic local state update via canonical domain reducer
     this.state = reduce(this.state, action);
 
-    // 2. Enqueue mutation
-    this.syncQueue.enqueue(action);
+    // Only explicit server saves enter the queue; local drafts and display preferences stay local.
+    if (['question', 'editQuestion', 'removeQuestion', 'answer', 'notes', 'check', 'enableCheck', 'addCheck', 'selectPack'].includes(action.type)) {
+      this.syncQueue.enqueue({ type: 'preparation', preparation: {
+        questions: this.state.questions,
+        symptomNotes: this.state.notes,
+        companionName: this.preparationCompanionName,
+        packSelectedDocumentIds: this.state.packSelected,
+        checks: this.state.checks,
+      } });
+    } else if (action.type === 'review' || action.type === 'flag') {
+      this.syncQueue.enqueue(action);
+    } else {
+      this.onChange();
+      return;
+    }
     this.state.pendingSyncCount = this.syncQueue.size();
     this.onChange();
 
     // 3. Attempt async flush if online
-    void this.syncQueue.flush(this.client).catch(() => {});
+    void this.flush().catch(() => {});
   }
 
   async flush() {
+    if (this.error === 'unauthorized') return;
     await this.syncQueue.flush(this.client);
   }
 
   async retry() {
-    await this.syncQueue.flush(this.client);
+    await this.flush();
+    if (this.syncQueue.size() > 0) return;
     if (this.isAuthenticated) {
       await this.refreshSnapshot();
     }

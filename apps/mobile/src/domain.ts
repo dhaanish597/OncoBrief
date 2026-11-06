@@ -7,15 +7,15 @@ export type Category = 'laboratory' | 'pathology' | 'imaging' | 'referral' | 'pr
 export type EvidenceStatus = 'extracted' | 'clinician-confirmed' | 'conflicting';
 export interface DocumentRecord {
   id: string; name: string; category: Category; date: string; facility: string;
-  mimeType: string; size: number; uri?: string; originalText?: string;
-  version: string; extraction: 'fixture' | 'unavailable'; patientReviewed: boolean;
-  clinicianVerified: boolean; addedAt: string;
+  mimeType: string | null; size: number | null; uri?: string; originalText?: string;
+  version: string | null; extraction: 'fixture' | 'unavailable'; patientReviewed: boolean;
+  clinicianVerified: boolean; addedAt: string | null;
 }
 export interface Evidence {
   id: string; kind: 'document' | 'appointment' | 'note'; title: string; titleTa: string;
   date: string; status: EvidenceStatus;
   observation?: { test: 'haemoglobin'; value:number; unit:'g/dL'; referenceLow:number; referenceHigh:number };
-  source: { documentId: string; page: number; quote: string; version: string; method: 'synthetic-fixture'; confidence: 'not-applicable'; reviewer?: string; reviewedAt?: string };
+  source: { documentId: string; page: number | null; quote: string | null; version: string | null; method: string | null; confidence: 'not-applicable' | null; reviewer?: string | null; reviewedAt?: string | null; evidenceFactId?: string | null; spanId?: string | null; extractorName?: string | null; extractorVersion?: string | null; extractedAt?: string | null; documentName?: string | null };
 }
 export interface Check { id: string; label: string; labelTa?: string; done: boolean; enabled: boolean; optional: boolean }
 export interface Grant { id: string; recipient: string; purpose: string; ids: string[]; expiresAt: string; revokedAt?: string; simulated: true; createdAt: string }
@@ -51,9 +51,9 @@ export interface State {
     scheduledStart: string;
     scheduledEnd: string;
     status: string;
-    clinicianName: string;
-    department: string;
-    tokenNumber?: string;
+    clinicianName: string | null;
+    department: string | null;
+    tokenNumber?: string | null;
     estimatedWaitMinutes?: number;
     canConfirmAttendance: boolean;
   }[];
@@ -82,6 +82,8 @@ export interface State {
   shareGrants?: {
     id: string;
     recipientLabel: string;
+    granteeLabel?: string;
+    documentIds?: string[];
     expiresAt: string;
     sharedDocumentIds: string[];
     isRevoked: boolean;
@@ -167,7 +169,7 @@ export function readiness(s: State) {
   const checks = s.checks.filter(c => c.enabled && !c.optional);
   return { done: checks.filter(c => c.done).length, total: checks.length };
 }
-export function validateFile(f: { name: string; mimeType?: string; size?: number }): string | null {
+export function validateFile(f: { name: string; mimeType?: string | null; size?: number | null }): string | null {
   if (!f.size || f.size < 1 || f.size > 25 * 1024 * 1024) return 'size';
   const types: Record<string, RegExp> = { 'application/pdf': /\.pdf$/i, 'image/jpeg': /\.jpe?g$/i, 'image/png': /\.png$/i };
   return f.mimeType && types[f.mimeType]?.test(f.name) ? null : 'type';
@@ -311,12 +313,12 @@ export function verifyAuditChain(audit: AuditItem[]): boolean {
 export function buildPacket(s: State, ids: string[], approved: boolean): string {
   if (!approved) throw new Error('approval_required'); owned(s, ids);
   if (s.locale==='ta') return ['ONCOBRIEF — SYNTHETIC · கற்பனை சந்திப்புத் தொகுப்பு',translate('ta','packetInfo'),
-    ...s.documents.filter(d => ids.includes(d.id)).map(d => `${d.name} | ${d.date} | ${d.facility} | ${d.version}\n${translate('ta',d.patientReviewed ? 'patientReviewed' : 'notReviewed')} · ${translate('ta',d.clinicianVerified ? 'confirmed' : 'extracted')}`),
-    translate('ta','source'),...s.ledger.filter(e => ids.includes(e.source.documentId)).map(e => `${e.date}: ${e.titleTa} [${translate('ta',e.status==='conflicting' ? 'conflicting' : e.status==='clinician-confirmed' ? 'confirmed' : 'extracted')}]\n${translate('ta','source')} ${e.source.documentId}, ${translate('ta','page')} ${e.source.page}, ${e.source.version}: "${e.source.quote}"`),
+    ...s.documents.filter(d => ids.includes(d.id)).map(d => `${d.name} | ${d.date} | ${d.facility} | ${d.version ?? 'Unavailable'}\n${translate('ta',d.patientReviewed ? 'patientReviewed' : 'notReviewed')} · ${translate('ta',d.clinicianVerified ? 'confirmed' : 'extracted')}`),
+    translate('ta','source'),...s.ledger.filter(e => ids.includes(e.source.documentId)).map(e => `${e.date}: ${e.titleTa} [${translate('ta',e.status==='conflicting' ? 'conflicting' : e.status==='clinician-confirmed' ? 'confirmed' : 'extracted')}]\n${translate('ta','source')} ${e.source.documentId}, ${translate('ta','page')} ${e.source.page ?? 'Unavailable'}, ${e.source.version ?? 'Unavailable'}: "${e.source.quote ?? 'Source text unavailable'}"`),
     translate('ta','questions'),...s.questions.filter(q => !q.answered).map(q => q.text),translate('ta','notes'),s.notes,translate('ta','checklist'),...s.missing.map(m => `${m.text}: ${translate('ta',m.status)} (${translate('ta','missingInfo')})`) ].join('\n\n');
   return ['ONCOBRIEF — SYNTHETIC CONSULTATION PACK', 'Personal preparation only. No clinical sign-off. No original file attachments.',
-    ...s.documents.filter(d => ids.includes(d.id)).map(d => `${d.name} | ${d.date} | ${d.facility} | ${d.version}\nPatient reviewed: ${d.patientReviewed}; clinician confirmed (fixture): ${d.clinicianVerified}`),
-    'SOURCE-LINKED FACTS AND UNCERTAINTIES', ...s.ledger.filter(e => ids.includes(e.source.documentId)).map(e => `${e.date}: ${e.title} [${e.status}]\nSource ${e.source.documentId}, page ${e.source.page}, ${e.source.version}: "${e.source.quote}"`),
+    ...s.documents.filter(d => ids.includes(d.id)).map(d => `${d.name} | ${d.date} | ${d.facility} | ${d.version ?? 'Unavailable'}\nPatient reviewed: ${d.patientReviewed}; clinician confirmed (fixture): ${d.clinicianVerified}`),
+    'SOURCE-LINKED FACTS AND UNCERTAINTIES', ...s.ledger.filter(e => ids.includes(e.source.documentId)).map(e => `${e.date}: ${e.title} [${e.status}]\nSource ${e.source.documentId}, page ${e.source.page ?? 'Unavailable'}, ${e.source.version ?? 'Unavailable'}: "${e.source.quote ?? 'Source text unavailable'}"`),
     'MY QUESTIONS', ...s.questions.filter(q => !q.answered).map(q => q.text), 'MY NOTES', s.notes, 'MY RECORD CHECKLIST', ...s.missing.map(m => `${m.text}: ${m.status} (patient-maintained)`) ].join('\n\n');
 }
 export function hydrate(raw: string): State {
@@ -349,7 +351,7 @@ export function hydrate(raw: string): State {
   const string=(v:unknown):v is string => typeof v==='string';
   const date=(v:unknown) => string(v) && Number.isFinite(Date.parse(v));
   for (const list of [s.documents,s.checks,s.questions,s.grants,s.observations,s.missing,s.flags,s.audit]) if (list.some(v => !v || !string(v.id)) || new Set(list.map(v => v.id)).size!==list.length) throw new Error('invalid_storage');
-  if (s.documents.some(d => !string(d.facility) || !string(d.mimeType) || !Number.isFinite(d.size) || d.size<1 || !string(d.version) || !date(d.addedAt)) || s.checks.some(c => typeof c.optional!=='boolean' || (c.labelTa!==undefined && !string(c.labelTa))) || s.questions.some(q => typeof q.answered!=='boolean' || !date(q.at)) || s.missing.some(m => !string(m.note) || (m.documentId!==undefined && !s.documents.some(d => d.id===m.documentId))) || s.observations.some(o => !date(o.at)) || s.flags.some(f => !date(f.at)) || s.audit.some(e => !string(e.entityId) || !date(e.at))) throw new Error('invalid_storage');
+  if (s.documents.some(d => !string(d.facility) || !string(d.mimeType) || !Number.isFinite(d.size) || d.size===null || d.size<1 || !string(d.version) || !date(d.addedAt)) || s.checks.some(c => typeof c.optional!=='boolean' || (c.labelTa!==undefined && !string(c.labelTa))) || s.questions.some(q => typeof q.answered!=='boolean' || !date(q.at)) || s.missing.some(m => !string(m.note) || (m.documentId!==undefined && !s.documents.some(d => d.id===m.documentId))) || s.observations.some(o => !date(o.at)) || s.flags.some(f => !date(f.at)) || s.audit.some(e => !string(e.entityId) || !date(e.at))) throw new Error('invalid_storage');
   if (!s.drafts || Object.keys(fixture.drafts).some(key => !string(s.drafts[key as DraftKey]) || s.drafts[key as DraftKey].length>5000)) throw new Error('invalid_storage');
   return s;
 }

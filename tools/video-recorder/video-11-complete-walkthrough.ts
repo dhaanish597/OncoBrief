@@ -2,7 +2,6 @@ import { type Page } from '../../apps/web/node_modules/@playwright/test';
 import { recordScenario, type VideoMetadata, type RecorderHelper } from './engine';
 import { seed } from '../../packages/db/src/seed';
 import { getMigratorPool } from '../../packages/db/src/client';
-import { execSync } from 'node:child_process';
 import * as fs from 'node:fs';
 import * as path from 'node:path';
 
@@ -204,7 +203,7 @@ export async function recordVideo11(): Promise<VideoMetadata> {
         'Scene 9: FHIR R4 Ingestion & Authorized mCODE Oncology Export',
         'Ingesting FHIR DiagnosticReport with element pointers; exporting mCODE bundle'
       );
-      const fhirExportRes = await page.request.get(`/api/v1/fhir/export?patientId=${p3}`);
+      const _fhirExportRes = await page.request.get(`/api/v1/fhir/export?patientId=${p3}`);
       await helper.wait(1200);
 
       // Scene 10: Auditor Verification & Immutable Hash-Chain Audit Trail

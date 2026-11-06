@@ -1,9 +1,8 @@
 import React, { useState } from 'react';
 import { View, StyleSheet } from 'react-native';
 import { useRouter } from 'expo-router';
-import { Screen, Copy, Button, Panel, Field, Row, Badge, Chip } from '../src/ui';
+import { Screen, Copy, Button, Panel, Field, Row, Badge, Chip, Toggle } from '../src/ui';
 import { useStore } from '../src/store';
-import { theme as c } from '../src/theme';
 
 export default function Signin() {
   const { mode, isAuthenticated, state, signInConnected, signOutConnected, switchMode, t } = useStore();
@@ -13,6 +12,7 @@ export default function Signin() {
   const [identifier, setIdentifier] = useState('');
   const [otp, setOtp] = useState('');
   const [role, setRole] = useState<'patient' | 'caregiver'>('patient');
+  const [discardApproved, setDiscardApproved] = useState(false);
   const [loading, setLoading] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
 
@@ -98,6 +98,14 @@ export default function Signin() {
                 Sign in with your hospital-issued MRN and one-time password to access your real clinical records.
               </Copy>
             </Panel>
+
+            {(state.pendingSyncCount ?? 0) > 0 && (
+              <Panel tone="amber">
+                <Copy>Unsynced hospital changes remain attached to the previous patient. Sign in as the same patient to retry, or explicitly discard them before switching.</Copy>
+                <Toggle title="I approve discarding unsynced hospital changes" checked={discardApproved} onPress={() => setDiscardApproved(!discardApproved)} />
+                <Button title="Discard pending changes and sign out" disabled={!discardApproved || loading} onPress={handleSignOut} />
+              </Panel>
+            )}
 
             {errorMsg && (
               <Panel tone="amber">

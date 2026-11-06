@@ -222,9 +222,25 @@ describe('runAssistant — safety and navigation', () => {
 
   it('returns a useful error, not a fabrication, when the LLM fails', async () => {
     vi.mocked(chatCompletionWithRetry).mockRejectedValue(new NvidiaLlmError('upstream down', 503, true));
-    const result = await runAssistant(q, { message: 'What is the latest pathology report?', context: ctx });
+    const result = await runAssistant(q, { message: 'What is the latest pathology report?', context: { ...ctx, allowDeterministicFallbackOnError: false } });
     expect(result.answer.toLowerCase()).toContain('try again');
     expect(result.sources).toHaveLength(0);
+  });
+
+  it('keeps authorized missing-document answers available when the configured model is retired', async () => {
+    vi.mocked(chatCompletionWithRetry).mockRejectedValue(new NvidiaLlmError('model retired', 410, false));
+    vi.mocked(db.listRecordMap).mockResolvedValue({ gaps: [{
+      id: 'g1', label: 'Referral letter', requirementKind: 'required', status: 'missing',
+      rationale: 'Explicit administrative checklist item', requiredDocumentType: 'referral_letter',
+      satisfiedByDocumentId: null, candidateDocumentId: null,
+    }], origins: [], readiness: null });
+    const result = await runAssistant(q, { message: 'What documents are missing?', context: ctx });
+    expect(result.grounded).toBe(true);
+    expect(result.providerMode).toBe('deterministic');
+    expect(result.answer).toContain('Referral letter: missing');
+    expect(result.answer).toContain('[E1]');
+    expect(result.sources[0]?.href).toBe(`/patients/${PATIENT}/record-map`);
+    expect(result.answer).not.toContain('try again');
   });
 
   it('treats a document-borne prompt injection as data, not instructions', async () => {

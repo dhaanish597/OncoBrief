@@ -18,6 +18,11 @@ variable "nvidia_api_key" {
   sensitive = true
   default   = ""
 }
+variable "nvidia_model" {
+  type        = string
+  description = "Explicit hosted assistant model; revalidate availability before changing."
+  default     = "nvidia/nemotron-3.5-bolt-e4b"
+}
 locals {
   prefix    = "oncobrief-hackathon"
   ecs_trust = jsonencode({ Version = "2012-10-17", Statement = [{ Effect = "Allow", Principal = { Service = "ecs-tasks.amazonaws.com" }, Action = "sts:AssumeRole" }] })
@@ -175,6 +180,7 @@ resource "aws_ecs_task_definition" "app" {
       OCR_DRIVER                   = "auto"
       EXTRACTION_DRIVER            = "rule"
       AUTH_MODE                    = "session"
+      NVIDIA_MODEL                 = var.nvidia_model
       ABDM_DRIVER                  = "simulated"
       DELIVERY_DRIVER              = "simulated"
       SIMULATE_DELIVERY_ONLY       = "1"

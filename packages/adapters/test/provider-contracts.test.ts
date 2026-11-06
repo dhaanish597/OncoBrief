@@ -5,7 +5,6 @@ import {
   generateEphemeralKeyPair,
   generateAudibleFallbackWav,
   SarvamTranslationAdapter,
-  sarvamTts,
   SimulatedAbdmGatewayAdapter,
   WebhookDeliveryAdapter,
 } from '../src';

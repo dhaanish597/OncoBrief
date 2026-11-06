@@ -4,9 +4,7 @@ import {
   createDemo,
   createEmptyConnectedState,
   reduce,
-  readiness,
   type State,
-  type Check,
 } from '../src/domain';
 import { ConnectedPatientRepository } from '../src/repository';
 import { formatChecklistProgress } from '../src/patient-selectors';

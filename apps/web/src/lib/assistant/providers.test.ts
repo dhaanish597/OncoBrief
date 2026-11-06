@@ -30,6 +30,13 @@ afterEach(() => {
 });
 
 describe('NVIDIA LLM provider', () => {
+  it('uses a supported configured default rather than the retired vision model', async () => {
+    delete process.env.NVIDIA_MODEL;
+    const fetchMock = vi.fn<typeof fetch>(async (_input, _init) => new Response(JSON.stringify({ choices: [{ message: { content: 'OK' } }] }), { status: 200 }));
+    vi.stubGlobal('fetch', fetchMock);
+    await chatCompletion({ messages: [{ role: 'user', content: 'Synthetic test' }] });
+    expect(JSON.parse(fetchMock.mock.calls[0]![1]!.body as string).model).toBe('nvidia/nemotron-3.5-bolt-e4b');
+  });
   it('returns the completion content on success', async () => {
     vi.stubGlobal(
       'fetch',

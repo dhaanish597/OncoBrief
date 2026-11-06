@@ -1,17 +1,15 @@
-import { describe, it, beforeEach } from 'node:test';
+import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';
 import {
   encryptEnvelope,
   decryptEnvelope,
   generateEncryptionKey,
   type EncryptedEnvelopeV2,
-  sha256Hex,
 } from '../src/crypto-envelope';
 import {
   createDemo,
   stamp,
   verifyAuditChain,
-  type State,
   type AuditItem,
 } from '../src/domain';
 import {

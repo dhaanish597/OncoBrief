@@ -1,7 +1,6 @@
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { closePools, getAppPool, withTenant } from '../src/client';
 import {
-  deactivateFhirEndpoint,
   getFhirEndpoint,
   listFhirEndpoints,
   recordExchangeTransaction,
@@ -50,6 +49,7 @@ describe('TASK-07C.02: PostgreSQL 16 RLS Session-Variable & Interoperability Sec
     await withTenant({ orgId: f.org1, userId: f.clinicians.clinician, role: 'clinician' }, async (q) => {
       const ep = await getFhirEndpoint(q, f.org1, org1EndpointId);
       expect(ep).not.toBeNull();
+      if (!ep) throw new Error('Registered endpoint missing');
       expect(ep.name).toBe('Apollo Hospital HIS Test');
 
       const eps = await listFhirEndpoints(q, f.org1);

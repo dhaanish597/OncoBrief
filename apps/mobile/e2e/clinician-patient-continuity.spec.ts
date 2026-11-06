@@ -1,8 +1,9 @@
-import { test, expect, type Page } from '@playwright/test';
+import { test, expect } from '@playwright/test';
 import { Pool } from 'pg';
+import { requireFixtureDatabaseUrl } from './fixture-database';
 
 const pool = new Pool({
-  connectionString: process.env.DATABASE_URL || 'postgresql://postgres:postgres@127.0.0.1:5432/oncobrief',
+  connectionString: requireFixtureDatabaseUrl(process.env),
 });
 
 const ORG_ID = 'a0000000-0000-0000-0000-000000000001';
@@ -114,6 +115,8 @@ test.describe('MOB-021: 20-Step Clinician-to-Patient Connected Continuity Verifi
   });
 
   test('Complete 20-Step Clinician-to-Patient Connected Continuity Loop', async ({ page }) => {
+    test.setTimeout(180_000);
+    page.setDefaultTimeout(15_000);
     const pageErrors: string[] = [];
     page.on('pageerror', (err) => pageErrors.push(err.message));
 
@@ -123,7 +126,7 @@ test.describe('MOB-021: 20-Step Clinician-to-Patient Connected Continuity Verifi
       try {
         window.localStorage.clear();
         window.sessionStorage.clear();
-      } catch {}
+      } catch { /* Best-effort cleanup; preserve the original flow if unavailable. */ }
     });
 
     // Step 5: Patient launches mobile app, routes to /onboarding, toggles language to Tamil
@@ -132,8 +135,8 @@ test.describe('MOB-021: 20-Step Clinician-to-Patient Connected Continuity Verifi
     await expect(page.getByText('உங்கள் பராமரிப்புப் பயணம்,', { exact: false })).toBeVisible();
 
     // Tap onboarding action
-    await page.getByRole('button', { name: 'பராமரிப்பைப் பாருங்கள்', exact: true }).click();
-    await page.getByRole('button', { name: 'மாதிரிப் பணியிடத்தைத் திறக்கவும்', exact: true }).click();
+    await page.getByTestId('landing-demo-btn').filter({ visible: true }).click();
+    await page.getByRole('button', { name: 'மாதிரி நோயாளியைப் பாருங்கள்', exact: true }).click();
     await page.getByRole('tab', { name: 'பதிவுகள்', exact: true }).click();
     await expect(page.getByText('மருத்துவப் பதிவுகள்', { exact: true })).toBeVisible();
 
@@ -149,7 +152,7 @@ test.describe('MOB-021: 20-Step Clinician-to-Patient Connected Continuity Verifi
 
     // Step 7: Snapshot Hydration & Draft Exclusion
     // Mobile app transitions to (tabs) in connected mode
-    await expect(page.getByText('Apollo Specialty Hospital', { exact: false }).first()).toBeVisible({ timeout: 15000 });
+    await expect(page.getByText('Apollo Specialty Cancer Hospital (Chennai Demo)', { exact: false }).first()).toBeVisible({ timeout: 15000 });
     await expect(page.getByText('Stage IIA Breast Cancer — AC-T Cycle 3 of 4', { exact: false }).first()).toBeVisible();
 
     // Assert approved continuity message renders
@@ -160,7 +163,7 @@ test.describe('MOB-021: 20-Step Clinician-to-Patient Connected Continuity Verifi
     expect(pageContent).not.toContain('INTERNAL CLINICIAN DRAFT NOTE');
 
     // Step 8: Bilingual Voice TTS Playback
-    await page.getByRole('button', { name: 'Listen to Message', exact: true }).click();
+    await page.getByRole('button', { name: 'Listen to Message (English)', exact: true }).click();
     await expect(page.getByText('Speaking (Audio Active)', { exact: false })).toBeVisible({ timeout: 10000 });
 
     // Step 9: Appointment Attendance Confirmation
@@ -205,10 +208,10 @@ test.describe('MOB-021: 20-Step Clinician-to-Patient Connected Continuity Verifi
     await page.goto('/prepare');
     await page.getByRole('button', { name: 'Questions', exact: true }).click();
     await page.getByTestId('question-input').fill('Is ANC 1.9 safe for Cycle 3 chemotherapy?');
-    await page.getByRole('button', { name: 'Save question', exact: true }).click();
+    await page.getByRole('button', { name: 'Save a question for my next visit', exact: true }).click();
     // Attempt duplicate question
     await page.getByTestId('question-input').fill('Is ANC 1.9 safe for Cycle 3 chemotherapy?');
-    await page.getByRole('button', { name: 'Save question', exact: true }).click();
+    await page.getByRole('button', { name: 'Save a question for my next visit', exact: true }).click();
 
     // Exactly one instance of the question should exist
     const questionMatches = await page.getByText('Is ANC 1.9 safe for Cycle 3 chemotherapy?').count();
@@ -253,15 +256,28 @@ test.describe('MOB-021: 20-Step Clinician-to-Patient Connected Continuity Verifi
 
     // Step 18: Offline Mutation Queue & Reconnect Replay
     await page.goto('/prepare');
-    await page.context().setOffline(true);
     await page.getByRole('button', { name: 'Questions', exact: true }).click();
+    await expect(page.getByTestId('question-input')).toBeVisible();
+    await page.context().setOffline(true);
     await page.getByTestId('question-input').fill('Offline queued question: Will diet impact ANC count?');
-    await page.getByRole('button', { name: 'Save question', exact: true }).click();
-    await expect(page.getByText('Will diet impact ANC count?')).toBeVisible();
+    await page.getByRole('button', { name: 'Save a question for my next visit', exact: true }).click();
+    await expect(page.getByRole('checkbox', { name: 'Offline queued question: Will diet impact ANC count? · To discuss', exact: true })).toBeVisible();
 
-    // Re-enable network online
+    await expect(page.getByRole('button', { name: 'Retry sync', exact: true })).toBeVisible();
+
+    // Re-enable network and explicitly retry only the previously approved save
     await page.context().setOffline(false);
-    await page.waitForTimeout(500);
+    await page.getByRole('button', { name: 'Retry sync', exact: true }).click();
+    await expect.poll(async () => {
+      const result = await pool.query<{ questions_json: { text: string }[]; symptom_notes: string }>(
+        'SELECT questions_json, symptom_notes FROM patient_preparation_state WHERE patient_id = $1 AND org_id = $2',
+        [PATIENT_ID, ORG_ID],
+      );
+      return result.rows[0];
+    }).toMatchObject({
+      questions_json: expect.arrayContaining([expect.objectContaining({ text: 'Offline queued question: Will diet impact ANC count?' })]),
+      symptom_notes: 'Notes for Dr. Ramanathan: Mild tingling in fingers after cold water.',
+    });
 
     // Step 19: Clinician Backend Verification via PostgreSQL
     // 19a: Appointment attendance status confirmed
@@ -290,7 +306,7 @@ test.describe('MOB-021: 20-Step Clinician-to-Patient Connected Continuity Verifi
     await page.getByRole('button', { name: 'Erase my demo changes', exact: true }).click();
 
     // App returns to clean landing page
-    await expect(page.getByRole('button', { name: /Explore your care|பராமரிப்பைப் பாருங்கள்/i })).toBeVisible({ timeout: 10000 });
+    await expect(page.getByTestId('landing-demo-btn').filter({ visible: true })).toBeVisible({ timeout: 10000 });
 
     const unexpectedErrors = pageErrors.filter(
       (e) => !e.includes('Failed to fetch') && !e.includes('ERR_INTERNET_DISCONNECTED') && !e.includes('NetworkError'),

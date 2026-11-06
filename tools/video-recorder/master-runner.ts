@@ -164,7 +164,7 @@ const PHASE_DETAILS: Record<string, {
 function inspectExistingVideo(filename: string): VideoMetadata | null {
   const outputDir = path.resolve(process.cwd(), 'reports/visual-proof');
   const videoPath = path.resolve(outputDir, filename);
-  const framesDir = path.resolve(outputDir, 'frames');
+  const _framesDir = path.resolve(outputDir, 'frames');
 
   if (!fs.existsSync(videoPath)) return null;
   const sizeBytes = fs.statSync(videoPath).size;
@@ -318,13 +318,13 @@ Every video in this register was generated through headless Chromium browser int
 
 | # | Filename | Phase | Duration | Size | Resolution | Codec | Audio | SHA-256 | Status |
 |---|---|---|---|---|---|---|---|---|---|
-${items.map((item, idx) => `| ${idx + 1} | \`${item.filename}\` | ${item.phaseId} | ${item.durationSeconds}s | ${(item.sizeBytes / (1024 * 1024)).toFixed(2)} MB | ${item.width}×${item.height} | ${item.codec} | ${item.hasAudio ? 'Yes' : 'Silent'} | \`${item.sha256.slice(0, 16)}...\` | **VERIFIED** |`).join('\n')}
+${items.map((item) => `| ${idx + 1} | \`${item.filename}\` | ${item.phaseId} | ${item.durationSeconds}s | ${(item.sizeBytes / (1024 * 1024)).toFixed(2)} MB | ${item.width}×${item.height} | ${item.codec} | ${item.hasAudio ? 'Yes' : 'Silent'} | \`${item.sha256.slice(0, 16)}...\` | **VERIFIED** |`).join('\n')}
 
 ---
 
 ## 2. Phase-by-Phase Demonstration & Evidence Breakdown
 
-${items.map((item, idx) => `
+${items.map((item) => `
 ### Video ${String(idx + 1).padStart(2, '0')}: ${item.filename}
 - **Phase:** ${item.phaseId} — ${item.phaseName}
 - **Duration:** ${item.durationSeconds}s | **File Size:** ${(item.sizeBytes / (1024 * 1024)).toFixed(2)} MB
@@ -584,7 +584,7 @@ function generateDashboardHtml(items: ManifestItem[]): string {
     <!-- 10 Phase-Specific Videos Grid -->
     <h2 style="font-size: 20px; font-weight: 700; margin-bottom: 20px; color: #fff;">Phase-by-Phase Verification Proofs (Videos 01 – 10)</h2>
     <div class="grid">
-      ${items.filter(i => !i.filename.includes('complete_walkthrough')).map((item, idx) => `
+      ${items.filter(i => !i.filename.includes('complete_walkthrough')).map((item) => `
         <div class="card">
           <video class="card-video" controls preload="none" poster="${item.representativeFrames[0] ? item.representativeFrames[0] : ''}">
             <source src="${item.filename}" type="video/mp4">

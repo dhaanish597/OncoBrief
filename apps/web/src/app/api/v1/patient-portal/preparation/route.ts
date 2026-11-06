@@ -74,19 +74,23 @@ export async function PUT(request: Request) {
       packSelectedDocumentIds: Array.isArray(packSelectedDocumentIds) ? packSelectedDocumentIds : [],
     });
 
-    try {
-      await appendAuditEvent(q, {
-        orgId: session.orgId,
-        actor: { userId: session.caregiverContactId ?? session.patientId, role: session.actorRole },
-        action: 'patient.updated', // audit action
-        entityKind: 'patient_preparation_state',
-        entityId: updated.id,
-        outcome: 'success',
-        metadata: { checksCount: checks.length, questionsCount: questions.length },
-      });
-    } catch {
-      /* non-fatal */
-    }
+    // Patient and caregiver identities are not app_user foreign keys. Keep
+    // their authenticated identity in audit metadata and commit it atomically
+    // with preparation; an audit failure must roll back the update.
+    await appendAuditEvent(q, {
+      orgId: session.orgId,
+      actor: { userId: null, role: session.actorRole },
+      action: 'patient.updated',
+      entityKind: 'patient_preparation_state',
+      entityId: updated.id,
+      outcome: 'success',
+      metadata: {
+        patientId: session.patientId,
+        caregiverContactId: session.caregiverContactId,
+        checksCount: checks.length,
+        questionsCount: questions.length,
+      },
+    });
 
     return updated;
   });

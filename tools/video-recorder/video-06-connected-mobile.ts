@@ -10,7 +10,7 @@ export async function recordVideo06(): Promise<VideoMetadata> {
   const APPT_ID = 'd0000000-0000-0000-0000-000000000001';
   const MSG_APPROVED_ID = 'f0000000-0000-0000-0000-000000000001';
   const MSG_DRAFT_ID = 'f0000000-0000-0000-0000-000000000002';
-  const DOC_LAB_ID = '10000000-0000-0000-0000-000000000003';
+  const _DOC_LAB_ID = '10000000-0000-0000-0000-000000000003';
 
   // Seed clean connected mobile fixtures
   await pool.query('DELETE FROM patient_portal_session WHERE org_id = $1', [ORG_ID]);
@@ -78,7 +78,7 @@ export async function recordVideo06(): Promise<VideoMetadata> {
         try {
           window.localStorage.clear();
           window.sessionStorage.clear();
-        } catch {}
+        } catch { /* Optional mobile action may be unavailable in this fixture. */ }
       });
       await page.goto('http://127.0.0.1:8087/signin');
       await helper.setHud(

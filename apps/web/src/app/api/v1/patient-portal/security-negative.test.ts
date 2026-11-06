@@ -5,7 +5,6 @@ import {
   revokePatientPortalSession,
   withTenantClient,
   withPatientPortalContext,
-  getAppPool,
 } from '@oncobrief/db';
 import { GET as getSnapshot } from './snapshot/route';
 import { POST as postSession } from './session/route';
@@ -531,7 +530,17 @@ describe('MOB-020: Canonical 20 Security Negative Test Suite (SEC-NEG-01 .. SEC-
   });
 
   // SEC-NEG-16: Caregiver Data Redaction
-  it('SEC-NEG-16: caregiver with appointments-only scope receives appointments but redacted documents & preparation', async () => {
+  it('SEC-NEG-16: appointments-only caregiver cannot access documents, timeline provenance, or derived clinical details', async () => {
+    // Establish that the patient has source-backed data to redact, so an empty
+    // caregiver response cannot pass merely because the fixture has no records.
+    const patientResponse = await getSnapshot(new Request('http://localhost/api/v1/patient-portal/snapshot', {
+      headers: { Authorization: `Bearer ${patientAToken}` },
+    }));
+    expect(patientResponse.status).toBe(200);
+    const patientBody = await patientResponse.json();
+    expect(patientBody.documents.length).toBeGreaterThan(0);
+    expect(patientBody.timeline.length).toBeGreaterThan(0);
+
     const req = new Request('http://localhost/api/v1/patient-portal/snapshot', {
       method: 'GET',
       headers: { Authorization: `Bearer ${caregiverToken}` },
@@ -541,6 +550,13 @@ describe('MOB-020: Canonical 20 Security Negative Test Suite (SEC-NEG-01 .. SEC-
     const body = await res.json();
     expect(Array.isArray(body.appointments)).toBe(true);
     expect(body.documents).toEqual([]);
+    // Removing the entire timeline also excludes source quote, page, span,
+    // document identity/version, extractor, and reviewer metadata.
+    expect(body.timeline).toEqual([]);
+    expect(body.patient.diagnosis).toBeNull();
+    expect(body.patient.stage).toBeNull();
+    expect(body.summary.diagnosis).toBe('');
+    expect(body.summary.journeyStage).toBe('');
     expect(body.preparation).toBeNull();
   });
 

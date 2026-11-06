@@ -218,3 +218,18 @@ describe('TASK-07B.01: Bidirectional FHIR R4 Domain Mapping', () => {
     });
   });
 });
+
+it.each(['female', 'male', 'other', 'unknown', 'invalid', undefined])(
+  'exports only a supported administrative gender for %s', async (gender) => {
+    const { FhirExporter } = await import('../src');
+    const bundle = FhirExporter.exportPatientRecord({
+      patient: { id: 'synthetic-patient', name: 'Synthetic Patient', gender },
+      organization: { id: 'synthetic-org', name: 'Synthetic Facility' },
+      practitioner: { id: 'synthetic-user', name: 'Synthetic Reviewer' },
+      facts: [],
+    });
+    const entries = bundle.entry as Array<{ resource: Record<string, unknown> }>;
+    const patient = entries.find((entry) => entry.resource.resourceType === 'Patient')?.resource;
+    expect(patient?.gender).toBe(gender && ['male', 'female', 'other', 'unknown'].includes(gender) ? gender : 'unknown');
+  },
+);

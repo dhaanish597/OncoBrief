@@ -8,7 +8,6 @@ import { GET } from './route';
 
 let fx: Fixtures;
 let demo1Token: string;
-let demo2Token: string;
 let noDocsToken: string;
 let demo1DocId: string;
 let demo2DocId: string;
@@ -41,14 +40,6 @@ beforeAll(async () => {
     grantedScopes: ['documents'],
   });
   demo1Token = s1.token;
-
-  const s2 = await createPatientPortalSession({
-    orgId: fx.org1,
-    patientId: fx.patients.demo2,
-    actorRole: 'patient',
-    grantedScopes: ['documents'],
-  });
-  demo2Token = s2.token;
 
   const sNoDocs = await createPatientPortalSession({
     orgId: fx.org1,

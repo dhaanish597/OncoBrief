@@ -331,6 +331,12 @@ export function exportToFhirR4Bundle(input: FhirExportInput): FhirExportResult {
   };
 }
 
+function normalizeAdministrativeGender(gender: string | undefined): FhirExportInput['patient']['gender'] {
+  return gender === 'male' || gender === 'female' || gender === 'other' || gender === 'unknown'
+    ? gender
+    : 'unknown';
+}
+
 export const FhirExporter = {
   exportPatientRecord: (input: {
     patient: { id: string; name: string; identifier?: string; abhaAddress?: string; gender?: string; birthDate?: string };
@@ -345,7 +351,7 @@ export const FhirExporter = {
         name: input.patient.name,
         uhid: input.patient.identifier,
         abhaAddress: input.patient.abhaAddress,
-        gender: (input.patient.gender as any) || 'unknown',
+        gender: normalizeAdministrativeGender(input.patient.gender),
         birthDate: input.patient.birthDate,
       },
       organization: {

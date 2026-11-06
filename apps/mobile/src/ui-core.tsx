@@ -70,7 +70,7 @@ export function Screen({ children, title, intro, back = false }: { children: Rea
   const { t, ready, state, dispatch, storageError, retryStorage, flash } = useStore();
   const router = useRouter();
   const [keyboardHeight, setKeyboardHeight] = useState(0);
-  const scrollRef = useRef<any>(null);
+  const scrollRef = useRef<React.ComponentRef<typeof ScrollView>>(null);
 
   useEffect(() => {
     const showSub = Keyboard.addListener(
@@ -123,6 +123,12 @@ export function Screen({ children, title, intro, back = false }: { children: Rea
           }}
         >
           <View style={{ width: '100%', maxWidth: 620, gap: 16 }}>
+            {state.mode === 'connected' && (state.pendingSyncCount ?? 0) > 0 && (
+              <Panel tone="amber">
+                <Copy>{state.pendingSyncCount} hospital change(s) waiting to sync. Keep this session open until saved.</Copy>
+                <Button secondary title="Retry sync" onPress={() => void retryStorage().catch(() => { /* Pending changes remain available for another retry. */ })} />
+              </Panel>
+            )}
             {storageError && (
               <Panel tone="amber">
                 <Copy>{t('storageError')}</Copy>
@@ -145,7 +151,7 @@ export function Screen({ children, title, intro, back = false }: { children: Rea
   );
 }
 export function DocumentRow({ doc,selected,onSelect }:{ doc:DocumentRecord;selected?:boolean;onSelect?:()=>void }) {
-  const { t }=useStore();const router=useRouter();return <View style={{ gap:7,paddingVertical:12,borderBottomWidth:1,borderColor:c.line }}><Pressable accessibilityRole="button" accessibilityLabel={`${doc.name}, ${t(doc.category)}`} onPress={() => router.push({ pathname:'/record/[id]',params:{ id:doc.id } })} style={{ flexDirection:'row',alignItems:'center',gap:11,minHeight:56 }}><View style={{ backgroundColor:c.blue,padding:10,borderRadius:12 }}><Icon name="records" size={23}/></View><View style={{ flex:1,gap:4 }}><Copy kind="label">{doc.name}</Copy><Copy kind="meta">{doc.facility} · {doc.date || t('dateUnknown')}</Copy></View><Icon name="arrow" size={16}/></Pressable><Row><Badge text={t(doc.clinicianVerified ? 'confirmedShort' : doc.extraction==='unavailable' ? 'localShort' : 'extractedShort')} tone={doc.clinicianVerified ? 'blue' : 'amber'}/>{doc.patientReviewed && <Badge text={t('reviewedShort')} tone="sage"/>}</Row>{onSelect && <Toggle title={`${t(selected ? 'selected' : 'unselected')}: ${doc.name}`} checked={!!selected} onPress={onSelect}/>}</View>;
+  const { t }=useStore();const router=useRouter();return <View style={{ gap:7,paddingVertical:12,borderBottomWidth:1,borderColor:c.line }}><Pressable accessibilityRole="button" accessibilityLabel={`${doc.name}, ${t(doc.category)}`} onPress={() => router.push({ pathname:'/record/[id]',params:{ id:doc.id } })} style={{ flexDirection:'row',alignItems:'center',gap:11,minHeight:56 }}><View style={{ backgroundColor:c.blue,padding:10,borderRadius:12 }}><Icon name="records" size={23}/></View><View style={{ flex:1,gap:4 }}><Copy kind="label">{doc.name}</Copy><Copy kind="meta">{doc.facility || 'Facility unavailable'} · {doc.date || t('dateUnknown')}</Copy></View><Icon name="arrow" size={16}/></Pressable><Row><Badge text={t(doc.clinicianVerified ? 'confirmedShort' : doc.extraction==='unavailable' ? 'localShort' : 'extractedShort')} tone={doc.clinicianVerified ? 'blue' : 'amber'}/>{doc.patientReviewed && <Badge text={t('reviewedShort')} tone="sage"/>}</Row>{onSelect && <Toggle title={`${t(selected ? 'selected' : 'unselected')}: ${doc.name}`} checked={!!selected} onPress={onSelect}/>}</View>;
 }
 export function Empty({ title,detail }:{ title:string;detail?:string }) { return <View style={{ gap:10,paddingVertical:10 }}><NotebookArt/><Copy kind="title">{title}</Copy>{detail && <Copy>{detail}</Copy>}</View>; }
 export const styles=StyleSheet.create({

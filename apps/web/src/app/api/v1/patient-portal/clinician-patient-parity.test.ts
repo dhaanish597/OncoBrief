@@ -88,7 +88,7 @@ describe('M6.5 REM-010: Clinician Website ↔ Patient Mobile 20-Step Parity Veri
     // 7. Verify updated status reflects on subsequent snapshot
     const updatedSnapRes = await snapshotGet(snapReq);
     const updatedSnap = await updatedSnapRes.json();
-    const updatedAppt = updatedSnap.appointments.find((a: any) => a.id === appt.id);
+    const updatedAppt = updatedSnap.appointments.find((a: { id: string }) => a.id === appt.id);
     expect(updatedAppt.status).toBe('confirmed');
   });
 
@@ -120,7 +120,7 @@ describe('M6.5 REM-010: Clinician Website ↔ Patient Mobile 20-Step Parity Veri
     // 11. Website/Backend shows uploaded document with clinicianStatus 'unreviewed' / 'uploaded'
     const afterUploadRes = await snapshotGet(snapReq);
     const afterUpload = await afterUploadRes.json();
-    const uploadedDoc = afterUpload.documents.find((d: any) => d.id === uploadBody.documentId);
+    const uploadedDoc = afterUpload.documents.find((d: { id: string }) => d.id === uploadBody.documentId);
     expect(uploadedDoc).toBeTruthy();
     expect(uploadedDoc.originalFilename || uploadedDoc.filename).toBe('external_mammogram_report.pdf');
     expect(['received', 'uploaded']).toContain(uploadedDoc.clinicianStatus);
@@ -190,7 +190,7 @@ describe('M6.5 REM-010: Clinician Website ↔ Patient Mobile 20-Step Parity Veri
     const listRes = await caregiversGet(listReq);
     expect(listRes.status).toBe(200);
     const listBody = await listRes.json();
-    const active = listBody.caregivers.find((c: any) => c.id === caregiverId);
+    const active = listBody.caregivers.find((c: { id: string }) => c.id === caregiverId);
     expect(active).toBeTruthy();
     expect(active.isActive).toBe(true);
 
@@ -205,7 +205,7 @@ describe('M6.5 REM-010: Clinician Website ↔ Patient Mobile 20-Step Parity Veri
     // 19. Verify caregiver is inactive
     const afterDelRes = await caregiversGet(listReq);
     const afterDel = await afterDelRes.json();
-    const revoked = afterDel.caregivers.find((c: any) => c.id === caregiverId);
+    const revoked = afterDel.caregivers.find((c: { id: string }) => c.id === caregiverId);
     expect(revoked === undefined || revoked.isActive === false).toBe(true);
   });
 
@@ -219,7 +219,13 @@ describe('M6.5 REM-010: Clinician Website ↔ Patient Mobile 20-Step Parity Veri
     // Evidence ledger facts are intact and source-anchored
     expect(snap.timeline.length).toBeGreaterThan(0);
     for (const item of snap.timeline) {
-      expect(item.quote).toBeTruthy();
+      expect(item.evidenceFactId).toBeTruthy();
+      expect(item.sourceDocumentId).toBeTruthy();
+      expect(['rejected', 'superseded']).not.toContain(item.state);
+      if (item.quote !== null) {
+        expect(typeof item.quote).toBe('string');
+        expect(item.sourceSpanId).toBeTruthy();
+      }
     }
   });
 });

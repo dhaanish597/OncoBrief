@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { createDemo, reduce, readiness, records, timeline, type PersonaId } from '../src/domain';
+import { createDemo, reduce, readiness } from '../src/domain';
 
 test('createDemo("DEMO-001") returns Meenakshi Sundaram Breast Cancer oncology cohort (REQ-MOB-001)', () => {
   const s = createDemo('DEMO-001');

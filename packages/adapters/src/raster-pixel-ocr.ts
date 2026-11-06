@@ -505,7 +505,7 @@ export function recognizeGrayscaleBitmapLines(
 
     const cleanLine = lineText
       .replace(/\s+([:.)\]])/g, '$1')
-      .replace(/([(\[])\s+/g, '$1')
+      .replace(/([([])\s+/g, '$1')
       .replace(/\b(\d)\s+(\d)\b/g, '$1$2')
       .replace(/\b(\d)\s+(\d)\b/g, '$1$2')
       .replace(/(\d)\s*\.\s*(\d)/g, '$1.$2')

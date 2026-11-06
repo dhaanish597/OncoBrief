@@ -154,8 +154,8 @@ test.describe('Connected Interoperability & Security Suite (Scenarios A through 
 
     // Verify Composition and Provenance entries
     const entries = result.bundle.entry || [];
-    const hasComposition = entries.some((e: any) => e.resource?.resourceType === 'Composition');
-    const hasProvenance = entries.some((e: any) => e.resource?.resourceType === 'Provenance');
+    const hasComposition = entries.some((e: { resource?: { resourceType?: string } }) => e.resource?.resourceType === 'Composition');
+    const hasProvenance = entries.some((e: { resource?: { resourceType?: string } }) => e.resource?.resourceType === 'Provenance');
     expect(hasComposition).toBe(true);
     expect(hasProvenance).toBe(true);
   });
@@ -245,7 +245,7 @@ test.describe('Connected Interoperability & Security Suite (Scenarios A through 
     const listRes = await page.request.get('/api/v1/fhir/endpoints');
     expect(listRes.status()).toBe(200);
     const listJson = await listRes.json();
-    expect(listJson.endpoints.some((e: any) => e.id === endpointId)).toBe(true);
+    expect(listJson.endpoints.some((e: { id: string }) => e.id === endpointId)).toBe(true);
 
     // Cross-tenant fetch by random non-existent ID fails with 404
     const badRes = await page.request.get('/api/v1/fhir/endpoints/00000000-0000-0000-0000-000000000000');

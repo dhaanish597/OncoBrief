@@ -2,10 +2,10 @@
   "name": "oncobrief",
   "private": true,
   "version": "0.0.0",
-  "description": "OncoBrief — source-verified oncology record-readiness and care-continuity platform",
+  "description": "OncoBrief \u2014 source-verified oncology record-readiness and care-continuity platform",
   "packageManager": "pnpm@9.15.4",
   "engines": {
-    "node": ">=22"
+    "node": "^22.13.0 || ^24.3.0 || >=26.0.0"
   },
   "scripts": {
     "typecheck": "pnpm -r --no-bail typecheck",

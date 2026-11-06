@@ -1,4 +1,4 @@
-import { chromium, type Browser, type Page, type BrowserContext } from '../../apps/web/node_modules/@playwright/test';
+import { chromium, type Page } from '../../apps/web/node_modules/@playwright/test';
 import * as fs from 'node:fs';
 import * as path from 'node:path';
 import * as crypto from 'node:crypto';
@@ -259,7 +259,7 @@ export async function recordScenario(config: {
   console.log(`[RECORDER] Encoding to standard H.264 MP4 via FFmpeg...`);
 
   // Transcode to MP4
-  const tempMp4 = path.resolve(rawDir, `temp_${config.filename}`);
+  const _tempMp4 = path.resolve(rawDir, `temp_${config.filename}`);
   if (config.audioWavPath && fs.existsSync(config.audioWavPath)) {
     console.log(`[RECORDER] Muxing audio track from: ${config.audioWavPath}`);
     execSync(
@@ -276,7 +276,7 @@ export async function recordScenario(config: {
   // Remove raw webm
   try {
     fs.unlinkSync(rawVideo);
-  } catch {}
+  } catch { /* Best-effort cleanup; recording output is already retained. */ }
 
   // Inspect with ffprobe
   const ffprobeOutput = execSync(

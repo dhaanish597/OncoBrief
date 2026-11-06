@@ -20,7 +20,7 @@ export interface ImportValidationResult {
   date?: string;
 }
 
-export function validateImportCandidate(candidate: ImportCandidate, existingDocuments: { name: string; size: number; sha256?: string }[] = []): ImportValidationResult {
+export function validateImportCandidate(candidate: ImportCandidate, existingDocuments: { name: string; size: number | null; sha256?: string }[] = []): ImportValidationResult {
   const types: Record<string, RegExp> = { 'application/pdf': /\.pdf$/i, 'image/jpeg': /\.jpe?g$/i, 'image/png': /\.png$/i };
   if (!candidate.size || candidate.size < 1 || candidate.size > 25 * 1024 * 1024) {
     return { valid: false, error: 'invalid_size' };

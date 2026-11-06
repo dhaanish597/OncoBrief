@@ -4,7 +4,6 @@ import Svg, { Circle, Line, Path, Text as SvgText } from 'react-native-svg';
 import { useRouter } from 'expo-router';
 import { useStore } from './store';
 import { categories } from './i18n';
-import { readiness } from './domain';
 import { formatChecklistProgress } from './patient-selectors';
 import { Copy, Button, LinkRow, Panel } from './ui';
 import { theme as c } from './theme';

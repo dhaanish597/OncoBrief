@@ -21,10 +21,9 @@ export interface ChatCompletionResponse {
   };
 }
 
-// Default chosen from the live NVIDIA catalog for this account: reliably
-// available, clean instruction output and multilingual. Override with
-// NVIDIA_MODEL — the provider is fully env-driven.
-const DEFAULT_MODEL = 'meta/llama-3.2-11b-vision-instruct';
+// Revalidated against the hosted catalog on 2026-11-06 after the previous
+// vision model returned HTTP 410. Keep the deployment override explicit.
+const DEFAULT_MODEL = 'nvidia/nemotron-3.5-bolt-e4b';
 const DEFAULT_TEMPERATURE = 0.2;
 const DEFAULT_MAX_TOKENS = 2048;
 

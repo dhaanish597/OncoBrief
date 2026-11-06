@@ -1,4 +1,4 @@
-import type { Category, Check, DocumentRecord, Evidence, Locale } from './domain';
+import type { Check, DocumentRecord, Evidence } from './domain';
 
 export type PersonaId = 'DEMO-001' | 'DEMO-002' | 'DEMO-003';
 

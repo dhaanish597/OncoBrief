@@ -2,19 +2,21 @@ import { test, expect, type Page } from '@playwright/test';
 
 async function enterApp(page: Page) {
   await page.goto('/');
-  await page.getByRole('button', { name: 'Explore your care', exact: true }).click();
-  await page.getByRole('button', { name: 'Open my demo workspace', exact: true }).click();
+  await page.getByTestId('landing-demo-btn').filter({ visible: true }).click();
+  await expect(page.getByText('A space to make sense\nof the paperwork.', { exact: false })).toBeVisible();
+  await page.getByRole('button', { name: 'Explore a sample patient', exact: true }).click();
   await expect(page.getByText('Your care, connected.', { exact: true })).toBeVisible();
 }
 
 test.describe('OncoBrief Patient Mobile — Standalone E2E Suites', () => {
   test.beforeEach(async ({ page }) => {
+    page.setDefaultTimeout(15_000);
     // Ensure clean state per test
     await page.goto('/');
     await page.evaluate(() => {
       try {
         window.localStorage.clear();
-      } catch {}
+      } catch { /* Best-effort cleanup; preserve the original flow if unavailable. */ }
     });
   });
 
@@ -24,16 +26,16 @@ test.describe('OncoBrief Patient Mobile — Standalone E2E Suites', () => {
 
     // Navigating to '/' should show the landing screen with Explore button
     await page.goto('/');
-    await expect(page.getByRole('button', { name: 'Explore your care', exact: true })).toBeVisible();
-    await expect(page.getByRole('button', { name: 'About signing in', exact: true })).toBeVisible();
+    await expect(page.getByTestId('landing-demo-btn').filter({ visible: true })).toBeVisible();
+    await expect(page.getByTestId('landing-signin-btn')).toBeVisible();
 
-    // Clicking Explore your care navigates to /onboarding
-    await page.getByRole('button', { name: 'Explore your care', exact: true }).click();
+    // Exploring the sample patient navigates to /onboarding
+    await page.getByTestId('landing-demo-btn').filter({ visible: true }).click();
     await expect(page.getByText('A space to make sense\nof the paperwork.', { exact: false })).toBeVisible();
-    await expect(page.getByRole('button', { name: 'Open my demo workspace', exact: true })).toBeVisible();
+    await expect(page.getByRole('button', { name: 'Explore a sample patient', exact: true })).toBeVisible();
 
     // Accepting consent navigates to /(tabs)
-    await page.getByRole('button', { name: 'Open my demo workspace', exact: true }).click();
+    await page.getByRole('button', { name: 'Explore a sample patient', exact: true }).click();
     await expect(page.getByText('Your care, connected.', { exact: true })).toBeVisible();
 
     // Verify main tabs render cleanly
@@ -60,8 +62,8 @@ test.describe('OncoBrief Patient Mobile — Standalone E2E Suites', () => {
     await expect(page.getByText('உங்கள் பராமரிப்புப் பயணம்,', { exact: false })).toBeVisible();
 
     // Onboarding in Tamil
-    await page.getByRole('button', { name: 'பராமரிப்பைப் பாருங்கள்', exact: true }).click();
-    await page.getByRole('button', { name: 'மாதிரிப் பணியிடத்தைத் திறக்கவும்', exact: true }).click();
+    await page.getByTestId('landing-demo-btn').filter({ visible: true }).click();
+    await page.getByRole('button', { name: 'மாதிரி நோயாளியைப் பாருங்கள்', exact: true }).click();
 
     // Verify Tamil tab headers and labels render without Cyrillic Mojibake
     await page.getByRole('tab', { name: 'பதிவுகள்', exact: true }).click();
@@ -79,7 +81,8 @@ test.describe('OncoBrief Patient Mobile — Standalone E2E Suites', () => {
     await enterApp(page);
 
     // DEMO-001 Meenakshi Sundaram stage ribbon & diagnosis
-    await expect(page.getByText('Meenakshi Sundaram · SUN-448120', { exact: false })).toBeVisible();
+    await expect(page.getByText('Meenakshi Sundaram', { exact: true })).toBeVisible();
+    await expect(page.getByText('MRN: SUN-448120', { exact: false })).toBeVisible();
     await expect(page.getByText('AC-T Chemotherapy (Cycle 3 of 4) · Adjuvant', { exact: false })).toBeVisible();
     await expect(page.getByText('Stage IIA (cT2N0M0) Invasive Ductal Carcinoma', { exact: false })).toBeVisible();
   });
@@ -88,7 +91,7 @@ test.describe('OncoBrief Patient Mobile — Standalone E2E Suites', () => {
     await enterApp(page);
 
     // Open lab results
-    await page.getByRole('button', { name: 'Lab results', exact: true }).click();
+    await page.getByRole('button', { name: /^Lab results, / }).click();
     await expect(page.getByText('Lab results', { exact: true })).toBeVisible();
 
     // Inspect Haemoglobin observations (target active card on labs screen)
@@ -114,8 +117,8 @@ test.describe('OncoBrief Patient Mobile — Standalone E2E Suites', () => {
 
     // Add a personal question
     await page.getByTestId('question-input').fill('What precautions should I take if temperature reaches 100.4F?');
-    await page.getByRole('button', { name: 'Save question', exact: true }).click();
-    await expect(page.getByRole('checkbox', { name: /temperature reaches 100.4F/ })).toBeVisible();
+    await page.getByRole('button', { name: 'Save a question for my next visit', exact: true }).click();
+    await expect(page.getByRole('checkbox', { name: 'What precautions should I take if temperature reaches 100.4F? · To discuss', exact: true })).toBeVisible();
 
     // Write personal symptom notes
     await page.getByLabel('Personal notes', { exact: true }).fill('Experiencing mild fatigue on day 3');
@@ -200,6 +203,6 @@ test.describe('OncoBrief Patient Mobile — Standalone E2E Suites', () => {
     await page.getByRole('button', { name: 'Erase my demo changes', exact: true }).click();
 
     // Should return to clean landing screen
-    await expect(page.getByRole('button', { name: 'Explore your care', exact: true })).toBeVisible();
+    await expect(page.getByTestId('landing-demo-btn').filter({ visible: true })).toBeVisible();
   });
 });

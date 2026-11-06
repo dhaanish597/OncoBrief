@@ -25,7 +25,7 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: { code: 'forbidden' } }, { status: 403 });
   }
 
-  let body: any;
+  let body: Partial<Parameters<typeof registerFhirEndpoint>[1]>;
   try {
     body = await request.json();
   } catch {
@@ -36,12 +36,14 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: { code: 'missing_required_fields' } }, { status: 400 });
   }
 
+  const { name, baseUrl } = body;
+
   try {
     const result = await withTenant(tenantCtx(session), async (q) => {
       return registerFhirEndpoint(q, {
         orgId: session.orgId,
-        name: body.name,
-        baseUrl: body.baseUrl,
+        name,
+        baseUrl,
         authKind: body.authKind ?? 'none',
         authConfig: body.authConfig,
         allowedOperations: body.allowedOperations,
@@ -50,9 +52,9 @@ export async function POST(request: Request) {
     });
 
     return NextResponse.json(result, { status: 201 });
-  } catch (err: any) {
+  } catch (err: unknown) {
     return NextResponse.json(
-      { error: { code: 'registration_failed', message: err?.message || String(err) } },
+      { error: { code: 'registration_failed', message: err instanceof Error ? err.message : String(err) } },
       { status: 400 }
     );
   }

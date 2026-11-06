@@ -18,7 +18,7 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: { code: 'forbidden' } }, { status: 403 });
   }
 
-  let body: any;
+  let body: Partial<Parameters<typeof importExternalFhirBundle>[2]>;
   try {
     body = await request.json();
   } catch {
@@ -32,6 +32,8 @@ export async function POST(request: Request) {
     );
   }
 
+  const { patientId, bundleJson } = body;
+
   try {
     const deps = {
       storage: getStorage(),
@@ -42,9 +44,9 @@ export async function POST(request: Request) {
     const result = await withTenant(tenantCtx(session), async (q) => {
       return importExternalFhirBundle(q, deps, {
         orgId: session.orgId,
-        patientId: body.patientId,
+        patientId,
         endpointId: body.endpointId,
-        bundleJson: body.bundleJson,
+        bundleJson,
         defaultOriginFacility: body.defaultOriginFacility,
         idempotencyKey: body.idempotencyKey,
         userId: session.userId,
@@ -53,9 +55,9 @@ export async function POST(request: Request) {
     });
 
     return NextResponse.json(result, { status: 200 });
-  } catch (err: any) {
+  } catch (err: unknown) {
     return NextResponse.json(
-      { error: { code: 'fhir_import_failed', message: err?.message || String(err) } },
+      { error: { code: 'fhir_import_failed', message: err instanceof Error ? err.message : String(err) } },
       { status: 400 }
     );
   }

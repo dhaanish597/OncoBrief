@@ -18,10 +18,25 @@ export default tseslint.config(
       '**/*.config.ts',
       '.codex-deck-work/**',
       'video-output/**',
+      'artifacts/**',
+      'slide-output/.build/**',
+      '**/dist-ios/**',
+      '**/dist-android/**',
+      '**/.expo/**',
+      'apps/mobile/android/**',
+      'apps/mobile/ios/**',
     ],
   },
   js.configs.recommended,
   ...tseslint.configs.recommended,
+  {
+    files: ['**/*.cjs'],
+    rules: { '@typescript-eslint/no-require-imports': 'off' },
+  },
+  {
+    files: ['apps/extension/**/*.js'],
+    languageOptions: { globals: { chrome: 'readonly' } },
+  },
   {
     languageOptions: {
       globals: { ...globals.node, ...globals.browser },

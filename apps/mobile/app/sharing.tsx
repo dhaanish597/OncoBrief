@@ -226,11 +226,11 @@ export default function Sharing() {
           state.shareGrants.map((g) => (
             <Panel key={g.id}>
               <Row>
-                <Copy kind="label">{g.recipientLabel || (g as any).granteeLabel || 'Recipient'}</Copy>
+                <Copy kind="label">{g.recipientLabel || g.granteeLabel || 'Recipient'}</Copy>
                 <Badge text={g.isRevoked ? 'Revoked' : 'Active'} tone={g.isRevoked ? 'amber' : 'sage'} />
               </Row>
               <Copy kind="meta">Expires: {new Date(g.expiresAt).toLocaleDateString()}</Copy>
-              <Copy kind="meta">Documents included: {(g.sharedDocumentIds ?? (g as any).documentIds ?? []).length} report(s)</Copy>
+              <Copy kind="meta">Documents included: {(g.sharedDocumentIds ?? g.documentIds ?? []).length} report(s)</Copy>
               {!g.isRevoked && (
                 <Button
                   secondary

@@ -22,7 +22,7 @@ test('patient-selectors does not classify lab values into below/within/above cat
 
   // If referencePosition exists or is replaced by referenceRange, it must not return location
   if ('referencePosition' in selectors) {
-    const fn = (selectors as any).referencePosition;
+    const fn = selectors.referencePosition;
     const sampleObs: selectors.LabObservation = {
       id: 'o1',
       test: 'haemoglobin',
@@ -41,7 +41,7 @@ test('patient-selectors does not classify lab values into below/within/above cat
       reference: { low: 12.0, high: 15.5, unit: 'g/dL' }
     };
     const res = fn(sampleObs);
-    assert.equal(res?.location, undefined, 'referencePosition must not compute or return location property');
+    assert.equal(res && 'location' in res ? res.location : undefined, undefined, 'referencePosition must not compute or return location property');
   }
 });
 

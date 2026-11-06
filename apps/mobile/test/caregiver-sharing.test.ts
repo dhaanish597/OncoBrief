@@ -1,6 +1,5 @@
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';
-import { ConnectedPatientRepository } from '../src/repository';
 import type { PatientPortalApiClient } from '../src/api-client';
 
 describe('MOB-017: Caregiver Consent & Revocable Share Grants (REQ-MOB-032, REQ-MOB-033)', () => {

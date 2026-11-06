@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
 import { View, Platform } from 'react-native';
 import * as Speech from 'expo-speech';
 import { useStore } from './store';
@@ -10,12 +10,12 @@ interface VoicePlayerBarProps {
   defaultLanguage?: 'en' | 'ta';
 }
 
-export function VoicePlayerBar({ messageId, text, defaultLanguage = 'en' }: VoicePlayerBarProps) {
+export function VoicePlayerBar({ text, defaultLanguage = 'en' }: VoicePlayerBarProps) {
   const { state } = useStore();
   const [language, setLanguage] = useState<'en' | 'ta'>(defaultLanguage);
   const [status, setStatus] = useState<'idle' | 'loading' | 'playing' | 'stopped'>('idle');
   const [showTranscript, setShowTranscript] = useState(false);
-  const [supportedVoices, setSupportedVoices] = useState<string[]>(['en-IN', 'ta-IN']);
+  const [, setSupportedVoices] = useState<string[]>(['en-IN', 'ta-IN']);
 
   useEffect(() => {
     // Detect available Indic speech voices on native Android

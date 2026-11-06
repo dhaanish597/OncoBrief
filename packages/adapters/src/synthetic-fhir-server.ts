@@ -6,8 +6,28 @@ import type {
   FhirTransactionResponse,
 } from '@oncobrief/ports';
 
+interface SyntheticResource extends Record<string, unknown> {
+  resourceType?: string;
+  id?: string;
+  meta?: { versionId?: string; lastUpdated?: string; [key: string]: unknown };
+  subject?: { reference?: string };
+  patient?: { reference?: string };
+  code?: { coding?: Array<{ code?: string; system?: string; display?: string }> };
+  effectiveDateTime?: string;
+  performedDateTime?: string;
+  recordedDate?: string;
+  period?: { start?: string };
+}
+
+interface SyntheticBundle extends SyntheticResource {
+  entry?: Array<{
+    resource?: SyntheticResource;
+    request?: { method?: string; url?: string };
+  }>;
+}
+
 interface StoredResource {
-  resource: Record<string, any>;
+  resource: SyntheticResource;
   version: number;
   lastUpdated: string;
 }
@@ -49,7 +69,7 @@ export class SyntheticFhirServer {
     this.statusOverrides = [];
   }
 
-  public seedResource(resource: Record<string, any>): void {
+  public seedResource(resource: SyntheticResource): void {
     const resourceType = resource.resourceType;
     if (!resourceType || !resource.id) {
       throw new Error('Seed resource must contain resourceType and id');
@@ -61,7 +81,7 @@ export class SyntheticFhirServer {
     }
     const version = 1;
     const now = new Date().toISOString();
-    const stored: Record<string, any> = {
+    const stored: SyntheticResource = {
       ...resource,
       meta: {
         ...(resource.meta ?? {}),
@@ -76,12 +96,12 @@ export class SyntheticFhirServer {
     });
   }
 
-  public getResource(resourceType: string, id: string): Record<string, any> | undefined {
+  public getResource(resourceType: string, id: string): SyntheticResource | undefined {
     return this.resources.get(resourceType)?.get(id)?.resource;
   }
 
-  public getAllResources(resourceType?: string): Record<string, any>[] {
-    const results: Record<string, any>[] = [];
+  public getAllResources(resourceType?: string): SyntheticResource[] {
+    const results: SyntheticResource[] = [];
     if (resourceType) {
       const typeMap = this.resources.get(resourceType);
       if (typeMap) {
@@ -187,11 +207,11 @@ export class SyntheticFhirServer {
         }
 
         return this.notFoundResponse(`Route ${method} ${pathname} not found on synthetic server`);
-      } catch (err: any) {
+      } catch (err: unknown) {
         return new Response(
           JSON.stringify({
             resourceType: 'OperationOutcome',
-            issue: [{ severity: 'fatal', code: 'exception', diagnostics: err?.message || String(err) }],
+            issue: [{ severity: 'fatal', code: 'exception', diagnostics: err instanceof Error ? err.message : String(err) }],
           }),
           { status: 500, headers: { 'Content-Type': 'application/fhir+json' } }
         );
@@ -268,7 +288,7 @@ export class SyntheticFhirServer {
       const codeParam = params.get('code');
       if (codeParam) {
         const codings = res.code?.coding || [];
-        const hasCode = codings.some((c: any) => c.code === codeParam || `${c.system}|${c.code}` === codeParam);
+        const hasCode = codings.some((c) => c.code === codeParam || `${c.system}|${c.code}` === codeParam);
         if (!hasCode) return false;
       }
 
@@ -298,7 +318,7 @@ export class SyntheticFhirServer {
     });
   }
 
-  private handleCreate(resourceType: string, body: Record<string, any>): Response {
+  private handleCreate(resourceType: string, body: SyntheticResource): Response {
     const id = body.id || randomUUID();
     let typeMap = this.resources.get(resourceType);
     if (!typeMap) {
@@ -307,7 +327,7 @@ export class SyntheticFhirServer {
     }
     const version = 1;
     const now = new Date().toISOString();
-    const stored: Record<string, any> = {
+    const stored: SyntheticResource = {
       ...body,
       resourceType,
       id,
@@ -329,7 +349,7 @@ export class SyntheticFhirServer {
     });
   }
 
-  private handleUpdate(resourceType: string, id: string, body: Record<string, any>, ifMatch: string | null): Response {
+  private handleUpdate(resourceType: string, id: string, body: SyntheticResource, ifMatch: string | null): Response {
     let typeMap = this.resources.get(resourceType);
     if (!typeMap) {
       typeMap = new Map();
@@ -359,7 +379,7 @@ export class SyntheticFhirServer {
 
     const version = (existing?.version ?? 0) + 1;
     const now = new Date().toISOString();
-    const stored: Record<string, any> = {
+    const stored: SyntheticResource = {
       ...body,
       resourceType,
       id,
@@ -381,7 +401,7 @@ export class SyntheticFhirServer {
     });
   }
 
-  private handleBundleTransaction(bundle: Record<string, any>): Response {
+  private handleBundleTransaction(bundle: SyntheticBundle): Response {
     if (!bundle || bundle.resourceType !== 'Bundle' || !Array.isArray(bundle.entry)) {
       return new Response(
         JSON.stringify({
@@ -399,7 +419,7 @@ export class SyntheticFhirServer {
         etag?: string;
         outcome?: FhirOperationOutcome;
       };
-      resource?: Record<string, any>;
+      resource?: SyntheticResource;
     }> = [];
 
     for (const entry of bundle.entry) {
@@ -422,7 +442,7 @@ export class SyntheticFhirServer {
       }
 
       const parts = url.split('/').filter(Boolean);
-      const resType = parts[0];
+      const resType = parts[0]!;
       const resId = parts[1] || (resource ? resource.id : undefined);
 
       if (method === 'POST') {

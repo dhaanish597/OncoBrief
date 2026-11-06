@@ -113,7 +113,7 @@ test.describe.serial('Phase 5: Consented Caregiver Network, Voice Continuity, At
     const audioElement = page.getByTestId('continuity-audio-element').first();
 
     // Wait for either the audio player or the fallback note
-    await expect(fallbackNote.or(audioElement)).toBeVisible({ timeout: 10_000 });
+    await expect(fallbackNote.or(audioElement).first()).toBeVisible({ timeout: 10_000 });
 
     if (await fallbackNote.isVisible()) {
       // Offline fallback: load labeled synthetic demo audio

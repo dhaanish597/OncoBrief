@@ -1,7 +1,7 @@
 import { timeline, readiness, type State, type Evidence } from './domain';
 export interface LabObservation {
   id:string;test:string;value:number;unit:string;date:string;documentId:string;documentName:string;
-  facility:string;quote:string;page:number;version:string;status:Evidence['status'];patientReviewed:boolean;
+  facility:string;quote:string;page:number | null;version:string | null;status:Evidence['status'];patientReviewed:boolean;
   category:string;reference?:{ low:number;high:number;unit:string };
 }
 export function labObservations(s:State):LabObservation[] {

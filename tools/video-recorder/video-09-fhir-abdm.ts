@@ -77,7 +77,7 @@ export async function recordVideo09(): Promise<VideoMetadata> {
         ],
       };
 
-      const importRes = await page.request.post('/api/v1/fhir/import', {
+      const _importRes = await page.request.post('/api/v1/fhir/import', {
         data: {
           patientId,
           bundleJson: syntheticLabBundle,
@@ -103,7 +103,7 @@ export async function recordVideo09(): Promise<VideoMetadata> {
         'Step 4: Clinician-Authorized FHIR R4 / mCODE Bundle Export',
         'Generating NRCeS & HL7 mCODE compliant export with SHA-256 tamper-evident provenance'
       );
-      const exportRes = await page.request.get(`/api/v1/fhir/export?patientId=${patientId}`);
+      const _exportRes = await page.request.get(`/api/v1/fhir/export?patientId=${patientId}`);
       await helper.wait(1000);
 
       // Step 5: Terminal Execution of Connected Interop Suite

@@ -48,8 +48,8 @@ export default function RecordDetail() {
       setLoadingPage(true);
       try {
         const raw = await client.getDocumentPage(doc!.id, 1);
-        const text = (raw as any).page?.plainText ?? raw.text ?? '';
-        const pageNumber = (raw as any).page?.pageNumber ?? raw.pageNumber ?? 1;
+        const text = raw.text;
+        const pageNumber = raw.pageNumber;
         setInspectedPage({ text, pageNumber });
       } catch {
         notify('Could not load authorized source page.');
@@ -62,7 +62,7 @@ export default function RecordDetail() {
   }
 
   return (
-    <Screen back title={doc.name} intro={`${doc.date} · ${doc.facility}`}>
+    <Screen back title={doc.name} intro={`${doc.date || 'Date unavailable'} · ${doc.facility || 'Facility unavailable'}`}>
       {/* Dual Badges: Clinician Verification vs Patient Confirmation */}
       <Panel tone="blue">
         <Copy kind="label">{t('sourceStatus')}</Copy>
@@ -77,7 +77,7 @@ export default function RecordDetail() {
           />
         </Row>
         <Copy kind="meta">
-          {t('version')}: {doc.version} · Added: {doc.addedAt}
+          {t('version')}: {doc.version ?? 'Unavailable'} · Added: {doc.addedAt || 'Unavailable'}
         </Copy>
       </Panel>
 
@@ -104,7 +104,7 @@ export default function RecordDetail() {
           <Copy kind="label">{t('originals')}</Copy>
           {doc.originalText ? (
             <Copy selectable>{doc.originalText}</Copy>
-          ) : doc.uri && doc.mimeType.startsWith('image/') ? (
+          ) : doc.uri && doc.mimeType?.startsWith('image/') ? (
             <Image
               source={{ uri: doc.uri }}
               accessibilityLabel={doc.name}

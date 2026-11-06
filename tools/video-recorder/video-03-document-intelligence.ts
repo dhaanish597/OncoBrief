@@ -60,7 +60,7 @@ export async function recordVideo03(): Promise<VideoMetadata> {
       await page.goto(`/patients/${patientId}/evidence`);
       await helper.wait(1200);
 
-      const evidenceRows = page.locator('[data-testid="evidence-row"]');
+      const _evidenceRows = page.locator('[data-testid="evidence-row"]');
       await helper.highlightElement('[data-testid="evidence-row"]:first-child', 1200);
 
       // Step 6: Open Source Inspector to inspect Bounding Box Geometry

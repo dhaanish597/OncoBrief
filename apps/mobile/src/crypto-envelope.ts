@@ -12,6 +12,7 @@
  */
 
 import { gcm } from '@noble/ciphers/aes';
+import { getRandomBytes } from './secure-random';
 
 export interface EncryptedEnvelopeV2 {
   v: 2;
@@ -21,29 +22,8 @@ export interface EncryptedEnvelopeV2 {
   ciphertext: string; // base64 ciphertext
 }
 
-export function getRandomBytes(length: number): Uint8Array {
-  const bytes = new Uint8Array(length);
-  if (typeof globalThis !== 'undefined' && globalThis.crypto && typeof globalThis.crypto.getRandomValues === 'function') {
-    globalThis.crypto.getRandomValues(bytes);
-    return bytes;
-  }
-  try {
-    const nodeCrypto = require('node:crypto');
-    if (nodeCrypto && typeof nodeCrypto.randomFillSync === 'function') {
-      nodeCrypto.randomFillSync(bytes);
-      return bytes;
-    }
-  } catch {
-    // ignore
-  }
-  // Pure JavaScript entropy mixing for Hermes
-  for (let i = 0; i < length; i++) {
-    const r1 = Math.floor(Math.random() * 256);
-    const r2 = Math.floor((Date.now() + i * 37) % 256);
-    bytes[i] = (r1 ^ r2) & 0xff;
-  }
-  return bytes;
-}
+// Metro resolves the native adapter on Android/iOS; web and Node use WebCrypto.
+export { getRandomBytes } from './secure-random';
 
 export function bytesToBase64(bytes: Uint8Array): string {
   if (typeof Buffer !== 'undefined') {

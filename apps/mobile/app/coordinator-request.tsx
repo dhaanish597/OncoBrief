@@ -1,13 +1,10 @@
 import React, { useState } from 'react';
-import { View, StyleSheet } from 'react-native';
-import { useRouter } from 'expo-router';
-import { Screen, Copy, Button, Panel, Field, Row, Chip, Badge, Empty } from '../src/ui';
+import { View } from 'react-native';
+import { Screen, Copy, Button, Panel, Field, Row, Chip, Badge } from '../src/ui';
 import { useStore } from '../src/store';
-import { theme as c } from '../src/theme';
 
 export default function CoordinatorRequest() {
-  const { state, client, mode, refresh, notify, t } = useStore();
-  const router = useRouter();
+  const { state, client, mode, refresh, notify } = useStore();
 
   const [category, setCategory] = useState<'administrative' | 'scheduling' | 'follow_up'>('administrative');
   const [title, setTitle] = useState('');

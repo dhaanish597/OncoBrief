@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { createDemo, reduce, validateFile, type DocumentRecord } from '../src/domain';
+import { createDemo, reduce, type DocumentRecord } from '../src/domain';
 import { validateImportCandidate } from '../src/file-validation';
 
 test('import validation rejects duplicates by name and size (BUG-MOB-09 / REQ-MOB-016 / SEC-MOB-03)', () => {

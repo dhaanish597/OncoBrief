@@ -1,4 +1,4 @@
-import { isSupportedLanguage, normalizeLanguageCode, SarvamError, type SupportedLanguage } from './sarvam-voice';
+import { normalizeLanguageCode, SarvamError, type SupportedLanguage } from './sarvam-voice';
 
 /**
  * Sarvam Mayura Indic Translation Adapter & 11-Language Deterministic Template Registry (`TASK-012`).

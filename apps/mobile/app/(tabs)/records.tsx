@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { View } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
-import { records, type DocumentRecord } from '../../src/domain';
+import { records } from '../../src/domain';
 import { useStore } from '../../src/store';
 import { categories } from '../../src/i18n';
 import { Screen, Copy, Button, Field, Row, Chip, Empty, DocumentRow, LinkRow, Panel, Badge } from '../../src/ui';
