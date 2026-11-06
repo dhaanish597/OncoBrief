@@ -33,16 +33,38 @@ const DATE_WORD = /(\d{1,2})[\s\u00A0-]+([A-Za-z]{3,9})[\s\u00A0,-]+(\d{4})/;
 const DATE_SLASH = /(\d{1,2})\/(\d{1,2})\/(\d{4})/;
 const DATE_ISO = /(\d{4})-(\d{2})-(\d{2})/;
 
+export function normalizeIndicDigits(str: string): string {
+  return str
+    .replace(/[\u0966-\u096F]/g, (d) => String(d.charCodeAt(0) - 0x0966))
+    .replace(/[\u0BE6-\u0BEF]/g, (d) => String(d.charCodeAt(0) - 0x0BE6));
+}
+
+export const INDIC_LAB_NAMES: Record<string, string> = {
+  // Hindi
+  'हीमोग्लोबिन': 'Hemoglobin',
+  'प्लेटलेट्स': 'Platelets',
+  'श्वेत रक्त कोशिका': 'WBC',
+  'श्वेत रक्त कोशिकाएं': 'WBC',
+  'डब्लूबीसी': 'WBC',
+  'क्रिएटिनिन': 'Creatinine',
+  // Tamil
+  'ஹீமோகுளோபின்': 'Hemoglobin',
+  'தட்டணுக்கள்': 'Platelets',
+  'வெள்ளை அணுக்கள்': 'WBC',
+  'கிரியேட்டினைன்': 'Creatinine',
+};
+
 export function parseDateToken(token: string): string | null {
-  let m = DATE_WORD.exec(token);
+  const norm = normalizeIndicDigits(token);
+  let m = DATE_WORD.exec(norm);
   if (m) {
     const month = MONTHS[m[2]!.toLowerCase()];
     if (!month) return null;
     return toIsoDate(`${m[3]}-${month}-${m[1]!.padStart(2, '0')}`);
   }
-  m = DATE_SLASH.exec(token);
+  m = DATE_SLASH.exec(norm);
   if (m) return toIsoDate(`${m[3]}-${m[2]!.padStart(2, '0')}-${m[1]!.padStart(2, '0')}`);
-  m = DATE_ISO.exec(token);
+  m = DATE_ISO.exec(norm);
   if (m) return toIsoDate(`${m[1]}-${m[2]}-${m[3]}`);
   return null;
 }
@@ -100,7 +122,7 @@ export class RuleBasedExtractor implements ExtractionPort {
     // on the same source page, never the upload time or an unrelated page.
     const datesByPage = new Map<string, Set<string>>();
     for (const span of input.spans) {
-      if (!/^(?:report\s+date|specimen\s+date|collection\s+date|date)\s*:/i.test(span.text.trim())) continue;
+      if (!/^(?:report\s+date|specimen\s+date|collection\s+date|date|रिपोर्ट\s*तिथि|दिनांक|तारीख|அறிக்கை\s*தேதி|தேதி)\s*[:=]/iu.test(span.text.trim())) continue;
       const date = parseDateToken(span.text);
       if (!date) continue;
       const dates = datesByPage.get(span.pageId) ?? new Set<string>();
@@ -114,23 +136,23 @@ export class RuleBasedExtractor implements ExtractionPort {
       const sourceDate = dates?.size === 1 ? [...dates][0]! : input.documentDate;
 
       // --- identifiers -----------------------------------------------------
-      const mrn = /\bMRN[:#\s]*([A-Za-z0-9][A-Za-z0-9/-]{2,})\b/i.exec(text);
+      const mrn = /(?:^|[^\p{L}\p{M}\p{N}])((?:MRN|एमआरएन)[:#\s]*([A-Za-z0-9][A-Za-z0-9/-]{2,}))/iu.exec(text);
       if (mrn) {
         push({
           factType: 'identifier.mrn',
           value: {
             kind: 'identifier',
             system: 'mrn',
-            value: mrn[1]!,
+            value: mrn[2]!,
             ...(input.issuingFacility ? { scope: slug(input.issuingFacility) } : {}),
           },
-          verbatimQuote: mrn[0]!,
+          verbatimQuote: mrn[1]!,
           spanIds: [span.id],
           confidenceRaw: 0.95,
           extractorName: this.name,
           extractorVersion: this.version,
         });
-      } else if (/\bMRN[:#\s]*$/i.test(text.trim())) {
+      } else if (/(?:^|[^\p{L}\p{M}\p{N}])(?:MRN|एमआरएन)[:#\s]*$/iu.test(text.trim())) {
         const nextSpan = input.spans[spanIdx + 1];
         if (nextSpan) {
           const nextMrn = /^\s*([A-Za-z0-9][A-Za-z0-9/-]{2,})\b/.exec(nextSpan.text);
@@ -168,16 +190,17 @@ export class RuleBasedExtractor implements ExtractionPort {
 
       // --- document date (labelled) ---------------------------------------
       const labelledDate = new RegExp(
-        String.raw`\b(?:Date|Specimen\s*Date|Report\s*Date|Collection\s*Date|Date\s*of\s*Presentation)(?:\s+of\s+[A-Za-z ]{2,24})?[:\s]+(${DATE_PATTERN_SRC})`,
-        'i',
+        String.raw`(?:^|[^\p{L}\p{M}\p{N}])((?:Date|Specimen\s*Date|Report\s*Date|Collection\s*Date|Date\s*of\s*Presentation|रिपोर्ट\s*तिथि|दिनांक|तारीख|அறிக்கை\s*தேதி|தேதி)(?:\s+of\s+[A-Za-z ]{2,24})?[:\s]+(${DATE_PATTERN_SRC}))`,
+        'iu',
       ).exec(text);
       if (labelledDate) {
-        const iso = parseDateToken(labelledDate[1]!);
+        const fullMatched = labelledDate[1]!;
+        const iso = parseDateToken(labelledDate[2]!);
         if (iso) {
           push({
             factType: 'document.date',
             value: { kind: 'date', date: iso },
-            verbatimQuote: labelledDate[0]!,
+            verbatimQuote: fullMatched,
             spanIds: [span.id],
             confidenceRaw: 0.93,
             extractorName: this.name,
@@ -209,16 +232,17 @@ export class RuleBasedExtractor implements ExtractionPort {
       }
 
       const appointment = new RegExp(
-        String.raw`\bappointment\s+(?:on|dated|scheduled on)\s+(${DATE_PATTERN_SRC})`,
-        'i',
+        String.raw`(?:^|[^\p{L}\p{M}\p{N}])((?:appointment|अपॉइंटमेंट|சந்திப்பு)\s*(?:[:=]|(?:on|dated|scheduled on))\s*(${DATE_PATTERN_SRC}))`,
+        'iu',
       ).exec(text);
       if (appointment) {
-        const iso = parseDateToken(appointment[1]!);
+        const fullMatched = appointment[1]!;
+        const iso = parseDateToken(appointment[2]!);
         if (iso) {
           push({
             factType: 'appointment.recorded',
             value: { kind: 'appointment', date: iso },
-            verbatimQuote: appointment[0]!,
+            verbatimQuote: fullMatched,
             spanIds: [span.id],
             confidenceRaw: 0.9,
             extractorName: this.name,
@@ -468,12 +492,12 @@ export class RuleBasedExtractor implements ExtractionPort {
       }
 
       // --- pathology diagnosis and staging text -------------------------
-      const diagMatch = /^\s*(?:Diagnosis|Histological\s*Diagnosis|Histopathology\s*Diagnosis|Impression)\s*[:=]\s*(.+)$/i.exec(text);
+      const diagMatch = /^\s*(?:Diagnosis|Histological\s*Diagnosis|Histopathology\s*Diagnosis|Impression|निदान|நோய்\s*கண்டறிதல்)\s*[:=]\s*(.+)$/iu.exec(text);
       if (diagMatch && !/^(?:Stage|See|Refer|Tamoxifen|Please)/i.test(diagMatch[1]!.trim())) {
         push({
           factType: 'diagnosis_text.as_written',
           value: { kind: 'text', text: diagMatch[1]!.trim() },
-          verbatimQuote: diagMatch[0]!,
+          verbatimQuote: diagMatch[0]!.trim(),
           spanIds: [span.id],
           confidenceRaw: 0.92,
           extractorName: this.name,
@@ -482,12 +506,12 @@ export class RuleBasedExtractor implements ExtractionPort {
         });
       }
 
-      const stageMatch = /^\s*(?:Stage(?:\s*as\s*documented)?|Documented\s*Stage|Pathological\s*Stage)\s*[:=]\s*(.+)$/i.exec(text);
+      const stageMatch = /^\s*(?:Stage(?:\s*as\s*documented)?|Documented\s*Stage|Pathological\s*Stage|चरण|நிலை|ஸ்டேஜ்)\s*[:=]\s*(.+)$/iu.exec(text);
       if (stageMatch) {
         push({
           factType: 'stage_text.as_written',
           value: { kind: 'text', text: stageMatch[1]!.trim() },
-          verbatimQuote: stageMatch[0]!,
+          verbatimQuote: stageMatch[0]!.trim(),
           spanIds: [span.id],
           confidenceRaw: 0.92,
           extractorName: this.name,
@@ -565,43 +589,45 @@ export class RuleBasedExtractor implements ExtractionPort {
 
       if (!isHeaderRow && !htMatch && !wtMatch && !ecog && !ki67Biomarker) {
         // Try colon/equal separated first: Name: Value Unit (Ref) Flag
-        let labMatch = /^\s*([A-Za-z0-9][A-Za-z0-9 /()+-]{1,45}?)\s*[:=]\s*([<>]?\s*[\d,]+(?:\.\d+)?(?:\/\d+(?:\.\d+)?)?)\s*([A-Za-z/%\u00B5^0-9]{0,12})?(?:\s*([([][^)\r\n]+[)\]]|[\d,]+(?:\.\d+)?\s*(?:-|to)\s*[\d,]+(?:\.\d+)?|<[\d,.]+|>[\d,.]+))?(?:\s+([A-Za-z*[\]]{1,10}))?/i.exec(
+        let labMatch = /^\s*([\p{L}\p{M}\p{N}][\p{L}\p{M}\p{N} /()+-]{1,45}?)\s*[:=]\s*([<>]?\s*[\d,]+(?:\.\d+)?(?:\/\d+(?:\.\d+)?)?)\s*([A-Za-z/%\u00B5^0-9]{0,12})?(?:\s*([([][^)\r\n]+[)\]]|[\d,]+(?:\.\d+)?\s*(?:-|to)\s*[\d,]+(?:\.\d+)?|<[\d,.]+|>[\d,.]+))?(?:\s+([A-Za-z*[\]]{1,10}))?/iu.exec(
           text,
         );
 
         // Try tabular match (2 or more spaces separating columns)
         if (!labMatch) {
-          labMatch = /^\s*([A-Za-z0-9][A-Za-z0-9 /()+-]{1,45}?)\s{2,}([<>]?\s*[\d,]+(?:\.\d+)?)\s+([A-Za-z/%\u00B5^0-9]{1,12})?(?:\s+([([][^)\r\n]+[)\]]|[\d,]+(?:\.\d+)?\s*(?:-|to)\s*[\d,]+(?:\.\d+)?|<[\d,.]+|>[\d,.]+))?(?:\s+([A-Za-z*[\]]{1,10}))?/i.exec(
+          labMatch = /^\s*([\p{L}\p{M}\p{N}][\p{L}\p{M}\p{N} /()+-]{1,45}?)\s{2,}([<>]?\s*[\d,]+(?:\.\d+)?)\s+([A-Za-z/%\u00B5^0-9]{1,12})?(?:\s+([([][^)\r\n]+[)\]]|[\d,]+(?:\.\d+)?\s*(?:-|to)\s*[\d,]+(?:\.\d+)?|<[\d,.]+|>[\d,.]+))?(?:\s+([A-Za-z*[\]]{1,10}))?/iu.exec(
             text,
           );
         }
 
         // Also fallback to inline regex for lines where test name is preceded by something or simple format
         if (!labMatch) {
-          labMatch = /\b([A-Z][A-Za-z0-9 /()+-]{1,32}?)\s*[:=]\s*([<>]?\s*[\d,]+(?:\.\d+)?(?:\/\d+(?:\.\d+)?)?)\s*([A-Za-z/%\u00B5^0-9]{0,10})(?:\s*([([][^)\r\n]+[)\]]))?(?:\s*([A-Za-z*]{1,8}))?\b/.exec(
+          labMatch = /(?:^|[^\p{L}\p{M}\p{N}])([\p{L}\p{M}\p{N}][\p{L}\p{M}\p{N} /()+-]{1,32}?)\s*[:=]\s*([<>]?\s*[\d,]+(?:\.\d+)?(?:\/\d+(?:\.\d+)?)?)\s*([A-Za-z/%\u00B5^0-9]{0,10})(?:\s*([([][\d.,\s\-to<>]+[)\]]))?(?:\s*([A-Za-z*]{1,8}))?/iu.exec(
             text,
           );
         }
 
         if (
           labMatch &&
-          !/^(Date|Specimen\s*Date|Report\s*Date|Collection\s*Date|Date\s*of\s*Presentation|Admission\s*Date|Discharge\s*Date|MRN|ABHA|Phone|Contact|Ref|Reference|Age|Sex|Gender|Patient|Doctor|Dr|Time|Sample|Page|Test\s*Name|Total Entries|Resource ID)$/i.test(
+          !/^(Date|Specimen\s*Date|Report\s*Date|Collection\s*Date|Date\s*of\s*Presentation|Admission\s*Date|Discharge\s*Date|MRN|ABHA|Phone|Contact|Ref|Reference|Age|Sex|Gender|Patient|Doctor|Dr|Time|Sample|Page|Test\s*Name|Total Entries|Resource ID|रिपोर्ट\s*तिथि|दिनांक|तारीख|அறிக்கை\s*தேதி|தேதி|एमआरएन|अपॉइंटमेंट|சந்திப்பு|निदान|நோய்\s*கண்டறிதல்|चरण|நிலை|ஸ்டேஜ்)$/iu.test(
             labMatch[1]!.trim(),
           )
         ) {
           const rawName = labMatch[1]!.trim();
+          const canonicalName = INDIC_LAB_NAMES[rawName] ?? rawName;
           const rawVal = labMatch[2]!.trim();
           const rawUnit = labMatch[3]?.trim();
           const rawRef = labMatch[4]?.trim();
           const rawFlag = labMatch[5]?.trim();
 
-          const numVal = parseFloat(rawVal.replace(/,/g, '').replace(/[<>]/g, ''));
+          const asciiVal = normalizeIndicDigits(rawVal);
+          const numVal = parseFloat(asciiVal.replace(/,/g, '').replace(/[<>]/g, ''));
           const refRange = parseReferenceRange(rawRef);
           const flag = parseSourceFlag(rawFlag);
 
           const value: FactValue = {
             kind: 'lab',
-            name: rawName,
+            name: canonicalName,
             valueText: rawVal,
             ...(rawUnit ? { unitText: rawUnit } : {}),
             ...(Number.isFinite(numVal) ? { numericValue: numVal } : {}),
@@ -611,9 +637,9 @@ export class RuleBasedExtractor implements ExtractionPort {
           };
 
           push({
-            factType: /^(?:weight|height|blood pressure|pulse|heart rate|temperature|oxygen saturation|SpO2)$/i.test(rawName) ? 'vital_sign.as_written' : 'lab_result.as_written',
+            factType: /^(?:weight|height|blood pressure|pulse|heart rate|temperature|oxygen saturation|SpO2)$/i.test(canonicalName) ? 'vital_sign.as_written' : 'lab_result.as_written',
             value,
-            verbatimQuote: labMatch[0]!,
+            verbatimQuote: labMatch[0]!.trim(),
             spanIds: [span.id],
             confidenceRaw: 0.85,
             extractorName: this.name,

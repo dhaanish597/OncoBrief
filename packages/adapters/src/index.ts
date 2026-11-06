@@ -26,7 +26,9 @@ export * from './rule-based-extractor';
 export * from './simulated-delivery';
 export * from './nvidia-llm';
 export * from './sarvam-voice';
+export * from './sarvam-translation';
 export * from './aws-sigv4';
+export * from './ecs-credentials';
 export * from './s3-storage';
 export * from './sqs-queue';
 export * from './textract-ocr';
@@ -36,7 +38,10 @@ export * from './secrets-manager';
 export * from './abdm-crypto';
 export * from './abdm-gateway';
 export * from './simulated-abdm-gateway';
-
-
-
 export * from './ocr-routing';
+export * from './raster-pixel-ocr';
+export * from './webhook-delivery';
+export * from './fhir-client';
+export * from './synthetic-fhir-server';
+
+

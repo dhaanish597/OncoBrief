@@ -16,6 +16,7 @@ export interface S3Config {
   bucket: string;
   region: string;
   credentials: AwsCredentials;
+  credentialProvider?: () => Promise<AwsCredentials>;
   /** Custom endpoint for LocalStack/MinIO. Omit for real AWS S3. */
   endpoint?: string;
   /** Path-style addressing (`/bucket/key`); default true for compatibility. */
@@ -63,7 +64,7 @@ export class S3StorageAdapter implements StoragePort, PresignPutPort {
       region: this.config.region,
       service: 's3',
       method: 'PUT',
-      credentials: this.config.credentials,
+      credentials: await this.credentials(),
       now: this.now(),
       headers: { 'content-type': contentType },
       body,
@@ -85,7 +86,7 @@ export class S3StorageAdapter implements StoragePort, PresignPutPort {
       region: this.config.region,
       service: 's3',
       method: 'GET',
-      credentials: this.config.credentials,
+      credentials: await this.credentials(),
       now: this.now(),
     });
     const res = await this.fetchImpl(`${origin}${path}`, { method: 'GET', headers });
@@ -102,7 +103,7 @@ export class S3StorageAdapter implements StoragePort, PresignPutPort {
       service: 's3',
       method: 'GET',
       expiresSeconds: ttlSeconds,
-      credentials: this.config.credentials,
+      credentials: await this.credentials(),
       now: this.now(),
     }).url;
   }
@@ -121,7 +122,7 @@ export class S3StorageAdapter implements StoragePort, PresignPutPort {
       service: 's3',
       method: 'PUT',
       expiresSeconds: ttlSeconds,
-      credentials: this.config.credentials,
+      credentials: await this.credentials(),
       now: this.now(),
       contentType,
     });
@@ -138,11 +139,15 @@ export class S3StorageAdapter implements StoragePort, PresignPutPort {
       region: this.config.region,
       service: 's3',
       method: 'DELETE',
-      credentials: this.config.credentials,
+      credentials: await this.credentials(),
       now: this.now(),
     });
     const res = await this.fetchImpl(`${origin}${path}`, { method: 'DELETE', headers });
     if (!res.ok && res.status !== 404) throw new Error(`s3_delete_failed:${res.status}:${await errorBody(res)}`);
+  }
+
+  private async credentials(): Promise<AwsCredentials> {
+    return this.config.credentialProvider ? this.config.credentialProvider() : this.config.credentials;
   }
 }
 

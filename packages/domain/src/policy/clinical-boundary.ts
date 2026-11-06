@@ -28,8 +28,9 @@ export const FORBIDDEN_CONCEPT_PATTERNS: readonly { id: string; re: RegExp }[] =
   { id: 'patient_status', re: bounded('patient[\\s_-]?status') },
   { id: 'acuity', re: bounded('acuity') },
   { id: 'tnm_staging_calc', re: bounded('(?:comput|calculat|deriv|infer)[\\s._-]?(?:tnm|staging)') },
-  { id: 'recist_calc', re: bounded('recist[\\s._-]?(?:progress|respons|calc|comput)') },
-  { id: 'trial_eligibility_scoring', re: bounded('(?:trial|medical)[\\s._-]?eligibility[\\s._-]?(?:scor|evaluat|screen)') },
+  { id: 'recist_calc', re: bounded('recist[\\s._-]?(?:progress\\w*|respons\\w*|calc\\w*|comput\\w*)') },
+  { id: 'survival_score', re: bounded('survival[\\s_-]?(?:rate|score|predict\\w*|probabilit\\w*)') },
+  { id: 'trial_eligibility_scoring', re: bounded('(?:trial|medical)[\\s._-]?eligibility[\\s._-]?(?:scor\\w*|evaluat\\w*|screen\\w*)') },
   { id: 'imaging_interpretation', re: bounded('(?:interpret|diagnos)[\\s._-]?(?:imaging|radiology|dicom|scan)') },
   { id: 'treatment_prescribing', re: bounded('(?:prescrib|prescription)[\\s._-]?(?:treatment|regimen)') },
 ];
@@ -56,6 +57,12 @@ export function scanForBoundaryViolation(text: string): BoundaryViolation[] {
     if (m) out.push({ patternId: id, matched: m[0] });
   }
   return out;
+}
+
+/** Check text against the clinical boundary, returning an ok boolean and violation list. */
+export function checkTextForBoundary(text: string): { ok: boolean; violations: string[] } {
+  const v = scanForBoundaryViolation(text);
+  return { ok: v.length === 0, violations: v.map((item) => item.patternId) };
 }
 
 /**

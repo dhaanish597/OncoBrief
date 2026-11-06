@@ -1,3 +1,4 @@
+import { scanForBoundaryViolation } from '@oncobrief/domain';
 import type { Querier } from '../client';
 import { appendAuditEvent } from './audit';
 
@@ -30,6 +31,8 @@ export interface TumorBoardCaseRow {
   patient_identifier?: string;
   packet_id: string | null;
   packet_status?: string | null;
+  staging_fact_id: string | null;
+  cited_fact_ids: string[];
   presenter_user_id: string | null;
   presenter_name?: string | null;
   status: CaseStatus;
@@ -62,6 +65,8 @@ export interface RegisterTumorBoardCaseInput {
   meetingId: string;
   patientId: string;
   packetId?: string | null;
+  stagingFactId?: string | null;
+  citedFactIds?: string[];
   presenterUserId?: string | null;
   clinicalStaging?: string | null;
   actorId: string;
@@ -75,6 +80,8 @@ export interface UpdateTumorBoardCaseInput {
   discussionSummary?: string | null;
   recommendationNotes?: string | null;
   clinicalStaging?: string | null;
+  stagingFactId?: string | null;
+  citedFactIds?: string[];
   checklists?: {
     histology?: boolean;
     imaging?: boolean;
@@ -82,6 +89,112 @@ export interface UpdateTumorBoardCaseInput {
     genomics?: boolean;
   };
   actorId: string;
+}
+
+/**
+ * Enforces OncoBrief's non-clinical boundary on Tumor Board text fields (TASK-004, ADR-004).
+ */
+function assertTumorBoardTextWithinBoundary(fields: (string | null | undefined)[]): void {
+  for (const field of fields) {
+    if (!field) continue;
+    const violations = scanForBoundaryViolation(field);
+    if (violations.length > 0) {
+      throw new Error(`clinical_boundary_violation:${violations[0]!.patternId}`);
+    }
+  }
+}
+
+export interface VerifiedStagingFactRow {
+  id: string;
+  org_id: string;
+  patient_id: string;
+  patient_name?: string;
+  fact_type: string;
+  value_normalized: string;
+  verbatim_quote: string;
+  observed_on: string | null;
+  document_id: string;
+  document_name: string;
+  state: string;
+  confidence_band: string;
+}
+
+/**
+ * Lists verified staging facts for a specific patient or across all patients in an organization.
+ * Strictly excludes diagnosis, procedure, or unverified extracted candidate facts.
+ */
+export async function listVerifiedPatientStagingFacts(
+  q: Querier,
+  orgId: string,
+  patientId?: string,
+): Promise<VerifiedStagingFactRow[]> {
+  const conditions = [
+    'ef.org_id = $1',
+    `ef.fact_type IN ('stage_text.as_written', 'stage.recorded')`,
+    `COALESCE(es.state, 'extracted') IN ('verified', 'corrected')`,
+    `d.ingest_error IS DISTINCT FROM 'consent_revoked_or_expired'`,
+  ];
+  const params: unknown[] = [orgId];
+
+  if (patientId) {
+    conditions.push('ef.patient_id = $2');
+    params.push(patientId);
+  }
+
+  const sql = `
+    SELECT
+      ef.id,
+      ef.org_id,
+      ef.patient_id,
+      p.display_name AS patient_name,
+      ef.fact_type,
+      ef.value_normalized,
+      ef.verbatim_quote,
+      ef.observed_on::text AS observed_on,
+      ef.document_id,
+      d.original_filename AS document_name,
+      COALESCE(es.state, 'extracted') AS state,
+      ef.confidence_band
+    FROM evidence_fact ef
+    JOIN patient p ON p.id = ef.patient_id AND p.org_id = ef.org_id
+    JOIN document d ON d.id = ef.document_id AND d.org_id = ef.org_id
+    LEFT JOIN evidence_state es ON es.evidence_fact_id = ef.id
+    WHERE ${conditions.join(' AND ')}
+    ORDER BY ef.created_at DESC
+  `;
+
+  const res = await q.query<VerifiedStagingFactRow>(sql, params);
+  return res.rows;
+}
+
+/**
+ * Resolves the verbatim text from a verified staging fact when `stagingFactId` is provided.
+ */
+async function resolveVerifiedStagingFactText(
+  q: Querier,
+  orgId: string,
+  patientId: string,
+  stagingFactId: string,
+): Promise<string> {
+  const res = await q.query<{ verbatim_quote: string; value_normalized: string }>(
+    `SELECT ef.verbatim_quote, ef.value_normalized
+       FROM evidence_fact ef
+       JOIN document d ON d.id = ef.document_id AND d.org_id = ef.org_id
+       LEFT JOIN evidence_state es ON es.evidence_fact_id = ef.id
+      WHERE ef.org_id = $1
+        AND ef.patient_id = $2
+        AND ef.id = $3
+        AND ef.fact_type IN ('stage_text.as_written', 'stage.recorded')
+        AND COALESCE(es.state, 'extracted') IN ('verified', 'corrected')
+        AND d.ingest_error IS DISTINCT FROM 'consent_revoked_or_expired'
+      LIMIT 1`,
+    [orgId, patientId, stagingFactId],
+  );
+  const row = res.rows[0];
+  if (!row) {
+    throw new Error('invalid_tumor_board_staging_fact: Fact must be a verified stage fact for this patient.');
+  }
+  return row.value_normalized || row.verbatim_quote;
 }
 
 export async function listTumorBoardMeetings(
@@ -157,6 +270,8 @@ export async function createTumorBoardMeeting(
   q: Querier,
   input: CreateTumorBoardMeetingInput,
 ): Promise<string> {
+  assertTumorBoardTextWithinBoundary([input.title, input.location, input.notes]);
+
   const sql = `
     INSERT INTO tumor_board_meeting (
       org_id, title, meeting_date, start_time, end_time, location, moderator_user_id, notes
@@ -199,6 +314,8 @@ export async function updateTumorBoardMeeting(
     actorId: string;
   },
 ): Promise<void> {
+  assertTumorBoardTextWithinBoundary([input.notes]);
+
   await q.query(
     `UPDATE tumor_board_meeting
      SET status = COALESCE($3, status),
@@ -234,6 +351,8 @@ export async function listTumorBoardCases(
       (SELECT value FROM patient_identifier pi WHERE pi.patient_id = p.id LIMIT 1) AS patient_identifier,
       c.packet_id,
       cp.status AS packet_status,
+      c.staging_fact_id,
+      COALESCE(c.cited_fact_ids, '{}') AS cited_fact_ids,
       c.presenter_user_id,
       u.display_name AS presenter_name,
       c.status,
@@ -262,6 +381,26 @@ export async function registerTumorBoardCase(
   q: Querier,
   input: RegisterTumorBoardCaseInput,
 ): Promise<string> {
+  assertTumorBoardTextWithinBoundary([input.clinicalStaging]);
+
+  let resolvedStaging = input.clinicalStaging?.trim() || null;
+  if (input.stagingFactId) {
+    const factText = await resolveVerifiedStagingFactText(
+      q,
+      input.orgId,
+      input.patientId,
+      input.stagingFactId,
+    );
+    if (!resolvedStaging) {
+      resolvedStaging = factText;
+    }
+  }
+
+  const citedFactIds = [...new Set([
+    ...(input.citedFactIds ?? []).filter(Boolean),
+    ...(input.stagingFactId ? [input.stagingFactId] : []),
+  ])];
+
   const countRes = await q.query<{ count: string }>(
     `SELECT count(*)::text AS count FROM tumor_board_case WHERE org_id = $1 AND meeting_id = $2`,
     [input.orgId, input.meetingId],
@@ -270,8 +409,16 @@ export async function registerTumorBoardCase(
 
   const sql = `
     INSERT INTO tumor_board_case (
-      org_id, meeting_id, patient_id, packet_id, presenter_user_id, clinical_staging, order_index
-    ) VALUES ($1, $2, $3, $4, $5, $6, $7)
+      org_id,
+      meeting_id,
+      patient_id,
+      packet_id,
+      staging_fact_id,
+      cited_fact_ids,
+      presenter_user_id,
+      clinical_staging,
+      order_index
+    ) VALUES ($1, $2, $3, $4, $5, $6::uuid[], $7, $8, $9)
     RETURNING id
   `;
   const res = await q.query<{ id: string }>(sql, [
@@ -279,8 +426,10 @@ export async function registerTumorBoardCase(
     input.meetingId,
     input.patientId,
     input.packetId ?? null,
+    input.stagingFactId ?? null,
+    citedFactIds,
     input.presenterUserId ?? null,
-    input.clinicalStaging ?? null,
+    resolvedStaging,
     nextOrder,
   ]);
   if (!res.rows[0]) throw new Error('failed_to_register_case');
@@ -297,6 +446,8 @@ export async function registerTumorBoardCase(
       meetingId: input.meetingId,
       patientId: input.patientId,
       packetId: input.packetId,
+      stagingFactId: input.stagingFactId ?? null,
+      citedFactsCount: citedFactIds.length,
     },
   });
 
@@ -307,6 +458,33 @@ export async function updateTumorBoardCase(
   q: Querier,
   input: UpdateTumorBoardCaseInput,
 ): Promise<void> {
+  assertTumorBoardTextWithinBoundary([
+    input.discussionSummary,
+    input.recommendationNotes,
+    input.clinicalStaging,
+  ]);
+
+  let resolvedStaging = input.clinicalStaging ?? null;
+  if (input.stagingFactId) {
+    const factText = await resolveVerifiedStagingFactText(
+      q,
+      input.orgId,
+      input.patientId,
+      input.stagingFactId,
+    );
+    if (!resolvedStaging) {
+      resolvedStaging = factText;
+    }
+  }
+
+  const citedFactIds =
+    input.citedFactIds !== undefined
+      ? [...new Set([
+          ...input.citedFactIds.filter(Boolean),
+          ...(input.stagingFactId ? [input.stagingFactId] : []),
+        ])]
+      : null;
+
   const checklists = input.checklists || {};
 
   await q.query(
@@ -315,10 +493,12 @@ export async function updateTumorBoardCase(
          discussion_summary = COALESCE($5, discussion_summary),
          recommendation_notes = COALESCE($6, recommendation_notes),
          clinical_staging = COALESCE($7, clinical_staging),
-         checklist_histology_verified = COALESCE($8, checklist_histology_verified),
-         checklist_imaging_verified = COALESCE($9, checklist_imaging_verified),
-         checklist_staging_verified = COALESCE($10, checklist_staging_verified),
-         checklist_genomics_verified = COALESCE($11, checklist_genomics_verified),
+         staging_fact_id = COALESCE($8, staging_fact_id),
+         cited_fact_ids = CASE WHEN $9::uuid[] IS NOT NULL THEN $9::uuid[] ELSE cited_fact_ids END,
+         checklist_histology_verified = COALESCE($10, checklist_histology_verified),
+         checklist_imaging_verified = COALESCE($11, checklist_imaging_verified),
+         checklist_staging_verified = COALESCE($12, checklist_staging_verified),
+         checklist_genomics_verified = COALESCE($13, checklist_genomics_verified),
          updated_at = now()
      WHERE org_id = $1 AND meeting_id = $2 AND patient_id = $3`,
     [
@@ -328,7 +508,9 @@ export async function updateTumorBoardCase(
       input.status ?? null,
       input.discussionSummary ?? null,
       input.recommendationNotes ?? null,
-      input.clinicalStaging ?? null,
+      resolvedStaging,
+      input.stagingFactId ?? null,
+      citedFactIds,
       checklists.histology ?? null,
       checklists.imaging ?? null,
       checklists.staging ?? null,
@@ -346,6 +528,8 @@ export async function updateTumorBoardCase(
     metadata: {
       patientId: input.patientId,
       status: input.status,
+      stagingFactId: input.stagingFactId ?? null,
+      citedFactsCount: citedFactIds ? citedFactIds.length : undefined,
       checklists: input.checklists,
     },
   });

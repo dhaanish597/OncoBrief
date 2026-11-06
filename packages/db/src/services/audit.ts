@@ -17,6 +17,10 @@ export const AUDIT_ACTIONS = [
   'opd.offered',
   'opd.priority_selected',
   'opd.walk_in',
+  'opd.offer_accepted',
+  'opd.offer_released',
+  'opd.backfill_candidates_ranked',
+  'opd.offer_notification_queued',
   'auth.login',
   'auth.login_denied',
   'auth.logout',
@@ -44,6 +48,7 @@ export const AUDIT_ACTIONS = [
   'task.created',
   'task.assigned',
   'task.status_changed',
+  'task.priority_updated',
   'checklist.assigned',
   'gap.waived',
   'readiness.computed',
@@ -56,6 +61,10 @@ export const AUDIT_ACTIONS = [
   'message.delivery_attempted',
   'checklist.template_edited',
   'extension.session_granted',
+  'extension.grant_minted',
+  'extension.capture_ingested',
+  'assistant.action_confirmed',
+  'assistant.action_cancelled',
   'authz.denied',
   'ledger.verification_run',
   'abdm.hip.care_context_linked',
@@ -75,10 +84,12 @@ export const AUDIT_ACTIONS = [
   'studio.draft_updated',
   'studio.approved',
   'studio.exported',
+  'guideline.ingested',
   'caregiver.registered',
   'caregiver.updated',
   'caregiver.revoked',
   'message.attendance_recorded',
+  'continuity.webhook_processed',
   'patient.created',
   'patient.updated',
   'patient.archived',
@@ -108,6 +119,10 @@ export const AUDIT_ACTIONS = [
   'tumor_board.meeting_updated',
   'tumor_board.case_registered',
   'tumor_board.case_updated',
+  'fhir_endpoint.registered',
+  'fhir_endpoint.deactivated',
+  'fhir_exchange.inbound_import',
+  'fhir_exchange.outbound_export',
 ] as const;
 export type AuditAction = (typeof AUDIT_ACTIONS)[number];
 
@@ -191,9 +206,13 @@ export function redactMetadata(input: Record<string, unknown>): Record<string, u
       continue;
     }
     if (Array.isArray(v)) {
-      out[k] = v.map((item) => item && typeof item === 'object'
-        ? (Array.isArray(item) ? redactMetadata({ items: item }).items : redactMetadata(item as Record<string, unknown>))
-        : (typeof item === 'string' ? '<redacted>' : item));
+      out[k] = v.map((item) =>
+        item && typeof item === 'object'
+          ? (Array.isArray(item) ? redactMetadata({ items: item }).items : redactMetadata(item as Record<string, unknown>))
+          : typeof item === 'string'
+            ? (REDACT_KEYS.has(k) ? '<redacted>' : item.length > 200 ? `<${item.length} chars>` : item)
+            : item,
+      );
       continue;
     }
     if (v && typeof v === 'object') {

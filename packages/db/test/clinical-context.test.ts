@@ -56,7 +56,7 @@ describe('Clinical Context ledger projection', () => {
       const created = await insertFact(q, { orgId: fx.org1, patientId: fx.patients.demo3,
         factType: 'lab_result.as_written', value: { kind: 'lab', name: 'Synthetic marker', valueText: '10', unitText: 'ng/mL' },
         verbatimQuote: fx.sampleSpanText, spanIds: [fx.sampleSpanId], documentId: fx.sampleDocumentId,
-        extractorKind: 'rule', extractorName: 'test', extractorVersion: '1', confidenceRaw: 0.8, createdBy: null });
+        extractorKind: 'human', extractorName: 'test', extractorVersion: '1', confidenceRaw: 0.8, createdBy: fx.clinicians.clinician });
       expect(created.ok).toBe(true); if (!created.ok) throw new Error('insert failed');
       const correction = await correctEvidence(q, { factId: created.factId,
         actor: { kind: 'human', userId: fx.clinicians.clinician, role: 'clinician' },

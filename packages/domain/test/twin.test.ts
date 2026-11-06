@@ -170,3 +170,89 @@ describe('computeReadiness', () => {
     expect(Object.keys(r).sort()).toEqual(['band', 'reasons']);
   });
 });
+
+describe('worklist readiness summary and filtering (TASK-001 regression)', () => {
+  const SYNTHETIC_WORKLIST = [
+    {
+      id: 'p1',
+      displayName: 'Asha Sharma',
+      mrn: 'RCI-2025-001',
+      demoCode: 'DEMO-001',
+      readinessBand: 'blocked',
+      primaryClinicianName: 'Dr. Meera Rao',
+      departmentName: 'Medical Oncology',
+      openConflicts: 1,
+      unverifiedFacts: 4,
+    },
+    {
+      id: 'p2',
+      displayName: 'Ramesh Kulkarni',
+      mrn: 'RCI-2025-002',
+      demoCode: 'DEMO-002',
+      readinessBand: 'gaps',
+      primaryClinicianName: 'Dr. Rajesh Sharma',
+      departmentName: 'Surgical Oncology',
+      openConflicts: 0,
+      unverifiedFacts: 2,
+    },
+    {
+      id: 'p3',
+      displayName: 'Lakshmi Menon',
+      mrn: 'RCI-2025-003',
+      demoCode: 'DEMO-003',
+      readinessBand: 'ready',
+      primaryClinicianName: 'Dr. Meera Rao',
+      departmentName: 'Medical Oncology',
+      openConflicts: 0,
+      unverifiedFacts: 0,
+    },
+    {
+      id: 'p4',
+      displayName: 'Unassessed Walk-in',
+      mrn: null,
+      demoCode: null,
+      readinessBand: null,
+      primaryClinicianName: null,
+      departmentName: null,
+      openConflicts: 0,
+      unverifiedFacts: 0,
+    },
+  ];
+
+  it('computes accurate canonical readiness counts (ready, gaps, blocked, unassessed)', async () => {
+    const { computeWorklistReadinessSummary, READINESS_BAND_LABEL, WORKLIST_BAND_FILTER_VALUES } = await import('../src/index');
+    expect(Object.keys(READINESS_BAND_LABEL)).toEqual(['ready', 'gaps', 'blocked']);
+    expect(WORKLIST_BAND_FILTER_VALUES).toEqual(['all', 'ready', 'gaps', 'blocked', 'none']);
+
+    const summary = computeWorklistReadinessSummary(SYNTHETIC_WORKLIST);
+    expect(summary).toEqual({
+      totalPatients: 4,
+      readyCount: 1,
+      gapsCount: 1,
+      blockedCount: 1,
+      unassessedCount: 1,
+      totalConflicts: 1,
+      totalUnverified: 6,
+    });
+  });
+
+  it('filters patients accurately across all canonical readiness band options', async () => {
+    const { filterWorklistPatients } = await import('../src/index');
+    expect(filterWorklistPatients(SYNTHETIC_WORKLIST, { band: 'all' }).map((p) => p.id)).toEqual(['p1', 'p2', 'p3', 'p4']);
+    expect(filterWorklistPatients(SYNTHETIC_WORKLIST, { band: 'ready' }).map((p) => p.id)).toEqual(['p3']);
+    expect(filterWorklistPatients(SYNTHETIC_WORKLIST, { band: 'gaps' }).map((p) => p.id)).toEqual(['p2']);
+    expect(filterWorklistPatients(SYNTHETIC_WORKLIST, { band: 'blocked' }).map((p) => p.id)).toEqual(['p1']);
+    expect(filterWorklistPatients(SYNTHETIC_WORKLIST, { band: 'none' }).map((p) => p.id)).toEqual(['p4']);
+  });
+
+  it('filters by search, clinician, and department without leaking null-clinician or null-department records', async () => {
+    const { filterWorklistPatients } = await import('../src/index');
+    expect(filterWorklistPatients(SYNTHETIC_WORKLIST, { search: 'DEMO-003' }).map((p) => p.id)).toEqual(['p3']);
+    expect(filterWorklistPatients(SYNTHETIC_WORKLIST, { search: 'rci-2025-001' }).map((p) => p.id)).toEqual(['p1']);
+    expect(filterWorklistPatients(SYNTHETIC_WORKLIST, { clinician: 'Dr. Meera Rao' }).map((p) => p.id)).toEqual(['p1', 'p3']);
+    expect(filterWorklistPatients(SYNTHETIC_WORKLIST, { department: 'Surgical Oncology' }).map((p) => p.id)).toEqual(['p2']);
+    expect(
+      filterWorklistPatients(SYNTHETIC_WORKLIST, { clinician: 'Dr. Meera Rao', band: 'ready' }).map((p) => p.id),
+    ).toEqual(['p3']);
+  });
+});

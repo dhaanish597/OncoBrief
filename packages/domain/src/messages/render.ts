@@ -66,6 +66,7 @@ export function renderTemplate(
  * "literal".
  */
 export const ALLOWED_LITERAL_VARIABLES: readonly string[] = [
+  'appointment_date',
   'clinic_name',
   'hospital_name',
   'records_office_phone',

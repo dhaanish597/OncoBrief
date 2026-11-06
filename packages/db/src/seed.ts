@@ -44,7 +44,29 @@ const TRUNCATE_TABLES = [
   "patient_care_team",
   "caregiver_contact",
   "opd_appointment_slot",
+  "opd_slot_event",
   "opd_waitlist_entry",
+  "appointment_status_history",
+  "appointment",
+  "clinic_session",
+  "clinician_unavailability",
+  "encounter_note_version",
+  "encounter_participant",
+  "encounter",
+  "tumor_board_case",
+  "tumor_board_meeting",
+  "chat_message",
+  "conversation",
+  "document_subpacket",
+  "document_ingestion_job",
+  "packet_event",
+  "abdm_inbox",
+  "abdm_hi_transfer",
+  "abdm_consent_artifact",
+  "abdm_consent_request",
+  "abdm_care_context",
+  "abdm_patient_link",
+  "abdm_transaction",
   "guideline_document",
   "guideline_span",
   "studio_artifact",
@@ -162,11 +184,51 @@ export async function seed(
   log: (m: string) => void = () => {},
 ): Promise<SeedSummary> {
   const expectedDatabase = requireDemoResetEnvironment();
+  return populateFixtureDatabase(log, (client) => truncateAll(client, expectedDatabase));
+}
+
+/** One-time fixture initialization; never truncates or replaces existing records. */
+export async function seedFreshHackathon(
+  log: (m: string) => void = () => {},
+): Promise<SeedSummary> {
+  if (process.env.ONCOBRIEF_DEPLOYMENT_PROFILE !== 'hackathon' ||
+      process.env.ONCOBRIEF_DEMO_MODE !== 'true' ||
+      process.env.ONCOBRIEF_FRESH_SEED !== 'I_CONFIRM_EMPTY_HACKATHON_DATABASE') {
+    throw new Error('hackathon_initialization_requires_dedicated_database');
+  }
+  const forcedTables: string[] = [];
+  return populateFixtureDatabase(log, async (client) => {
+    // RDS admins are not superusers. Temporarily use the schema owner inside
+    // this empty-database transaction; restore every FORCE flag before commit.
+    // A rollback also restores all flags. No runtime role gains BYPASSRLS.
+    await client.query('SET LOCAL ROLE oncobrief_migrator');
+    const tables = await client.query<{ tablename: string; forced: boolean }>(
+      "SELECT relname AS tablename, relforcerowsecurity AS forced FROM pg_class WHERE relnamespace='public'::regnamespace AND relkind='r' AND relname <> 'schema_migration' ORDER BY relname",
+    );
+    for (const { tablename, forced } of tables.rows) {
+      if (!/^[a-z_][a-z0-9_]*$/.test(tablename)) throw new Error('unexpected_hackathon_table');
+      await client.query(`LOCK TABLE "${tablename}" IN ACCESS EXCLUSIVE MODE`);
+      if (forced) {
+        forcedTables.push(tablename);
+        await client.query(`ALTER TABLE "${tablename}" NO FORCE ROW LEVEL SECURITY`);
+      }
+      const existing = await client.query<{ occupied: boolean }>(`SELECT EXISTS(SELECT 1 FROM "${tablename}") AS occupied`);
+      if (existing.rows[0]?.occupied) throw new Error('hackathon_initialization_requires_empty_database');
+    }
+  }, async (client) => {
+    for (const table of forcedTables) await client.query(`ALTER TABLE "${table}" FORCE ROW LEVEL SECURITY`);
+  });
+}
+
+async function populateFixtureDatabase(
+  log: (m: string) => void,
+  prepare: (client: PoolClient) => Promise<void>,
+  finalize: (client: PoolClient) => Promise<void> = () => Promise.resolve(),
+): Promise<SeedSummary> {
   const client = await getMigratorPool().connect();
   try {
     await client.query("BEGIN");
-    log("checking isolated synthetic database before reset");
-    await truncateAll(client, expectedDatabase);
+    await prepare(client);
 
     // --- orgs ---------------------------------------------------------------
     const org1 = (
@@ -576,32 +638,42 @@ export async function seed(
     }
     log(`checklist templates: base + 3 oncology templates created`);
 
-    // --- message templates (administrative only) ----------------------------
-    const bodyEn = `Your appointment is on {{appointment_date}} at {{appointment_location}}. Please bring the documents listed in your records office letter. For help call {{records_office_phone}}.`;
-    const tplEn = await createMessageTemplate(client, {
-      orgId: org1,
-      code: "appointment_reminder",
-      locale: "en",
-      bodyTemplate: bodyEn,
-      allowedVariables: [
-        "appointment_date",
-        "appointment_location",
-        "records_office_phone",
-      ],
-      approvedBy: userId["dr.rao@rci.demo"]!,
-    });
-    const tplHi = await createMessageTemplate(client, {
-      orgId: org1,
-      code: "appointment_reminder",
-      locale: "hi",
-      bodyTemplate: `आपका अपॉइंटमेंट {{appointment_date}} को {{appointment_location}} में है। कृपया अपने रिकॉर्ड कार्यालय के पत्र में बताए गए दस्तावेज़ लाएँ। सहायता के लिए {{records_office_phone}} पर कॉल करें।`,
-      allowedVariables: [
-        "appointment_date",
-        "appointment_location",
-        "records_office_phone",
-      ],
-      approvedBy: userId["dr.rao@rci.demo"]!,
-    });
+    // --- message templates across all 11 supported languages (TASK-012) ----
+    const { ELEVEN_LOCALE_TEMPLATES, SHORT_ELEVEN_LOCALES } = await import('@oncobrief/adapters');
+    const reminderVars = [
+      "appointment_date",
+      "appointment_location",
+      "records_office_phone",
+    ];
+    let tplEn = "";
+    let tplHi = "";
+    for (const loc of SHORT_ELEVEN_LOCALES) {
+      const reminderBody =
+        ELEVEN_LOCALE_TEMPLATES.appointment_reminder[loc] ??
+        ELEVEN_LOCALE_TEMPLATES.appointment_reminder.en!;
+      const createdId = await createMessageTemplate(client, {
+        orgId: org1,
+        code: "appointment_reminder",
+        locale: loc,
+        bodyTemplate: reminderBody,
+        allowedVariables: reminderVars,
+        approvedBy: userId["dr.rao@rci.demo"]!,
+      });
+      if (loc === "en") tplEn = createdId;
+      if (loc === "hi") tplHi = createdId;
+
+      const offerBody =
+        ELEVEN_LOCALE_TEMPLATES.opd_slot_offer_v1[loc] ??
+        ELEVEN_LOCALE_TEMPLATES.opd_slot_offer_v1.en!;
+      await createMessageTemplate(client, {
+        orgId: org1,
+        code: "opd_slot_offer_v1",
+        locale: loc,
+        bodyTemplate: offerBody,
+        allowedVariables: reminderVars,
+        approvedBy: userId["dr.rao@rci.demo"]!,
+      });
+    }
 
     // --- patients -----------------------------------------------------------
     const patient = async (
@@ -997,8 +1069,8 @@ export async function seed(
       messageCount += 1;
     }
 
-    // --- Use Case 04 Fixtures: OPD Appointment Slots & Waitlist -------------
-    log("seeding OPD slots and waitlist entries");
+    // --- Use Case 04 Fixtures: Synchronized Appointments, OPD Slots & Waitlist (TASK-007) ---
+    log("seeding synchronized appointments, OPD slots, and waitlist entries");
     const today = new Intl.DateTimeFormat("en-CA", {
       timeZone: "Asia/Kolkata",
       year: "numeric",
@@ -1008,15 +1080,51 @@ export async function seed(
     const clinicianId = userId["dr.rao@rci.demo"]!;
     const coordinatorId = userId["coord.anita@rci.demo"]!;
 
+    const appt1Res = await client.query<{ id: string }>(
+      `INSERT INTO appointment
+         (org_id, patient_id, clinician_id, facility_id, department_id, scheduled_start, scheduled_end, room_label, appointment_type, arrival_category, status, token_number, notes, created_by, updated_by)
+       VALUES
+         ($1, $2, $3, $4, $5, (($6::date + time '09:00') AT TIME ZONE 'Asia/Kolkata'), (($6::date + time '09:30') AT TIME ZONE 'Asia/Kolkata'), 'Room 1 — Medical Oncology', 'new_consultation', 'scheduled', 'scheduled', 'ONCO-01', 'Breast oncology referral intake consultation', $7, $7)
+       RETURNING id`,
+      [org1, p1, clinicianId, facRci, deptId["MED-ONC"], today, coordinatorId],
+    );
+    const appt2Res = await client.query<{ id: string }>(
+      `INSERT INTO appointment
+         (org_id, patient_id, clinician_id, facility_id, department_id, scheduled_start, scheduled_end, room_label, appointment_type, arrival_category, status, token_number, notes, created_by, updated_by)
+       VALUES
+         ($1, $2, $3, $4, $5, (($6::date + time '09:30') AT TIME ZONE 'Asia/Kolkata'), (($6::date + time '10:00') AT TIME ZONE 'Asia/Kolkata'), 'Room 1 — Medical Oncology', 'chemo_clearance', 'scheduled', 'checked_in', 'ONCO-02', 'Cycle follow-up and lab review', $7, $7)
+       RETURNING id`,
+      [org1, p2, clinicianId, facRci, deptId["MED-ONC"], today, coordinatorId],
+    );
+    const appt3Res = await client.query<{ id: string }>(
+      `INSERT INTO appointment
+         (org_id, patient_id, clinician_id, facility_id, department_id, scheduled_start, scheduled_end, room_label, appointment_type, arrival_category, status, token_number, notes, created_by, updated_by)
+       VALUES
+         ($1, $2, $3, $4, $5, (($6::date + time '10:00') AT TIME ZONE 'Asia/Kolkata'), (($6::date + time '10:30') AT TIME ZONE 'Asia/Kolkata'), 'Room 1 — Medical Oncology', 'follow_up', 'scheduled', 'scheduled', 'ONCO-03', 'Post-treatment surveillance review', $7, $7)
+       RETURNING id`,
+      [org1, p3, clinicianId, facRci, deptId["MED-ONC"], today, coordinatorId],
+    );
+
     await client.query(
       `INSERT INTO opd_appointment_slot
-         (org_id, clinic_date, slot_start_time, slot_end_time, room_label, clinician_id, patient_id, token_number, status, priority_tag, updated_by, clinic_key, checked_in_at)
+         (org_id, clinic_date, slot_start_time, slot_end_time, room_label, clinician_id, patient_id, appointment_id, token_number, status, priority_tag, updated_by, clinic_key, checked_in_at)
        VALUES
-         ($1, $2, '09:00', '09:30', 'Room 1 — Medical Oncology', $3, $4, 'ONCO-01', 'scheduled', 'routine_followup', $5, 'rci-oncology-opd', NULL),
-         ($1, $2, '09:30', '10:00', 'Room 1 — Medical Oncology', $3, $6, 'ONCO-02', 'checked_in', 'routine_followup', $5, 'rci-oncology-opd', (($2::date + time '09:30') AT TIME ZONE 'Asia/Kolkata')),
-         ($1, $2, '10:00', '10:30', 'Room 1 — Medical Oncology', $3, $7, 'ONCO-03', 'scheduled', 'routine_followup', $5, 'rci-oncology-opd', NULL),
-         ($1, $2, '10:30', '11:00', 'Room 1 — Medical Oncology', $3, NULL, NULL, 'vacant', 'routine_followup', $5, 'rci-oncology-opd', NULL)`,
-      [org1, today, clinicianId, p1, coordinatorId, p2, p3],
+         ($1, $2, '09:00', '09:30', 'Room 1 — Medical Oncology', $3, $4, $8, 'ONCO-01', 'scheduled', 'routine_followup', $5, 'rci-oncology-opd', NULL),
+         ($1, $2, '09:30', '10:00', 'Room 1 — Medical Oncology', $3, $6, $9, 'ONCO-02', 'checked_in', 'routine_followup', $5, 'rci-oncology-opd', (($2::date + time '09:30') AT TIME ZONE 'Asia/Kolkata')),
+         ($1, $2, '10:00', '10:30', 'Room 1 — Medical Oncology', $3, $7, $10, 'ONCO-03', 'scheduled', 'routine_followup', $5, 'rci-oncology-opd', NULL),
+         ($1, $2, '10:30', '11:00', 'Room 1 — Medical Oncology', $3, NULL, NULL, NULL, 'vacant', 'routine_followup', $5, 'rci-oncology-opd', NULL)`,
+      [
+        org1,
+        today,
+        clinicianId,
+        p1,
+        coordinatorId,
+        p2,
+        p3,
+        appt1Res.rows[0]!.id,
+        appt2Res.rows[0]!.id,
+        appt3Res.rows[0]!.id,
+      ],
     );
 
     await client.query(
@@ -1101,8 +1209,20 @@ Documented receptor status (ER, PR, HER2) must be recorded before systemic thera
       ).rows[0]!.n,
     );
 
+    log("seeding operational clinic sessions, encounters, and tumor board cases");
+    await seedOperationalFixtures(client, {
+      orgId: org1,
+      facRci,
+      deptId,
+      docAnanyaId: userId["dr.ananya@rci.demo"]!,
+      demo1Id: p1,
+      demo3Id: p3,
+      appt1Id: appt1Res.rows[0]!.id,
+    });
+
     log(`duplicates flagged: ${dupCount}`);
 
+    await finalize(client);
     await client.query("COMMIT");
     return {
       orgs: [org1, org2],
@@ -1251,93 +1371,29 @@ export async function bootstrapDemo(
 
     // Ensure Milestone B operational demo fixtures exist (idempotent)
     const demo1 = existingPatient.rows[0]?.id;
-    const docMukhopadhyay = (
+    const demo3 =
+      (
+        await client.query<{ id: string }>(
+          `SELECT id FROM patient WHERE org_id = $1 AND demo_code = 'DEMO-003' LIMIT 1`,
+          [org1],
+        )
+      ).rows[0]?.id ?? demo1;
+
+    const docAnanya = (
       await client.query<{ id: string }>(
-        `SELECT id FROM app_user WHERE email = 'ananya.mukhopadhyay@rci.invalid' LIMIT 1`,
+        `SELECT id FROM app_user WHERE email = 'dr.ananya@rci.demo' LIMIT 1`,
       )
     ).rows[0]?.id;
 
-    if (demo1 && docMukhopadhyay) {
-      // 1. Clinic Session
-      await client.query(
-        `INSERT INTO clinic_session (org_id, facility_id, department_id, clinician_id, title, day_of_week, start_time, end_time, room_label, max_patients)
-         VALUES ($1, $2, $3, $4, 'Thoracic & Medical Oncology Morning OPD', 1, '09:00:00', '13:00:00', 'OPD Room 101', 25)
-         ON CONFLICT (org_id, id) DO NOTHING`,
-        [org1, facRci, deptId['MED-ONC'], docMukhopadhyay],
-      );
-
-      // 2. Demo Appointment
-      const apptCheck = await client.query<{ id: string }>(
-        `SELECT id FROM appointment WHERE org_id = $1 AND patient_id = $2 AND token_number = 'TK-001' LIMIT 1`,
-        [org1, demo1],
-      );
-      let demoApptId = apptCheck.rows[0]?.id;
-      if (!demoApptId) {
-        const apptRes = await client.query<{ id: string }>(
-          `INSERT INTO appointment (org_id, patient_id, clinician_id, facility_id, department_id, scheduled_start, scheduled_end, room_label, appointment_type, arrival_category, status, token_number, notes)
-           VALUES ($1, $2, $3, $4, $5, (CURRENT_DATE + interval '10 hours'), (CURRENT_DATE + interval '10 hours 30 minutes'), 'OPD Room 101', 'follow_up', 'scheduled', 'checked_in', 'TK-001', 'Synthetic demo OPD follow-up appointment')
-           RETURNING id`,
-          [org1, demo1, docMukhopadhyay, facRci, deptId['MED-ONC']],
-        );
-        demoApptId = apptRes.rows[0]?.id;
-      }
-
-      // 3. Demo Consultation Encounter
-      const encCheck = await client.query<{ id: string }>(
-        `SELECT id FROM encounter WHERE org_id = $1 AND patient_id = $2 AND status = 'in_progress' LIMIT 1`,
-        [org1, demo1],
-      );
-      let demoEncId = encCheck.rows[0]?.id;
-      if (!demoEncId) {
-        const encRes = await client.query<{ id: string }>(
-          `INSERT INTO encounter (org_id, patient_id, appointment_id, facility_id, department_id, clinician_id, encounter_type, status, started_at)
-           VALUES ($1, $2, $3, $4, $5, $6, 'outpatient', 'in_progress', now())
-           RETURNING id`,
-          [org1, demo1, demoApptId ?? null, facRci, deptId['MED-ONC'], docMukhopadhyay],
-        );
-        demoEncId = encRes.rows[0]?.id;
-      }
-
-      if (demoEncId) {
-        await client.query(
-          `INSERT INTO encounter_participant (org_id, encounter_id, user_id, role)
-           VALUES ($1, $2, $3, 'attending_oncologist')
-           ON CONFLICT (org_id, encounter_id, user_id) DO NOTHING`,
-          [org1, demoEncId, docMukhopadhyay],
-        );
-
-        await client.query(
-          `INSERT INTO encounter_note_version (org_id, encounter_id, version, status, title, chief_complaint, clinical_assessment, plan_and_instructions, authored_by)
-           VALUES ($1, $2, 1, 'draft', 'Thoracic Oncology Consult Note', 'Cycle 3 Carboplatin/Pemetrexed restaging follow-up', 'Patient is clinically stable with ECOG PS 1. Reviewing histopathology and response markers.', 'Proceed with restaging chest CT scan. Continue anti-emetic prophylaxis.', $3)
-           ON CONFLICT (org_id, encounter_id, version) DO NOTHING`,
-          [org1, demoEncId, docMukhopadhyay],
-        );
-      }
-
-      // 4. Demo Tumor Board Meeting
-      const tbCheck = await client.query<{ id: string }>(
-        `SELECT id FROM tumor_board_meeting WHERE org_id = $1 AND title = 'RCI Thoracic Multidisciplinary Oncology Board' LIMIT 1`,
-        [org1],
-      );
-      let demoTbId = tbCheck.rows[0]?.id;
-      if (!demoTbId) {
-        const tbRes = await client.query<{ id: string }>(
-          `INSERT INTO tumor_board_meeting (org_id, title, meeting_date, start_time, end_time, location, status, moderator_user_id, notes)
-           VALUES ($1, 'RCI Thoracic Multidisciplinary Oncology Board', CURRENT_DATE + interval '2 days', '16:00:00', '17:30:00', 'Conference Room 3A & Telehealth', 'scheduled', $2, 'Multidisciplinary Thoracic and GI Oncology Review')
-           RETURNING id`,
-          [org1, docMukhopadhyay],
-        );
-        demoTbId = tbRes.rows[0]?.id;
-      }
-
-      if (demoTbId) {
-        await client.query(
-          `INSERT INTO tumor_board_case (org_id, meeting_id, patient_id, presenter_user_id, status, order_index, clinical_staging, checklist_histology_verified, checklist_imaging_verified, checklist_staging_verified, checklist_genomics_verified)
-           VALUES ($1, $2, $3, $4, 'registered', 1, 'cT2aN1M0 Stage IIB NSCLC', true, true, true, false)
-           ON CONFLICT (org_id, meeting_id, patient_id) DO NOTHING`,
-          [org1, demoTbId, demo1, docMukhopadhyay],
-        );
-      }
+    if (demo1 && docAnanya) {
+      await seedOperationalFixtures(client, {
+        orgId: org1,
+        facRci,
+        deptId,
+        docAnanyaId: docAnanya,
+        demo1Id: demo1,
+        demo3Id: demo3,
+      });
     }
 
     const patientRes = await client.query<{ id: string }>(
@@ -1363,5 +1419,177 @@ export async function bootstrapDemo(
     };
   } finally {
     client.release();
+  }
+}
+
+/**
+ * Shared helper for seeding Milestone B oncology operations fixtures:
+ * clinic_session, appointment, encounter, encounter_note_version,
+ * tumor_board_meeting, and tumor_board_case anchored to verified staging facts.
+ */
+async function seedOperationalFixtures(
+  client: PoolClient,
+  params: {
+    orgId: string;
+    facRci: string;
+    deptId: Record<string, string>;
+    docAnanyaId: string;
+    demo1Id: string;
+    demo3Id?: string;
+    appt1Id?: string;
+  },
+): Promise<void> {
+  const { orgId, facRci, deptId, docAnanyaId, demo1Id, demo3Id, appt1Id } = params;
+
+  // 1. Clinic Session
+  await client.query(
+    `INSERT INTO clinic_session (org_id, facility_id, department_id, clinician_id, title, day_of_week, start_time, end_time, room_label, max_patients)
+     VALUES ($1, $2, $3, $4, 'Thoracic & Medical Oncology Morning OPD', 1, '09:00:00', '13:00:00', 'OPD Room 101', 25)
+     ON CONFLICT (org_id, id) DO NOTHING`,
+    [orgId, facRci, deptId['MED-ONC'], docAnanyaId],
+  );
+
+  // 2. Demo Appointment
+  let demoApptId = appt1Id;
+  if (!demoApptId) {
+    const apptCheck = await client.query<{ id: string }>(
+      `SELECT id FROM appointment WHERE org_id = $1 AND patient_id = $2 AND token_number IN ('TK-001', 'ONCO-01') LIMIT 1`,
+      [orgId, demo1Id],
+    );
+    demoApptId = apptCheck.rows[0]?.id;
+  }
+  if (!demoApptId) {
+    const apptRes = await client.query<{ id: string }>(
+      `INSERT INTO appointment (org_id, patient_id, clinician_id, facility_id, department_id, scheduled_start, scheduled_end, room_label, appointment_type, arrival_category, status, token_number, notes)
+       VALUES ($1, $2, $3, $4, $5, (CURRENT_DATE + interval '10 hours'), (CURRENT_DATE + interval '10 hours 30 minutes'), 'OPD Room 101', 'follow_up', 'scheduled', 'checked_in', 'TK-001', 'Synthetic demo OPD follow-up appointment')
+       RETURNING id`,
+      [orgId, demo1Id, docAnanyaId, facRci, deptId['MED-ONC']],
+    );
+    demoApptId = apptRes.rows[0]?.id;
+  }
+
+  // 3. Demo Consultation Encounter
+  const encCheck = await client.query<{ id: string }>(
+    `SELECT id FROM encounter WHERE org_id = $1 AND patient_id = $2 AND status = 'in_progress' LIMIT 1`,
+    [orgId, demo1Id],
+  );
+  let demoEncId = encCheck.rows[0]?.id;
+  if (!demoEncId) {
+    const encRes = await client.query<{ id: string }>(
+      `INSERT INTO encounter (org_id, patient_id, appointment_id, facility_id, department_id, clinician_id, encounter_type, status, started_at)
+       VALUES ($1, $2, $3, $4, $5, $6, 'outpatient', 'in_progress', now())
+       RETURNING id`,
+      [orgId, demo1Id, demoApptId ?? null, facRci, deptId['MED-ONC'], docAnanyaId],
+    );
+    demoEncId = encRes.rows[0]?.id;
+  }
+
+  if (demoEncId) {
+    await client.query(
+      `INSERT INTO encounter_participant (org_id, encounter_id, user_id, role)
+       VALUES ($1, $2, $3, 'attending_oncologist')
+       ON CONFLICT (org_id, encounter_id, user_id) DO NOTHING`,
+      [orgId, demoEncId, docAnanyaId],
+    );
+
+    await client.query(
+      `INSERT INTO encounter_note_version (org_id, encounter_id, version, status, title, chief_complaint, clinical_assessment, plan_and_instructions, authored_by)
+       VALUES ($1, $2, 1, 'draft', 'Thoracic Oncology Consult Note', 'Cycle 3 Carboplatin/Pemetrexed restaging follow-up', 'Patient is clinically stable with ECOG PS 1. Reviewing histopathology and response markers.', 'Proceed with restaging chest CT scan. Continue anti-emetic prophylaxis.', $3)
+       ON CONFLICT (org_id, encounter_id, version) DO NOTHING`,
+      [orgId, demoEncId, docAnanyaId],
+    );
+  }
+
+  // 4. Demo Tumor Board Meeting
+  const tbCheck = await client.query<{ id: string }>(
+    `SELECT id FROM tumor_board_meeting WHERE org_id = $1 AND title = 'RCI Thoracic Multidisciplinary Oncology Board' LIMIT 1`,
+    [orgId],
+  );
+  let demoTbId = tbCheck.rows[0]?.id;
+  if (!demoTbId) {
+    const tbRes = await client.query<{ id: string }>(
+      `INSERT INTO tumor_board_meeting (org_id, title, meeting_date, start_time, end_time, location, status, moderator_user_id, notes)
+       VALUES ($1, 'RCI Thoracic Multidisciplinary Oncology Board', CURRENT_DATE + interval '2 days', '16:00:00', '17:30:00', 'Conference Room 3A & Telehealth', 'scheduled', $2, 'Multidisciplinary Thoracic and GI Oncology Review')
+       RETURNING id`,
+      [orgId, docAnanyaId],
+    );
+    demoTbId = tbRes.rows[0]?.id;
+  }
+
+  // 5. Demo Tumor Board Cases
+  if (demoTbId) {
+    const targetPatientId = demo3Id ?? demo1Id;
+    let stagingFactId: string | null = null;
+    let stagingText = 'cT2aN1M0 Stage IIB NSCLC';
+
+    const factCheck = await client.query<{ id: string; value_normalized: string }>(
+      `SELECT ef.id, ef.value_normalized
+         FROM evidence_fact ef
+         JOIN evidence_state es ON es.evidence_fact_id = ef.id
+        WHERE ef.org_id = $1 AND ef.patient_id = $2
+          AND ef.fact_type IN ('stage_text.as_written', 'stage.recorded')
+          AND es.state IN ('verified', 'corrected')
+        ORDER BY ef.created_at DESC
+        LIMIT 1`,
+      [orgId, targetPatientId],
+    );
+
+    if (factCheck.rows[0]) {
+      stagingFactId = factCheck.rows[0].id;
+      stagingText = factCheck.rows[0].value_normalized;
+    } else {
+      // Find a span to anchor a verified staging fact
+      const spanRes = await client.query<{ id: string; document_id: string; text: string }>(
+        `SELECT ts.id, ts.document_id, ts.text
+           FROM text_span ts
+           JOIN document d ON d.id = ts.document_id
+          WHERE d.org_id = $1 AND d.patient_id = $2
+          LIMIT 1`,
+        [orgId, targetPatientId],
+      );
+      if (spanRes.rows[0]) {
+        const sp = spanRes.rows[0];
+        const newFact = await client.query<{ id: string }>(
+          `INSERT INTO evidence_fact
+             (org_id, patient_id, fact_type, slot_key, value_json, value_normalized, observed_on, verbatim_quote, document_id, extractor_kind, extractor_name, extractor_version, confidence_band, created_by)
+           VALUES ($1, $2, 'stage_text.as_written', 'stage_text.as_written', $3, $4, CURRENT_DATE - interval '14 days', $5, $6, 'human', 'human.seed', 'v1', 'high', $7)
+           RETURNING id`,
+          [orgId, targetPatientId, JSON.stringify({ kind: 'text', text: stagingText }), stagingText, sp.text, sp.document_id, docAnanyaId],
+        );
+        stagingFactId = newFact.rows[0]!.id;
+        await client.query(
+          `INSERT INTO evidence_span_link (evidence_fact_id, text_span_id, org_id, ordinal)
+           VALUES ($1, $2, $3, 0)`,
+          [stagingFactId, sp.id, orgId],
+        );
+        await client.query(
+          `INSERT INTO evidence_state (org_id, evidence_fact_id, state)
+           VALUES ($1, $2, 'verified')
+           ON CONFLICT (evidence_fact_id) DO UPDATE SET state = 'verified'`,
+          [orgId, stagingFactId],
+        );
+      }
+    }
+
+    await client.query(
+      `INSERT INTO tumor_board_case (org_id, meeting_id, patient_id, presenter_user_id, status, order_index, staging_fact_id, cited_fact_ids, clinical_staging, checklist_histology_verified, checklist_imaging_verified, checklist_staging_verified, checklist_genomics_verified)
+       VALUES ($1, $2, $3, $4, 'registered', 1, $5, $6, $7, true, true, true, false)
+       ON CONFLICT (org_id, meeting_id, patient_id) DO UPDATE SET
+         staging_fact_id = EXCLUDED.staging_fact_id,
+         cited_fact_ids = EXCLUDED.cited_fact_ids,
+         clinical_staging = EXCLUDED.clinical_staging,
+         checklist_staging_verified = EXCLUDED.checklist_staging_verified`,
+      [orgId, demoTbId, targetPatientId, docAnanyaId, stagingFactId, stagingFactId ? [stagingFactId] : [], stagingText],
+    );
+
+    // Also register DEMO-001 if target was demo3
+    if (targetPatientId !== demo1Id) {
+      await client.query(
+        `INSERT INTO tumor_board_case (org_id, meeting_id, patient_id, presenter_user_id, status, order_index, clinical_staging, checklist_histology_verified, checklist_imaging_verified, checklist_staging_verified, checklist_genomics_verified)
+         VALUES ($1, $2, $3, $4, 'registered', 2, 'cT1cN0M0 Stage IA Breast Cancer', true, true, true, false)
+         ON CONFLICT (org_id, meeting_id, patient_id) DO NOTHING`,
+        [orgId, demoTbId, demo1Id, docAnanyaId],
+      );
+    }
   }
 }

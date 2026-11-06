@@ -5,6 +5,7 @@ import {
   normalizeForComparison,
   transition,
   validateSpans,
+  validateCandidateProvenance,
   verifyChainLinkage,
   type EvidenceStateValue,
   type ExtractorKind,
@@ -205,7 +206,18 @@ export interface InsertFactInput {
 
 export type InsertFactResult =
   | { ok: true; factId: string; ledgerEntryId: string }
-  | { ok: false; reason: 'span_mismatch' | 'no_spans' | 'cross_page' | 'cross_document' | 'empty_quote'; detail: unknown };
+  | {
+      ok: false;
+      reason:
+        | 'span_mismatch'
+        | 'no_spans'
+        | 'cross_page'
+        | 'cross_document'
+        | 'empty_quote'
+        | 'value_not_entailed'
+        | 'unauthorized_correction';
+      detail: unknown;
+    };
 
 /**
  * The agent that may write to the ledger. Applies §5.2 span validation, checks
@@ -219,14 +231,25 @@ export async function insertFact(q: Querier, input: InsertFactInput): Promise<In
     document_id: string;
     page_id: string;
     text: string;
-  }>('SELECT id, document_id, page_id, text FROM text_span WHERE id = ANY($1::uuid[])', [
-    input.spanIds,
-  ]);
+    bbox_x: number | null;
+    bbox_y: number | null;
+    bbox_w: number | null;
+    bbox_h: number | null;
+    ocr_confidence: number | null;
+  }>(
+    'SELECT id, document_id, page_id, text, bbox_x, bbox_y, bbox_w, bbox_h, ocr_confidence FROM text_span WHERE id = ANY($1::uuid[])',
+    [input.spanIds],
+  );
   const spans = spansRes.rows.map((r) => ({
     id: r.id,
     documentId: r.document_id,
     pageId: r.page_id,
     text: r.text,
+    bbox:
+      r.bbox_x !== null && r.bbox_y !== null && r.bbox_w !== null && r.bbox_h !== null
+        ? { x: r.bbox_x, y: r.bbox_y, w: r.bbox_w, h: r.bbox_h }
+        : undefined,
+    ocrConfidence: r.ocr_confidence,
   }));
 
   if (spans.length !== input.spanIds.length) {
@@ -238,8 +261,35 @@ export async function insertFact(q: Querier, input: InsertFactInput): Promise<In
     return { ok: false, reason: validation.error.code as 'span_mismatch', detail: validation.error };
   }
 
+  if (input.extractorKind === 'human' && (!input.createdBy || !input.createdBy.trim())) {
+    return {
+      ok: false,
+      reason: 'unauthorized_correction',
+      detail: 'Human authored facts require a valid createdBy actor identity.',
+    };
+  }
+
+  const stageB =
+    input.extractorKind === 'human'
+      ? { valid: true, minOcrConfidence: undefined }
+      : validateCandidateProvenance(
+          {
+            factType: input.factType,
+            value: input.value,
+            verbatimQuote: input.verbatimQuote,
+            spanIds: input.spanIds,
+          },
+          spans,
+        );
+  if (!stageB.valid) {
+    return { ok: false, reason: 'value_not_entailed', detail: stageB.reason ?? 'value_not_entailed' };
+  }
+
   const slotKey = makeSlotKey(input.factType, input.value, input.observedOn);
-  const band = confidenceBandFor(input.confidenceRaw);
+  let band = confidenceBandFor(input.confidenceRaw);
+  if (stageB.minOcrConfidence !== undefined && stageB.minOcrConfidence < 0.85) {
+    band = 'low';
+  }
 
   const factRes = await q.query<{ id: string }>(
     `INSERT INTO evidence_fact

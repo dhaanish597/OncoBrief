@@ -18,7 +18,13 @@ export function createOcrAdapter(config: OcrRoutingConfig): OcrPort {
     (config.driver === 'auto' && config.sarvam?.apiKey)
   ) {
     if (!config.sarvam?.apiKey) throw new Error('ocr_missing_sarvam_api_key');
-    return new SarvamVisionOcrAdapter(config.sarvam);
+    return new SarvamVisionOcrAdapter({
+      ...config.sarvam,
+      fallbackOnError:
+        config.driver === 'auto'
+          ? (config.sarvam.fallbackOnError ?? true)
+          : (config.sarvam.fallbackOnError ?? false),
+    });
   }
   if (
     config.driver === 'textract' ||

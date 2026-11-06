@@ -1,5 +1,6 @@
 import { checkMessageApprovalGate, renderTemplate, type EvidenceStateValue, type VariableSource } from '@oncobrief/domain';
 import type { DeliveryPort } from '@oncobrief/ports';
+import { normalizeLanguageCode, ELEVEN_LOCALE_TEMPLATES } from '@oncobrief/adapters';
 import type { Querier } from '../client';
 import { appendAuditEvent } from './audit';
 
@@ -158,6 +159,34 @@ async function resolveVariableSources(
       v.value = task.title;
       out.push({ kind: 'task', variableName: v.name, adminTaskId: v.source.adminTaskId, taskKind: task.task_kind, taskStatus: task.status });
     } else {
+      if (v.name === 'appointment_date') {
+        const apptRes = await q.query<{ ok: number }>(
+          `SELECT 1 as ok FROM (
+             SELECT a.scheduled_start::date::text AS appt_date
+               FROM appointment a
+              WHERE a.org_id = $1 AND a.patient_id = $2
+                AND a.status IN ('scheduled', 'confirmed', 'checked_in', 'waiting', 'in_consultation')
+             UNION
+             SELECT s.clinic_date::text AS appt_date
+               FROM opd_appointment_slot s
+              WHERE s.org_id = $1 AND s.patient_id = $2
+                AND s.status IN ('scheduled', 'checked_in', 'in_consult', 'walk_in')
+             UNION
+             SELECT s.clinic_date::text AS appt_date
+               FROM opd_waitlist_entry w
+               JOIN opd_appointment_slot s ON s.id = w.offered_slot_id AND s.org_id = w.org_id
+              WHERE w.org_id = $1 AND w.patient_id = $2
+                AND w.status = 'offered'
+                AND (w.offer_expires_at IS NULL OR w.offer_expires_at > now())
+           ) active_dates
+           WHERE active_dates.appt_date = $3
+              OR $3 LIKE ('%' || active_dates.appt_date || '%')`,
+          [orgId, patientId, v.value.trim()],
+        );
+        if (!apptRes.rows[0]) {
+          throw new Error('message_source_not_accessible');
+        }
+      }
       out.push({ kind: 'literal', variableName: v.name, literalValue: v.value });
     }
   }
@@ -496,3 +525,313 @@ export async function recordMessageAttendance(
     attendanceNote: updated.attendance_note,
   };
 }
+
+export interface InboundAttendanceWebhookInput {
+  orgId: string;
+  actorUserId: string;
+  messageId: string;
+  replyCode: 'confirmed' | 'reschedule_requested' | 'declined';
+  responder?: 'patient' | 'caregiver';
+  channel?: string | null;
+  note?: string | null;
+  eventId?: string | null;
+}
+
+export interface InboundAttendanceWebhookResult {
+  idempotentReplay: boolean;
+  message: PatientMessageDetails;
+  followUpTaskCreated: boolean;
+  followUpTaskId: string | null;
+  visitedNodes: string[];
+}
+
+/**
+ * Inbound patient/caregiver attendance reply processor (TASK-023).
+ * Executes `createContinuityOutreachWorkflowGraph`, enforces `webhook_event_id`
+ * idempotency, updates `patient_message.attendance_status`, and creates a
+ * source-anchored coordinator follow-up task when reschedule or decline is reported.
+ */
+export async function processInboundAttendanceWebhook(
+  q: Querier,
+  input: InboundAttendanceWebhookInput,
+): Promise<InboundAttendanceWebhookResult> {
+  const { createContinuityOutreachWorkflowGraph } = await import('@oncobrief/domain');
+
+  if (input.eventId) {
+    try {
+      const existing = await q.query<{ id: string }>(
+        `SELECT id FROM patient_message WHERE org_id = $1 AND webhook_event_id = $2 LIMIT 1`,
+        [input.orgId, input.eventId],
+      );
+      if (existing.rows[0]) {
+        const msg = await getMessage(q, existing.rows[0].id);
+        if (msg) {
+          return {
+            idempotentReplay: true,
+            message: msg,
+            followUpTaskCreated: false,
+            followUpTaskId: null,
+            visitedNodes: ['validate_message_gate'],
+          };
+        }
+      }
+    } catch {
+      // Non-fatal if 0021 webhook_event_id column is not yet applied
+    }
+  }
+
+  let updatedMessage: PatientMessageDetails | null = null;
+  let patientId = '';
+  let locale = 'en-IN';
+
+  const graph = createContinuityOutreachWorkflowGraph({
+    onValidateMessageGate: async (state) => {
+      const cur = await q.query<{
+        id: string;
+        patient_id: string;
+        locale: string;
+        status: string;
+      }>(
+        `SELECT id, patient_id, locale, status FROM patient_message WHERE id = $1 AND org_id = $2 FOR UPDATE`,
+        [input.messageId, input.orgId],
+      );
+      const row = cur.rows[0];
+      if (!row) throw new Error('message_not_found');
+      if (row.status !== 'delivered') throw new Error('message_not_delivered');
+      patientId = row.patient_id;
+      locale = row.locale;
+      return { ...state, patientId, locale };
+    },
+    onClassifyAttendanceReply: async (state) => {
+      const mappedAttendanceStatus: AttendanceResponseStatus =
+        state.inboundReplyCode === 'confirmed'
+          ? 'confirmed_attendance'
+          : state.inboundReplyCode === 'reschedule_requested'
+            ? 'needs_coordinator_assistance'
+            : 'cannot_attend';
+      return { ...state, mappedAttendanceStatus };
+    },
+    onPersistAttendanceState: async (state) => {
+      updatedMessage = await recordMessageAttendance(q, {
+        orgId: input.orgId,
+        messageId: input.messageId,
+        status: state.mappedAttendanceStatus,
+        channel: input.channel ?? 'sms',
+        responder: state.responder,
+        note:
+          input.note ??
+          `Inbound ${state.responder} reply via ${input.channel ?? 'sms'}: ${state.inboundReplyCode}`,
+        actorUserId: input.actorUserId,
+      });
+      if (input.eventId) {
+        try {
+          await q.query(
+            `UPDATE patient_message SET webhook_event_id = $3 WHERE org_id = $1 AND id = $2`,
+            [input.orgId, input.messageId, input.eventId],
+          );
+        } catch {
+          // Ignore if column not yet migrated
+        }
+      }
+      return state;
+    },
+    onCoordinatorEscalationGate: async (state) => {
+      if (
+        state.mappedAttendanceStatus !== 'needs_coordinator_assistance' &&
+        state.mappedAttendanceStatus !== 'cannot_attend'
+      ) {
+        return state;
+      }
+
+      // Find an anchoring source from message_variable_source (evidence_fact_id) or patient document
+      const srcRes = await q.query<{
+        evidence_fact_id: string | null;
+        document_id: string | null;
+      }>(
+        `SELECT
+           (SELECT mvs.evidence_fact_id FROM message_variable_source mvs
+             WHERE mvs.patient_message_id = $1 AND mvs.evidence_fact_id IS NOT NULL LIMIT 1) AS evidence_fact_id,
+           (SELECT d.id FROM document d
+             WHERE d.org_id = $2 AND d.patient_id = $3 ORDER BY d.uploaded_at DESC LIMIT 1) AS document_id`,
+        [input.messageId, input.orgId, state.patientId],
+      );
+      const src = srcRes.rows[0];
+      if (!src?.evidence_fact_id && !src?.document_id) {
+        return state;
+      }
+
+      try {
+        const { createTask } = await import('./tasks');
+        const taskId = await createTask(q, {
+          orgId: input.orgId,
+          patientId: state.patientId,
+          title:
+            state.inboundReplyCode === 'reschedule_requested'
+              ? 'Follow up on patient/caregiver appointment reschedule request'
+              : 'Follow up on patient/caregiver inability to attend scheduled appointment',
+          detail: `Inbound continuity webhook reply (${state.inboundReplyCode}) from ${state.responder} on message ${input.messageId}.`,
+          taskKind: 'schedule_appointment_followup',
+          dueOn: new Date(Date.now() + 86_400_000).toISOString().slice(0, 10),
+          origin: src.evidence_fact_id
+            ? { kind: 'evidence', evidenceFactId: src.evidence_fact_id }
+            : { kind: 'document', documentId: src.document_id! },
+          createdBy: input.actorUserId,
+        });
+        return {
+          ...state,
+          followUpTaskCreated: true,
+          followUpTaskId: taskId,
+        };
+      } catch {
+        return state;
+      }
+    },
+  });
+
+  const run = await graph.run({
+    orgId: input.orgId,
+    patientId: '',
+    messageId: input.messageId,
+    locale: 'en-IN',
+    inboundReplyCode: input.replyCode,
+    mappedAttendanceStatus: 'no_response',
+    responder: input.responder ?? 'patient',
+    followUpTaskCreated: false,
+    followUpTaskId: null,
+    syncedCaregiverCount: 0,
+  });
+
+  if (!updatedMessage) {
+    throw new Error('webhook_attendance_update_failed');
+  }
+
+  await appendAuditEvent(q, {
+    orgId: input.orgId,
+    actor: { userId: input.actorUserId, role: null },
+    action: 'continuity.webhook_processed',
+    entityKind: 'patient_message',
+    entityId: input.messageId,
+    outcome: 'success',
+    metadata: {
+      reply_code: input.replyCode,
+      mapped_attendance_status: run.finalState.mappedAttendanceStatus,
+      follow_up_task_created: run.finalState.followUpTaskCreated,
+      visited_nodes: run.visitedNodes,
+      execution_trace: run.trace,
+    },
+  });
+
+  return {
+    idempotentReplay: false,
+    message: updatedMessage,
+    followUpTaskCreated: run.finalState.followUpTaskCreated,
+    followUpTaskId: run.finalState.followUpTaskId,
+    visitedNodes: run.visitedNodes,
+  };
+}
+
+export interface LocalizedMessageResult {
+  text: string;
+  locale: string;
+  templateCode: string;
+}
+
+/**
+ * Resolves authoritative localized message text across all 11 supported locales (`TASK-01.04`).
+ * 
+ * Strict clinical safety requirements:
+ * 1. Checks `checkMessageGate(q, messageId)` first — ungrounded, unapproved, or tampered
+ *    messages immediately return `null`.
+ * 2. If the message is `withdrawn`, returns `null`.
+ * 3. Never hallucinates or invents clinical facts.
+ * 4. Renders with the message's verified `variables_json`.
+ */
+export async function resolveLocalizedMessageText(
+  q: Querier,
+  messageId: string,
+  targetLanguageCode: string,
+): Promise<LocalizedMessageResult | null> {
+  const gate = await checkMessageGate(q, messageId);
+  if (!gate.ok) {
+    return null;
+  }
+
+  const msgRes = await q.query<{
+    id: string;
+    org_id: string;
+    patient_id: string;
+    template_id: string;
+    locale: string;
+    variables_json: Record<string, string>;
+    body_rendered: string;
+    status: string;
+    template_code: string;
+    template_allowed_variables: string[];
+  }>(
+    `SELECT m.id, m.org_id, m.patient_id, m.template_id, m.locale, m.variables_json, m.body_rendered, m.status,
+            t.code AS template_code, t.allowed_variables AS template_allowed_variables
+       FROM patient_message m
+       JOIN message_template t ON t.id = m.template_id AND t.org_id = m.org_id
+      WHERE m.id = $1`,
+    [messageId],
+  );
+  const msg = msgRes.rows[0];
+  if (!msg) return null;
+  if (msg.status === 'withdrawn') return null;
+
+  const normalizedTarget = normalizeLanguageCode(targetLanguageCode);
+  const normalizedMsgLocale = normalizeLanguageCode(msg.locale);
+
+  if (normalizedTarget === normalizedMsgLocale) {
+    return {
+      text: msg.body_rendered,
+      locale: normalizedTarget,
+      templateCode: msg.template_code,
+    };
+  }
+
+  const shortTarget = normalizedTarget.split('-')[0]!;
+  // Check if there is an approved message_template for this code in the target language for this org
+  const tplRes = await q.query<{ body_template: string; allowed_variables: string[] }>(
+    `SELECT body_template, allowed_variables FROM message_template
+      WHERE org_id = $1 AND code = $2 AND (locale = $3 OR locale = $4)
+      ORDER BY (locale = $3) DESC, version DESC LIMIT 1`,
+    [msg.org_id, msg.template_code, normalizedTarget, shortTarget],
+  );
+
+  let bodyTemplate = tplRes.rows[0]?.body_template;
+  const allowedVars = tplRes.rows[0]?.allowed_variables ?? msg.template_allowed_variables;
+
+  if (!bodyTemplate) {
+    const tCode = msg.template_code as 'appointment_reminder' | 'opd_slot_offer_v1';
+    if (ELEVEN_LOCALE_TEMPLATES[tCode]) {
+      bodyTemplate =
+        ELEVEN_LOCALE_TEMPLATES[tCode][normalizedTarget] ??
+        ELEVEN_LOCALE_TEMPLATES[tCode][shortTarget];
+    }
+  }
+
+  if (!bodyTemplate) {
+    return {
+      text: msg.body_rendered,
+      locale: normalizedTarget,
+      templateCode: msg.template_code,
+    };
+  }
+
+  const rendered = renderTemplate(bodyTemplate, allowedVars, msg.variables_json);
+  if (!rendered.ok) {
+    return {
+      text: msg.body_rendered,
+      locale: normalizedTarget,
+      templateCode: msg.template_code,
+    };
+  }
+
+  return {
+    text: rendered.body,
+    locale: normalizedTarget,
+    templateCode: msg.template_code,
+  };
+}
+

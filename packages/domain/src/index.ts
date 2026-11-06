@@ -52,10 +52,15 @@ export * from './policy/clinical-boundary';
 // ingestion
 export * from './ingestion/packet-segmenter';
 
+// orchestration
+export * from './orchestration/workflow-graph';
+
 // fhir & standards
 export * from './fhir/abdm-bundle-mapper';
 export * from './fhir/mcode-mapper';
 export * from './fhir/standard-bundles';
+export * from './fhir/fhir-importer';
+export * from './fhir/fhir-exporter';
 
 // longitudinal ledger read models
 export * from './journey/longitudinal-review';

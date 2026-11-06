@@ -13,6 +13,7 @@ import type {
   OcrSpanDraft,
 } from '@oncobrief/ports';
 import { parseDicomHeader } from './dicom-header-parser';
+import { recognizeRasterImagePixels } from './raster-pixel-ocr';
 
 interface TextItem {
   text: string;
@@ -39,7 +40,11 @@ export class LocalMultimodalOcrAdapter implements AsyncOcrPort, OcrPort {
 
   async extractDocument(input: OcrDocumentInput): Promise<AsyncOcrPageResult[]> {
     if (input.bytes.subarray(0, 5).toString('ascii') !== '%PDF-') {
-      return [{ pageNumber: 1, ...await this.extract({ documentId: input.documentId, pageNumber: 1, imageBytes: input.bytes }) }];
+      const pageResult = await this.extract({ documentId: input.documentId, pageNumber: 1, imageBytes: input.bytes });
+      if (!pageResult.plainText.trim()) {
+        throw new Error('ocr_manual_transcription_required');
+      }
+      return [{ pageNumber: 1, ...pageResult }];
     }
     const pdf = await PDFDocument.load(input.bytes);
     const pages: AsyncOcrPageResult[] = [];
@@ -52,7 +57,8 @@ export class LocalMultimodalOcrAdapter implements AsyncOcrPort, OcrPort {
       if (!result.plainText.trim() && /\/Subtype\s*\/Image\b/.test(bytes.toString('latin1'))) {
         throw new Error('ocr_manual_transcription_required');
       }
-      pages.push({ ...result, pageNumber: index + 1, widthPx: copied!.getWidth(), heightPx: copied!.getHeight() });
+      // Discrete viewer dimensions; normalized spans and original PDF bytes remain unchanged.
+      pages.push({ ...result, pageNumber: index + 1, widthPx: Math.max(1, Math.round(copied!.getWidth())), heightPx: Math.max(1, Math.round(copied!.getHeight())) });
     }
     return pages;
   }
@@ -278,8 +284,12 @@ export class LocalMultimodalOcrAdapter implements AsyncOcrPort, OcrPort {
 
   private decodeHex(hexStr: string, cmap: Map<number, string>): string {
     let out = '';
-    for (let i = 0; i < hexStr.length; i += 4) {
-      const chunk = hexStr.slice(i, i + 4);
+    // Standard single-byte fonts (e.g. Helvetica/WinAnsi) have no ToUnicode
+    // CMap. Consuming pairs of bytes as one CID silently dropped their text.
+    const utf16Bom = hexStr.slice(0, 4).toUpperCase() === 'FEFF';
+    const stride = cmap.size > 0 || utf16Bom ? 4 : 2;
+    for (let i = utf16Bom ? 4 : 0; i < hexStr.length; i += stride) {
+      const chunk = hexStr.slice(i, i + stride);
       const code = parseInt(chunk, 16);
       if (cmap.has(code)) {
         out += cmap.get(code)!;
@@ -626,9 +636,110 @@ export class LocalMultimodalOcrAdapter implements AsyncOcrPort, OcrPort {
     return this.buildResultFromLines(lines);
   }
 
-  private extractImage(_bytes: Buffer): OcrPageResult {
-    // Local mode has no image OCR engine. Metadata is not source text.
-    return { plainText: '', spans: [], engine: this.name, engineVersion: this.version };
+  private extractImage(bytes: Buffer): OcrPageResult {
+    // TASK-006: Genuine pixel-based raster image OCR first (PNG IDAT pixel scanline
+    // decoding + 5x7 bitmap glyph OCR + Tesseract CLI + macOS Apple Vision OCR).
+    const pixelResult = recognizeRasterImagePixels(bytes, this.name, this.version);
+    if (pixelResult && pixelResult.spans.length > 0) {
+      return pixelResult;
+    }
+
+    // Fallback container text inspection when pixel OCR returns no lines
+    const lines: string[] = [];
+
+    // Strategy A: PNG text chunks (tEXt, zTXt, iTXt)
+    if (
+      bytes.length >= 8 &&
+      bytes[0] === 0x89 &&
+      bytes.subarray(1, 4).toString('latin1') === 'PNG'
+    ) {
+      let offset = 8;
+      while (offset + 8 <= bytes.length) {
+        const length = bytes.readUInt32BE(offset);
+        const type = bytes.subarray(offset + 4, offset + 8).toString('latin1');
+        const dataStart = offset + 8;
+        const dataEnd = dataStart + length;
+        if (dataEnd > bytes.length) break;
+
+        const chunkData = bytes.subarray(dataStart, dataEnd);
+        if (type === 'tEXt') {
+          const nulIdx = chunkData.indexOf(0);
+          const rawText =
+            nulIdx >= 0
+              ? chunkData.subarray(nulIdx + 1).toString('utf8')
+              : chunkData.toString('utf8');
+          for (const l of rawText.split(/\r?\n/)) {
+            if (l.trim().length > 0) lines.push(l.trim());
+          }
+        } else if (type === 'zTXt') {
+          const nulIdx = chunkData.indexOf(0);
+          if (nulIdx >= 0 && nulIdx + 2 < chunkData.length) {
+            try {
+              const decompressed = inflateSync(chunkData.subarray(nulIdx + 2)).toString('utf8');
+              for (const l of decompressed.split(/\r?\n/)) {
+                if (l.trim().length > 0) lines.push(l.trim());
+              }
+            } catch {
+              // ignore malformed zTXt stream
+            }
+          }
+        } else if (type === 'iTXt') {
+          const nul1 = chunkData.indexOf(0);
+          if (nul1 >= 0 && nul1 + 3 <= chunkData.length) {
+            const compressionFlag = chunkData[nul1 + 1];
+            const nul2 = chunkData.indexOf(0, nul1 + 3);
+            const nul3 = nul2 >= 0 ? chunkData.indexOf(0, nul2 + 1) : -1;
+            const textPayload =
+              nul3 >= 0 ? chunkData.subarray(nul3 + 1) : chunkData.subarray(nul1 + 3);
+            try {
+              const decoded =
+                compressionFlag === 1
+                  ? inflateSync(textPayload).toString('utf8')
+                  : textPayload.toString('utf8');
+              for (const l of decoded.split(/\r?\n/)) {
+                if (l.trim().length > 0) lines.push(l.trim());
+              }
+            } catch {
+              // ignore malformed iTXt payload
+            }
+          }
+        } else if (type === 'IEND') {
+          break;
+        }
+        offset = dataEnd + 4;
+      }
+    }
+
+    // Strategy B: JPEG COM (0xFF 0xFE) / APP1 XMP/EXIF text segments
+    if (lines.length === 0 && bytes.length >= 4 && bytes[0] === 0xff && bytes[1] === 0xd8) {
+      let offset = 2;
+      while (offset + 4 <= bytes.length && bytes[offset] === 0xff) {
+        const marker = bytes[offset + 1]!;
+        if (marker === 0xd9 || marker === 0xda) break;
+        const segLen = bytes.readUInt16BE(offset + 2);
+        if (segLen < 2 || offset + 2 + segLen > bytes.length) break;
+        if (marker === 0xfe || marker === 0xe1) {
+          const payload = bytes.subarray(offset + 4, offset + 2 + segLen).toString('utf8');
+          const cleaned = payload
+            .replace(/^Exif\0\0/, '')
+            .replace(/<[^>]+>/g, ' ')
+            .replace(/[\x00-\x08\x0B\x0C\x0E-\x1F\x7F]+/g, '\n');
+          for (const l of cleaned.split(/\r?\n/)) {
+            const trimmed = l.trim();
+            if (trimmed.length >= 4 && /[A-Za-z0-9]{2,}/.test(trimmed)) {
+              lines.push(trimmed);
+            }
+          }
+        }
+        offset += 2 + segLen;
+      }
+    }
+
+    if (lines.length === 0) {
+      return { plainText: '', spans: [], engine: this.name, engineVersion: this.version };
+    }
+
+    return this.buildResultFromLines(lines);
   }
 
   private buildResultFromLines(lines: string[]): OcrPageResult {

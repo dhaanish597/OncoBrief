@@ -40,13 +40,14 @@ async function clinicianCtx() {
 describe('correction preserves the original', () => {
   it('creates a replacement fact and leaves fact A untouched', async () => {
     const ctx = await clinicianCtx();
+    const originalText = fx.sampleSpanText.slice(0, 25);
 
     const created = await withTenant(ctx, (q) =>
       insertFact(q, {
         orgId: fx.org1,
         patientId: fx.patients.demo3,
         factType: 'diagnosis_text.as_written',
-        value: { kind: 'text', text: 'Original extracted text' },
+        value: { kind: 'text', text: originalText },
         verbatimQuote: fx.sampleSpanText,
         spanIds: [fx.sampleSpanId],
         documentId: fx.sampleDocumentId,
@@ -86,7 +87,7 @@ describe('correction preserves the original', () => {
     const replacement = rows.rows.find((r) => r.id !== originalId)!;
 
     expect(original.state).toBe('corrected');
-    expect((original.value_json as { text: string }).text).toBe('Original extracted text');
+    expect((original.value_json as { text: string }).text).toBe(originalText);
     expect(replacement.corrects_fact_id).toBe(originalId);
     expect(replacement.state).toBe('verified');
     expect((replacement.value_json as { text: string }).text).toBe('Corrected text');
@@ -289,8 +290,8 @@ describe('approved packets are frozen', () => {
       insertFact(q, {
         orgId: fx.org1,
         patientId: fx.patients.demo3,
-        factType: 'consent.recorded',
-        value: { kind: 'date', date: '2025-05-01' },
+        factType: 'diagnosis_text.as_written',
+        value: { kind: 'text', text: fx.sampleSpanText.slice(0, 25) },
         verbatimQuote: fx.sampleSpanText,
         spanIds: [fx.sampleSpanId],
         documentId: fx.sampleDocumentId,

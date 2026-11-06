@@ -81,6 +81,7 @@ describe('Milestone B: Oncology Operations Backend Services', () => {
     const client = await pool.connect();
     try {
       await client.query(`DELETE FROM tumor_board_meeting WHERE title LIKE 'Test TB %'`);
+      await client.query(`DELETE FROM opd_appointment_slot WHERE appointment_id IN (SELECT id FROM appointment WHERE notes LIKE '%Milestone B Test%')`);
       await client.query(`DELETE FROM appointment WHERE notes LIKE '%Milestone B Test%'`);
       await client.query(`DELETE FROM clinician_unavailability WHERE reason LIKE '%Milestone B Test%'`);
     } finally {

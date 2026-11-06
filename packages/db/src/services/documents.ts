@@ -41,6 +41,11 @@ export interface CreateDocumentInput {
     | 'imaging_centre'
     | 'patient_upload';
   isDemoFixture?: boolean;
+  language?: string | null;
+}
+
+export interface IngestDocumentOptions {
+  language?: string;
 }
 
 export function storageKeyFor(orgId: string, patientId: string, documentId: string, ext: string): string {
@@ -339,122 +344,232 @@ export async function ingestNormalizedPages(
   const orgId = doc.org_id;
   const patientId = doc.patient_id;
 
-  await q.query(`UPDATE document SET ingest_status = 'ocr_running', page_count = $2 WHERE id = $1`, [
-    documentId,
-    pages.length,
-  ]);
+  const { createDocumentIngestionWorkflowGraph, segmentDocumentPacket } = await import('@oncobrief/domain');
 
   let spanCount = 0;
   let fullText = '';
-
-  for (const page of pages) {
-    const pageRes = await q.query<{ id: string }>(
-      `INSERT INTO document_page (org_id, document_id, page_number, width_px, height_px, plain_text)
-       VALUES ($1,$2,$3,$4,$5,$6)
-       ON CONFLICT (document_id, page_number) DO UPDATE SET plain_text = EXCLUDED.plain_text
-       RETURNING id`,
-      [orgId, documentId, page.pageNumber, page.widthPx ?? null, page.heightPx ?? null, page.plainText],
-    );
-    const pageId = pageRes.rows[0]!.id;
-    fullText += `${page.plainText}\n`;
-
-    for (const span of page.spans) {
-      await q.query(
-        `INSERT INTO text_span
-           (org_id, document_id, page_id, granularity, span_index, text, char_start, char_end,
-            bbox_x, bbox_y, bbox_w, bbox_h, ocr_confidence, ocr_engine, ocr_engine_version)
-         VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15)
-         ON CONFLICT (page_id, granularity, span_index) DO NOTHING`,
-        [
-          orgId, documentId, pageId, span.granularity, span.index, span.text,
-          span.charStart, span.charEnd, span.bbox.x, span.bbox.y, span.bbox.w, span.bbox.h,
-          span.confidence ?? null, page.engine, page.engineVersion,
-        ],
-      );
-      spanCount += 1;
-    }
-  }
-
-  await q.query(`UPDATE document SET ingest_status = 'classifying' WHERE id = $1`, [documentId]);
-  const classification = classifyDocumentText(doc.original_filename, fullText);
-  await q.query(
-    `UPDATE document SET document_type = $2, type_confidence = $3, classified_by = 'rule' WHERE id = $1`,
-    [documentId, classification.type, classification.confidence > 0 ? 'high' : null],
-  );
-
-  await q.query(`UPDATE document SET ingest_status = 'extracting' WHERE id = $1`, [documentId]);
-
-  const spansRes = await q.query<{ id: string; page_id: string; text: string }>(
-    'SELECT id, page_id, text FROM text_span WHERE document_id = $1 ORDER BY span_index',
-    [documentId],
-  );
-
-  const candidates = await extractor.extract({
-    documentId,
-    patientId,
-    documentType: classification.type,
-    documentDate: doc.document_date,
-    issuingFacility: doc.issuing_facility,
-    pageText: fullText,
-    spans: spansRes.rows.map((r) => ({ id: r.id, pageId: r.page_id, text: r.text })),
-  });
-
+  let classification: { type: DocumentType | null; confidence: number } = { type: null, confidence: 0 };
+  let candidatesCount = 0;
   let promoted = 0;
   let rejected = 0;
-  for (const candidate of candidates) {
-    const inserted = await insertFact(q, {
-      orgId,
-      patientId,
-      factType: candidate.factType,
-      value: candidate.value,
-      verbatimQuote: candidate.verbatimQuote,
-      spanIds: candidate.spanIds,
-      documentId,
-      extractorKind,
-      extractorName: candidate.extractorName,
-      extractorVersion: candidate.extractorVersion,
-      confidenceRaw: candidate.confidenceRaw,
-      observedOn: candidate.observedOn ?? null,
-      createdBy: null,
-      ...(correlationId ? { correlationId } : {}),
-    });
+  let conflicts = { created: 0, flagged: 0 };
+  let duplicatesFlagged = 0;
+  let extractedCandidates: Awaited<ReturnType<ExtractionPort['extract']>> = [];
 
-    await q.query(
-      `INSERT INTO extraction_candidate
-         (org_id, document_id, patient_id, fact_type, value_json, verbatim_quote, proposed_span_ids,
-          extractor_kind, extractor_name, extractor_version, confidence_raw, validation_status,
-          rejected_reason, promoted_fact_id)
-       VALUES ($1,$2,$3,$4,$5,$6,$7,$14,$8,$9,$10,$11,$12,$13)`,
-      [
-        orgId, documentId, patientId, candidate.factType, JSON.stringify(candidate.value),
-        candidate.verbatimQuote, candidate.spanIds, candidate.extractorName,
-        candidate.extractorVersion, candidate.confidenceRaw,
-        inserted.ok ? 'promoted' : 'rejected',
-        inserted.ok ? null : inserted.reason,
-        inserted.ok ? inserted.factId : null,
-        extractorKind,
-      ],
-    );
+  const ocrEngineName = pages[0]?.engine ?? 'local-multimodal';
+  const providerMode: 'live' | 'sandbox' | 'fallback' | 'fixture' =
+    doc.is_demo_fixture || ocrEngineName === 'fixture'
+      ? 'fixture'
+      : ocrEngineName === 'sarvam-vision' || ocrEngineName === 'aws-textract' || extractorKind === 'llm'
+        ? 'live'
+        : 'fallback';
 
-    if (inserted.ok) promoted += 1;
-    else rejected += 1;
-  }
+  const ingestionGraph = createDocumentIngestionWorkflowGraph({
+    onTriage: async (state) => {
+      await q.query(`UPDATE document SET ingest_status = 'ocr_running', page_count = $2 WHERE id = $1`, [
+        documentId,
+        pages.length,
+      ]);
+      return { ...state, pageCount: pages.length };
+    },
+    onSegmentPacket: async (state) => {
+      const subPackets = segmentDocumentPacket(
+        pages.map((p) => ({ pageNumber: p.pageNumber, plainText: p.plainText })),
+      );
+      try {
+        await q.query('DELETE FROM document_subpacket WHERE org_id = $1 AND document_id = $2', [
+          orgId,
+          documentId,
+        ]);
+        for (const sp of subPackets) {
+          await q.query(
+            `INSERT INTO document_subpacket
+               (org_id, patient_id, document_id, subpacket_index, start_page, end_page, category, stated_date, stated_facility, confidence)
+             VALUES ($1, $2, $3, $4, $5, $6, $7, $8::date, $9, $10)
+             ON CONFLICT (document_id, subpacket_index) DO UPDATE
+               SET start_page = EXCLUDED.start_page,
+                   end_page = EXCLUDED.end_page,
+                   category = EXCLUDED.category,
+                   stated_date = EXCLUDED.stated_date,
+                   stated_facility = EXCLUDED.stated_facility,
+                   confidence = EXCLUDED.confidence`,
+            [
+              orgId,
+              patientId,
+              documentId,
+              sp.index,
+              sp.startPage,
+              sp.endPage,
+              sp.category,
+              sp.statedDate ?? null,
+              sp.statedFacility ?? null,
+              sp.confidence,
+            ],
+          );
+        }
+      } catch {
+        // Non-fatal in test environments prior to 0021 migration
+      }
+      return { ...state, subPacketCount: subPackets.length };
+    },
+    onPersistSpans: async (state) => {
+      for (const page of pages) {
+        const pageRes = await q.query<{ id: string }>(
+          `INSERT INTO document_page (org_id, document_id, page_number, width_px, height_px, plain_text)
+           VALUES ($1,$2,$3,$4,$5,$6)
+           ON CONFLICT (document_id, page_number) DO UPDATE SET plain_text = EXCLUDED.plain_text
+           RETURNING id`,
+          [orgId, documentId, page.pageNumber, page.widthPx ?? null, page.heightPx ?? null, page.plainText],
+        );
+        const pageId = pageRes.rows[0]!.id;
+        fullText += `${page.plainText}\n`;
 
-  await appendAuditEvent(q, {
-    orgId,
-    actor: { userId: null, role: null, onBehalfOf: 'worker' },
-    action: 'extraction.completed',
-    entityKind: 'document',
-    entityId: documentId,
-    outcome: 'success',
-    correlationId: correlationId ?? null,
-    metadata: { candidates: candidates.length, promoted, rejected, pages: pages.length },
+        for (const span of page.spans) {
+          await q.query(
+            `INSERT INTO text_span
+               (org_id, document_id, page_id, granularity, span_index, text, char_start, char_end,
+                bbox_x, bbox_y, bbox_w, bbox_h, ocr_confidence, ocr_engine, ocr_engine_version)
+             VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15)
+             ON CONFLICT (page_id, granularity, span_index) DO NOTHING`,
+            [
+              orgId, documentId, pageId, span.granularity, span.index, span.text,
+              span.charStart, span.charEnd, span.bbox.x, span.bbox.y, span.bbox.w, span.bbox.h,
+              span.confidence ?? null, page.engine, page.engineVersion,
+            ],
+          );
+          spanCount += 1;
+        }
+      }
+      return { ...state, spanCount };
+    },
+    onClassify: async (state) => {
+      await q.query(`UPDATE document SET ingest_status = 'classifying' WHERE id = $1`, [documentId]);
+      classification = classifyDocumentText(doc.original_filename, fullText);
+      await q.query(
+        `UPDATE document SET document_type = $2, type_confidence = $3, classified_by = 'rule' WHERE id = $1`,
+        [documentId, classification.type, classification.confidence > 0 ? 'high' : null],
+      );
+      return { ...state, documentType: classification.type };
+    },
+    onExtractCandidates: async (state) => {
+      await q.query(`UPDATE document SET ingest_status = 'extracting' WHERE id = $1`, [documentId]);
+      const spansRes = await q.query<{ id: string; page_id: string; text: string }>(
+        'SELECT id, page_id, text FROM text_span WHERE document_id = $1 ORDER BY span_index',
+        [documentId],
+      );
+      const segmentedForFallback = segmentDocumentPacket(
+        pages.map((p) => ({ pageNumber: p.pageNumber, plainText: p.plainText })),
+      );
+      const fallbackDate =
+        doc.document_date ?? segmentedForFallback.find((s) => s.statedDate)?.statedDate ?? null;
+      const fallbackFacility =
+        doc.issuing_facility ??
+        segmentedForFallback.find((s) => s.statedFacility)?.statedFacility ??
+        null;
+      extractedCandidates = await extractor.extract({
+        documentId,
+        patientId,
+        documentType: classification.type,
+        documentDate: fallbackDate,
+        issuingFacility: fallbackFacility,
+        pageText: fullText,
+        spans: spansRes.rows.map((r) => ({ id: r.id, pageId: r.page_id, text: r.text })),
+        ...(correlationId ? { correlationId } : {}),
+      });
+      candidatesCount = extractedCandidates.length;
+      return { ...state, candidateCount: candidatesCount };
+    },
+    onTwoStageSpanGate: async (state) => {
+      for (const candidate of extractedCandidates) {
+        const inserted = await insertFact(q, {
+          orgId,
+          patientId,
+          factType: candidate.factType,
+          value: candidate.value,
+          verbatimQuote: candidate.verbatimQuote,
+          spanIds: candidate.spanIds,
+          documentId,
+          extractorKind,
+          extractorName: candidate.extractorName,
+          extractorVersion: candidate.extractorVersion,
+          confidenceRaw: candidate.confidenceRaw,
+          observedOn: candidate.observedOn ?? null,
+          createdBy: null,
+          ...(correlationId ? { correlationId } : {}),
+        });
+
+        await q.query(
+          `INSERT INTO extraction_candidate
+             (org_id, document_id, patient_id, fact_type, value_json, verbatim_quote, proposed_span_ids,
+              extractor_kind, extractor_name, extractor_version, confidence_raw, validation_status,
+              rejected_reason, promoted_fact_id)
+           VALUES ($1,$2,$3,$4,$5,$6,$7,$14,$8,$9,$10,$11,$12,$13)`,
+          [
+            orgId, documentId, patientId, candidate.factType, JSON.stringify(candidate.value),
+            candidate.verbatimQuote, candidate.spanIds, candidate.extractorName,
+            candidate.extractorVersion, candidate.confidenceRaw,
+            inserted.ok ? 'promoted' : 'rejected',
+            inserted.ok ? null : inserted.reason,
+            inserted.ok ? inserted.factId : null,
+            extractorKind,
+          ],
+        );
+
+        if (inserted.ok) promoted += 1;
+        else rejected += 1;
+      }
+
+      await appendAuditEvent(q, {
+        orgId,
+        actor: { userId: null, role: null, onBehalfOf: 'worker' },
+        action: 'extraction.completed',
+        entityKind: 'document',
+        entityId: documentId,
+        outcome: 'success',
+        correlationId: correlationId ?? null,
+        metadata: { candidates: candidatesCount, promoted, rejected, pages: pages.length },
+      });
+
+      return { ...state, promotedCount: promoted, rejectedCount: rejected };
+    },
+    onConflictAndDelta: async (state) => {
+      conflicts = await detectAndRecordConflicts(q, orgId, patientId);
+      duplicatesFlagged = await detectNearDuplicates(q, orgId, patientId);
+      return {
+        ...state,
+        conflictsCreated: conflicts.created,
+        conflictsFlagged: conflicts.flagged,
+        duplicatesFlagged,
+      };
+    },
+    onHumanReviewGate: async (state) => {
+      await q.query(`UPDATE document SET ingest_status = 'ready', ingest_error = NULL WHERE id = $1`, [documentId]);
+      return { ...state, status: 'ready' };
+    },
   });
 
-  const conflicts = await detectAndRecordConflicts(q, orgId, patientId);
-  await detectNearDuplicates(q, orgId, patientId);
+  const graphRun = await ingestionGraph.run({
+    documentId,
+    orgId,
+    patientId,
+    filename: doc.original_filename,
+    ocrEngine: ocrEngineName,
+    extractorKind,
+    providerMode,
+    pageCount: pages.length,
+    subPacketCount: 1,
+    spanCount: 0,
+    candidateCount: 0,
+    promotedCount: 0,
+    rejectedCount: 0,
+    conflictsCreated: 0,
+    conflictsFlagged: 0,
+    duplicatesFlagged: 0,
+    documentType: null,
+    status: 'ready',
+    errorCode: null,
+  });
 
-  await q.query(`UPDATE document SET ingest_status = 'ready', ingest_error = NULL WHERE id = $1`, [documentId]);
   await appendAuditEvent(q, {
     orgId,
     actor: { userId: null, role: null, onBehalfOf: 'worker' },
@@ -463,7 +578,15 @@ export async function ingestNormalizedPages(
     entityId: documentId,
     outcome: 'success',
     correlationId: correlationId ?? null,
-    metadata: { spans: spanCount },
+    metadata: {
+      spans: spanCount,
+      subpackets: graphRun.finalState.subPacketCount,
+      ocr_engine: ocrEngineName,
+      extractor_kind: extractorKind,
+      provider_mode: providerMode,
+      visited_nodes: graphRun.visitedNodes,
+      execution_trace: graphRun.trace,
+    },
   });
 
   return {
@@ -471,7 +594,7 @@ export async function ingestNormalizedPages(
     status: 'ready',
     pages: pages.length,
     spans: spanCount,
-    candidates: candidates.length,
+    candidates: candidatesCount,
     promoted,
     rejected,
     conflictsCreated: conflicts.created,
@@ -490,6 +613,7 @@ export async function ingestDocument(
   deps: IngestionDeps,
   documentId: string,
   fixturePages?: FixturePage[],
+  options?: IngestDocumentOptions,
 ): Promise<IngestionResult> {
   await q.query(`UPDATE document SET ingest_status = 'rendering' WHERE id = $1`, [documentId]);
 
@@ -591,7 +715,11 @@ export async function ingestDocument(
   try {
     if (deps.ocr.extractDocument) {
       normalized = await deps.ocr.extractDocument({
-        documentId, bytes, mimeType: doc.mime_type, filename: doc.original_filename,
+        documentId,
+        bytes,
+        mimeType: doc.mime_type,
+        filename: doc.original_filename,
+        language: options?.language ?? undefined,
         ...(process.env['STORAGE_DRIVER'] === 's3' ? {
           s3Key: doc.storage_key,
           s3Bucket: process.env['STORAGE_S3_BUCKET'] ?? 'oncobrief-documents',
@@ -880,4 +1008,101 @@ export async function linkDocumentDuplicate(
     });
   }
 }
+
+export interface DocumentSubpacketRow {
+  id: string;
+  documentId: string;
+  subpacketIndex: number;
+  startPage: number;
+  endPage: number;
+  category: string;
+  statedDate: string | null;
+  statedFacility: string | null;
+  confidence: number;
+}
+
+export async function listDocumentSubpackets(
+  q: Querier,
+  documentId: string,
+): Promise<DocumentSubpacketRow[]> {
+  try {
+    const res = await q.query<{
+      id: string;
+      document_id: string;
+      subpacket_index: number;
+      start_page: number;
+      end_page: number;
+      category: string;
+      stated_date: string | null;
+      stated_facility: string | null;
+      confidence: string;
+    }>(
+      `SELECT id, document_id, subpacket_index, start_page, end_page, category,
+              stated_date::text AS stated_date, stated_facility, confidence::text AS confidence
+         FROM document_subpacket
+        WHERE document_id = $1
+        ORDER BY subpacket_index ASC`,
+      [documentId],
+    );
+    return res.rows.map((r) => ({
+      id: r.id,
+      documentId: r.document_id,
+      subpacketIndex: r.subpacket_index,
+      startPage: r.start_page,
+      endPage: r.end_page,
+      category: r.category,
+      statedDate: r.stated_date,
+      statedFacility: r.stated_facility,
+      confidence: Number(r.confidence),
+    }));
+  } catch {
+    return [];
+  }
+}
+
+export async function listPatientDocumentSubpackets(
+  q: Querier,
+  patientId: string,
+): Promise<Map<string, DocumentSubpacketRow[]>> {
+  const byDoc = new Map<string, DocumentSubpacketRow[]>();
+  try {
+    const res = await q.query<{
+      id: string;
+      document_id: string;
+      subpacket_index: number;
+      start_page: number;
+      end_page: number;
+      category: string;
+      stated_date: string | null;
+      stated_facility: string | null;
+      confidence: string;
+    }>(
+      `SELECT id, document_id, subpacket_index, start_page, end_page, category,
+              stated_date::text AS stated_date, stated_facility, confidence::text AS confidence
+         FROM document_subpacket
+        WHERE patient_id = $1
+        ORDER BY document_id, subpacket_index ASC`,
+      [patientId],
+    );
+    for (const r of res.rows) {
+      const list = byDoc.get(r.document_id) ?? [];
+      list.push({
+        id: r.id,
+        documentId: r.document_id,
+        subpacketIndex: r.subpacket_index,
+        startPage: r.start_page,
+        endPage: r.end_page,
+        category: r.category,
+        statedDate: r.stated_date,
+        statedFacility: r.stated_facility,
+        confidence: Number(r.confidence),
+      });
+      byDoc.set(r.document_id, list);
+    }
+  } catch {
+    // Non-fatal if 0021 migration not yet applied
+  }
+  return byDoc;
+}
+
 

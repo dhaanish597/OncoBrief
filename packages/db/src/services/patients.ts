@@ -1084,6 +1084,9 @@ export interface ChatMessage {
   grounded: boolean;
   sources: unknown[];
   navigation: unknown | null;
+  executionTrace?: unknown[];
+  pendingAction?: unknown | null;
+  providerMode?: string;
   createdAt: string;
 }
 
@@ -1098,14 +1101,57 @@ export async function getConversation(q: Querier, conversationId: string, userId
   const conv = convRes.rows[0];
   if (!conv) return null;
 
-  const msgRes = await q.query<{
-    id: string; role: string; content: string; intent: string | null; grounded: boolean;
-    sources_json: unknown; navigation_json: unknown | null; created_at: Date;
-  }>(
-    `SELECT id, role, content, intent, grounded, sources_json, navigation_json, created_at
-       FROM chat_message WHERE conversation_id = $1 ORDER BY created_at`,
-    [conversationId],
-  );
+  let msgRows: {
+    id: string;
+    role: string;
+    content: string;
+    intent: string | null;
+    grounded: boolean;
+    sources_json: unknown;
+    navigation_json: unknown | null;
+    execution_trace_json?: unknown;
+    pending_action_json?: unknown | null;
+    provider_mode?: string;
+    created_at: Date;
+  }[];
+
+  try {
+    const msgRes = await q.query<{
+      id: string;
+      role: string;
+      content: string;
+      intent: string | null;
+      grounded: boolean;
+      sources_json: unknown;
+      navigation_json: unknown | null;
+      execution_trace_json: unknown;
+      pending_action_json: unknown | null;
+      provider_mode: string;
+      created_at: Date;
+    }>(
+      `SELECT id, role, content, intent, grounded, sources_json, navigation_json,
+              execution_trace_json, pending_action_json, provider_mode, created_at
+         FROM chat_message WHERE conversation_id = $1 ORDER BY created_at`,
+      [conversationId],
+    );
+    msgRows = msgRes.rows;
+  } catch {
+    const fallbackRes = await q.query<{
+      id: string;
+      role: string;
+      content: string;
+      intent: string | null;
+      grounded: boolean;
+      sources_json: unknown;
+      navigation_json: unknown | null;
+      created_at: Date;
+    }>(
+      `SELECT id, role, content, intent, grounded, sources_json, navigation_json, created_at
+         FROM chat_message WHERE conversation_id = $1 ORDER BY created_at`,
+      [conversationId],
+    );
+    msgRows = fallbackRes.rows;
+  }
 
   return {
     id: conv.id,
@@ -1113,7 +1159,7 @@ export async function getConversation(q: Querier, conversationId: string, userId
     patientId: conv.patient_id,
     createdAt: conv.created_at.toISOString(),
     updatedAt: conv.updated_at.toISOString(),
-    messages: msgRes.rows.map((m) => ({
+    messages: msgRows.map((m) => ({
       id: m.id,
       role: m.role as 'user' | 'assistant' | 'system',
       content: m.content,
@@ -1121,6 +1167,9 @@ export async function getConversation(q: Querier, conversationId: string, userId
       grounded: m.grounded,
       sources: m.sources_json as unknown[],
       navigation: m.navigation_json,
+      executionTrace: Array.isArray(m.execution_trace_json) ? (m.execution_trace_json as unknown[]) : [],
+      pendingAction: m.pending_action_json ?? null,
+      providerMode: m.provider_mode ?? 'deterministic',
       createdAt: m.created_at.toISOString(),
     })),
   };
@@ -1162,20 +1211,56 @@ export interface AddMessageInput {
   grounded?: boolean;
   sources?: unknown[];
   navigation?: unknown | null;
+  executionTrace?: unknown[];
+  pendingAction?: unknown | null;
+  providerMode?: 'deterministic' | 'nvidia-llm' | 'bedrock-llm' | 'hybrid';
 }
 
 export async function addMessage(q: Querier, input: AddMessageInput): Promise<{ id: string }> {
   // `now()` is transaction time, so a user and an assistant message written in
   // one transaction would share a timestamp and lose their order. Use the
   // statement clock so history replays in the order it was produced.
-  const res = await q.query<{ id: string }>(
-    `INSERT INTO chat_message (org_id, conversation_id, role, content, intent, grounded, sources_json, navigation_json, created_at)
-     SELECT c.org_id, $1, $2, $3, $4, $5, $6, $7, clock_timestamp()
-     FROM conversation c WHERE c.id = $1
-     RETURNING id`,
-    [input.conversationId, input.role, input.content, input.intent ?? null, input.grounded ?? false,
-     JSON.stringify(input.sources ?? []), JSON.stringify(input.navigation ?? null)],
-  );
+  let res: { rows: { id: string }[] };
+  try {
+    res = await q.query<{ id: string }>(
+      `INSERT INTO chat_message (
+         org_id, conversation_id, role, content, intent, grounded,
+         sources_json, navigation_json, execution_trace_json, pending_action_json,
+         provider_mode, created_at
+       )
+       SELECT c.org_id, $1, $2, $3, $4, $5, $6, $7, $8::jsonb, $9::jsonb, $10, clock_timestamp()
+       FROM conversation c WHERE c.id = $1
+       RETURNING id`,
+      [
+        input.conversationId,
+        input.role,
+        input.content,
+        input.intent ?? null,
+        input.grounded ?? false,
+        JSON.stringify(input.sources ?? []),
+        JSON.stringify(input.navigation ?? null),
+        JSON.stringify(input.executionTrace ?? []),
+        input.pendingAction ? JSON.stringify(input.pendingAction) : null,
+        input.providerMode ?? 'deterministic',
+      ],
+    );
+  } catch {
+    res = await q.query<{ id: string }>(
+      `INSERT INTO chat_message (org_id, conversation_id, role, content, intent, grounded, sources_json, navigation_json, created_at)
+       SELECT c.org_id, $1, $2, $3, $4, $5, $6, $7, clock_timestamp()
+       FROM conversation c WHERE c.id = $1
+       RETURNING id`,
+      [
+        input.conversationId,
+        input.role,
+        input.content,
+        input.intent ?? null,
+        input.grounded ?? false,
+        JSON.stringify(input.sources ?? []),
+        JSON.stringify(input.navigation ?? null),
+      ],
+    );
+  }
   // Update conversation updated_at
   await q.query(
     `UPDATE conversation SET updated_at = now() WHERE id = $1`,

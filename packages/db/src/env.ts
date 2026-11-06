@@ -19,13 +19,15 @@ function findRepoRoot(start: string): string {
 
 const repoRoot = findRepoRoot(process.cwd());
 const envPath = resolve(repoRoot, '.env');
-if (existsSync(envPath)) loadDotenv({ path: envPath });
-else if (existsSync(resolve(repoRoot, '.env.example'))) loadDotenv({ path: resolve(repoRoot, '.env.example') });
+if (process.env.NODE_ENV !== 'production') {
+  if (existsSync(envPath)) loadDotenv({ path: envPath });
+  else if (existsSync(resolve(repoRoot, '.env.example'))) loadDotenv({ path: resolve(repoRoot, '.env.example') });
+}
 
 export const repoRootPath = repoRoot;
 
 function required(name: string, fallback?: string): string {
-  const v = process.env[name] ?? fallback;
+  const v = process.env[name] ?? (process.env.NODE_ENV === 'production' ? undefined : fallback);
   if (!v) throw new Error(`missing_env:${name}`);
   return v;
 }
@@ -101,6 +103,9 @@ export const env = {
   },
   get ocrDriver(): 'auto' | 'sarvam' | 'textract' | 'local-pdf' | 'fixture' {
     return (process.env.OCR_DRIVER ?? 'auto') as 'auto' | 'sarvam' | 'textract' | 'local-pdf' | 'fixture';
+  },
+  get extractorDriver(): 'auto' | 'bedrock' | 'rule' {
+    return (process.env.EXTRACTION_DRIVER ?? process.env.EXTRACTOR_DRIVER ?? 'auto') as 'auto' | 'bedrock' | 'rule';
   },
   get sarvamApiKey(): string | undefined {
     return process.env.SARVAM_API_KEY;

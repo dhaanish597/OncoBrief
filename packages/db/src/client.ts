@@ -177,7 +177,7 @@ export function resolvePoolOptions(
 
 export function getAppPool(): Pool {
   if (!appPool) {
-    appPool = new Pool({ ...resolvePoolOptions(env.databaseUrl), max: 10 });
+    appPool = new Pool({ ...resolvePoolOptions(env.databaseUrl), max: 10, connectionTimeoutMillis: 2000 });
   }
   return appPool;
 }
@@ -210,6 +210,7 @@ export async function withTenant<T>(
   try {
     await client.query('BEGIN');
     await client.query('SELECT set_config($1, $2, true)', ['app.org_id', ctx.orgId]);
+    await client.query('SELECT set_config($1, $2, true)', ['app.current_tenant_id', ctx.orgId]);
     await client.query('SELECT set_config($1, $2, true)', ['app.user_id', ctx.userId ?? '']);
     await client.query('SELECT set_config($1, $2, true)', ['app.role', ctx.role ?? '']);
     const result = await fn(client);
@@ -262,6 +263,7 @@ export async function withTenantClient<T>(
   try {
     await client.query('BEGIN');
     await client.query('SELECT set_config($1, $2, true)', ['app.org_id', ctx.orgId]);
+    await client.query('SELECT set_config($1, $2, true)', ['app.current_tenant_id', ctx.orgId]);
     await client.query('SELECT set_config($1, $2, true)', ['app.user_id', ctx.userId ?? '']);
     await client.query('SELECT set_config($1, $2, true)', ['app.role', ctx.role ?? '']);
     const result = await fn(client, client);
@@ -322,3 +324,6 @@ export async function closePools(): Promise<void> {
   appPool = null;
   migratorPool = null;
 }
+
+export const getPool = getAppPool;
+export const withOrgTransaction = withTenant;

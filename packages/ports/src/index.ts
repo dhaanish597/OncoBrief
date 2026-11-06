@@ -118,12 +118,16 @@ export interface DeliveryResult {
   externalRef?: string;
   status: 'accepted' | 'failed';
   simulated: boolean;
+  errorMessage?: string;
 }
 
 export interface DeliveryPort {
   channel: RenderedMessage['channel'];
   send(msg: RenderedMessage): Promise<DeliveryResult>;
 }
+
+export type OutboundMessage = RenderedMessage;
+export type SendResult = DeliveryResult;
 
 // --- presigned upload capability -------------------------------------------
 /**
@@ -315,4 +319,7 @@ export interface LLMProvider {
 
 // --- ABDM HIE-CM V3 Gateway Port (M2 HIP + M3 HIU) -------------------------
 export * from './abdm';
+
+// --- FHIR R4 Client & Interoperability Port --------------------------------
+export * from './fhir';
 

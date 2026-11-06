@@ -1,4 +1,5 @@
 import { PDFDocument } from 'pdf-lib';
+import * as zlib from 'node:zlib';
 import type {
   AsyncOcrPort,
   AsyncOcrStartInput,
@@ -11,6 +12,7 @@ import type {
   OcrDocumentInput,
   OcrSpanDraft,
 } from '@oncobrief/ports';
+import { LocalMultimodalOcrAdapter } from './local-multimodal-ocr';
 
 export interface SarvamVisionConfig {
   apiKey?: string;
@@ -21,6 +23,8 @@ export interface SarvamVisionConfig {
   pollIntervalMs?: number;
   maxPolls?: number;
   timeoutMs?: number;
+  fallbackOnError?: boolean;
+  retryDelayMs?: number;
 }
 type Json = Record<string, unknown>;
 interface Batch {
@@ -28,6 +32,33 @@ interface Batch {
   offset: number;
   count: number;
 }
+function parseZipArchive(buf: Buffer): Map<string, Buffer> {
+  const files = new Map<string, Buffer>();
+  let offset = 0;
+  while (offset + 30 <= buf.length) {
+    if (buf.readUInt32LE(offset) !== 0x04034b50) break; // PK\x03\x04
+    const method = buf.readUInt16LE(offset + 8);
+    const compressedSize = buf.readUInt32LE(offset + 18);
+    const nameLen = buf.readUInt16LE(offset + 26);
+    const extraLen = buf.readUInt16LE(offset + 28);
+    const name = buf.subarray(offset + 30, offset + 30 + nameLen).toString('utf8');
+    const dataStart = offset + 30 + nameLen + extraLen;
+    const dataEnd = dataStart + compressedSize;
+    if (dataEnd > buf.length) break;
+    let data: Buffer;
+    if (method === 0) {
+      data = buf.subarray(dataStart, dataEnd);
+    } else if (method === 8) {
+      data = zlib.inflateRawSync(buf.subarray(dataStart, dataEnd));
+    } else {
+      throw new Error(`ocr_sarvam_unsupported_zip_compression_${method}`);
+    }
+    files.set(name, data);
+    offset = dataEnd;
+  }
+  return files;
+}
+
 const delay = (ms: number) =>
   new Promise<void>((resolve) => setTimeout(resolve, ms));
 
@@ -39,6 +70,8 @@ export class SarvamVisionOcrAdapter implements AsyncOcrPort, OcrPort {
   private readonly apiKey: string;
   private readonly baseUrl: string;
   private readonly fetchImpl: typeof fetch;
+  private readonly fallback = new LocalMultimodalOcrAdapter();
+  private readonly fallbackOnError: boolean;
   private lastRequestTime = 0;
   constructor(private readonly config: SarvamVisionConfig = {}) {
     this.apiKey = config.apiKey ?? process.env['SARVAM_API_KEY'] ?? '';
@@ -48,6 +81,7 @@ export class SarvamVisionOcrAdapter implements AsyncOcrPort, OcrPort {
       'https://api.sarvam.ai'
     ).replace(/\/$/, '');
     this.fetchImpl = config.fetchImpl ?? fetch;
+    this.fallbackOnError = config.fallbackOnError ?? false;
   }
   transcodeIfNeeded(
     data: Buffer,
@@ -97,7 +131,9 @@ export class SarvamVisionOcrAdapter implements AsyncOcrPort, OcrPort {
         signal: AbortSignal.timeout(this.config.timeoutMs ?? 30000),
       });
       if ((response.status === 429 || response.status === 503) && retry < 3) {
-        await delay(1000 * 2 ** retry);
+        const baseDelay =
+          this.config.retryDelayMs ?? (this.config.pollIntervalMs === 0 ? 5 : 1000);
+        await delay(baseDelay * 2 ** retry);
         continue;
       }
       // Response bodies can contain sensitive source text; keep error codes only.
@@ -184,16 +220,39 @@ export class SarvamVisionOcrAdapter implements AsyncOcrPort, OcrPort {
       if (result['status'] !== 'completed')
         throw new Error('ocr_sarvam_incomplete');
       raw.push(result);
-      const documents = result['documents'] as
-        Array<{ pages?: Json[] }> | undefined;
-      if (!Array.isArray(documents) || documents.length !== 1)
+
+      let payload = result;
+      const downloadUrl = (result['download_url'] ?? result['downloadUrl']) as string | undefined;
+      if (downloadUrl && typeof downloadUrl === 'string') {
+        const dlRes = await this.fetchImpl(downloadUrl);
+        if (!dlRes.ok) throw new Error(`ocr_sarvam_download_failed_${dlRes.status}`);
+        const dlBuf = Buffer.from(await dlRes.arrayBuffer());
+        if (dlBuf.length >= 4 && dlBuf.readUInt32LE(0) === 0x04034b50) {
+          const zipFiles = parseZipArchive(dlBuf);
+          const jsonEntry =
+            zipFiles.get('output.json') ??
+            zipFiles.get('pages.json') ??
+            Array.from(zipFiles.entries()).find(([k]) => k.endsWith('.json'))?.[1];
+          if (!jsonEntry) throw new Error('ocr_sarvam_missing_zip_json');
+          payload = JSON.parse(jsonEntry.toString('utf8')) as Json;
+        } else {
+          payload = JSON.parse(dlBuf.toString('utf8')) as Json;
+        }
+      }
+
+      let sourcePages: Json[] | undefined;
+      if (Array.isArray(payload['documents']) && payload['documents'].length >= 1) {
+        sourcePages = (payload['documents'][0] as { pages?: Json[] })?.pages;
+      } else if (Array.isArray(payload['pages'])) {
+        sourcePages = payload['pages'] as Json[];
+      } else {
         throw new Error('ocr_sarvam_invalid_results');
-      const sourcePages = documents[0]?.pages;
+      }
       if (!sourcePages || sourcePages.length !== batch.count)
         throw new Error('ocr_sarvam_page_count_mismatch');
       const seen = new Set<number>();
       for (const page of sourcePages) {
-        const local = Number(page['page_number']);
+        const local = Number(page['page_number'] ?? page['page_num']);
         if (
           !Number.isInteger(local) ||
           local < 1 ||
@@ -244,9 +303,31 @@ export class SarvamVisionOcrAdapter implements AsyncOcrPort, OcrPort {
   async extractDocument(
     input: OcrDocumentInput,
   ): Promise<AsyncOcrPageResult[]> {
-    return (
-      await this.processDocument(input.bytes, input.mimeType, input.language)
-    ).pages;
+    const mime = (input.mimeType ?? '').toLowerCase();
+    const isStructured =
+      mime === 'application/fhir+json' ||
+      mime === 'application/json' ||
+      mime === 'application/dicom' ||
+      mime.startsWith('text/') ||
+      (!['application/pdf', 'image/png', 'image/jpeg'].includes(mime) &&
+        (input.bytes.subarray(0, 1).toString('ascii') === '{' ||
+          input.bytes.subarray(0, 1).toString('ascii') === '[' ||
+          (input.bytes.length >= 132 && input.bytes.subarray(128, 132).toString('ascii') === 'DICM')));
+
+    if (isStructured) {
+      return this.fallback.extractDocument(input);
+    }
+
+    try {
+      return (
+        await this.processDocument(input.bytes, input.mimeType, input.language)
+      ).pages;
+    } catch (err) {
+      if (this.fallbackOnError) {
+        return this.fallback.extractDocument(input);
+      }
+      throw err;
+    }
   }
   async extract(page: OcrPageInput): Promise<OcrPageResult> {
     if (page.fixture)
@@ -257,16 +338,30 @@ export class SarvamVisionOcrAdapter implements AsyncOcrPort, OcrPort {
       };
     if (!page.imageBytes?.length)
       throw new Error('ocr_document_bytes_required');
+    const isStructured =
+      page.imageBytes.subarray(0, 1).toString('ascii') === '{' ||
+      page.imageBytes.subarray(0, 1).toString('ascii') === '[' ||
+      (page.imageBytes.length >= 132 && page.imageBytes.subarray(128, 132).toString('ascii') === 'DICM');
+    if (isStructured) {
+      return this.fallback.extract(page);
+    }
     const mime =
       page.imageBytes.subarray(0, 5).toString('ascii') === '%PDF-'
         ? 'application/pdf'
         : page.imageBytes[0] === 0xff
           ? 'image/jpeg'
           : 'image/png';
-    const result = await this.processDocument(page.imageBytes, mime);
-    const match = result.pages.find((p) => p.pageNumber === page.pageNumber);
-    if (!match) throw new Error('ocr_page_not_found');
-    return match;
+    try {
+      const result = await this.processDocument(page.imageBytes, mime);
+      const match = result.pages.find((p) => p.pageNumber === page.pageNumber);
+      if (!match) throw new Error('ocr_page_not_found');
+      return match;
+    } catch (err) {
+      if (this.fallbackOnError) {
+        return this.fallback.extract(page);
+      }
+      throw err;
+    }
   }
 }
 
@@ -276,8 +371,8 @@ function normalizePage(
   engine: string,
   engineVersion: string,
 ): AsyncOcrPageResult {
-  const width = Number(page['width']);
-  const height = Number(page['height']);
+  const width = Number(page['width'] ?? page['image_width']);
+  const height = Number(page['height'] ?? page['image_height']);
   const blocks = page['blocks'];
   if (!Array.isArray(blocks)) throw new Error('ocr_sarvam_missing_layout');
   const spans: OcrSpanDraft[] = [];
@@ -287,7 +382,18 @@ function normalizePage(
   )) {
     const text = typeof block.text === 'string' ? block.text : '';
     if (!text.trim()) continue;
-    const coords = block.bbox;
+    const rawCoords =
+      block.bbox ??
+      block.bbox_norm ??
+      (block.coordinates && typeof block.coordinates === 'object'
+        ? [
+            (block.coordinates as Record<string, unknown>).x1,
+            (block.coordinates as Record<string, unknown>).y1,
+            (block.coordinates as Record<string, unknown>).x2,
+            (block.coordinates as Record<string, unknown>).y2,
+          ]
+        : undefined);
+    const coords = rawCoords;
     if (
       !Array.isArray(coords) ||
       coords.length !== 4 ||
@@ -323,7 +429,9 @@ function normalizePage(
       confidence:
         typeof block.ocr_confidence === 'number'
           ? block.ocr_confidence
-          : undefined,
+          : typeof block.confidence === 'number'
+            ? block.confidence
+            : undefined,
     });
     offset += text.length + 1;
   }

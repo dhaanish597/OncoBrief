@@ -20,6 +20,7 @@
     "test:integration": "pnpm --filter @oncobrief/db test",
     "test:e2e": "pnpm --filter @oncobrief/web test:e2e",
     "verify": "pnpm typecheck && pnpm lint && pnpm test",
+    "verify:patient-mobile": "bash tools/verify-patient-mobile.sh",
     "db:up": "docker compose up -d postgres",
     "db:down": "docker compose down",
     "db:migrate": "pnpm --filter @oncobrief/db migrate",

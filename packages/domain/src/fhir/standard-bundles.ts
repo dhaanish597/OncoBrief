@@ -127,7 +127,7 @@ export function createTataMemorialDiagnosticBundle(patientId = 'DEMO-001'): Reco
             },
           ],
           code: {
-            text: 'Histopathology and Immunohistochemistry Panel',
+            text: 'Pathology and Immunohistochemistry Panel',
           },
           subject: { reference: patientRef },
           effectiveDateTime: '2025-06-15',

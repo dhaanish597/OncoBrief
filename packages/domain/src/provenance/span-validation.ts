@@ -1,5 +1,6 @@
 import { normalizeForComparison } from './normalize';
 import { DOCUMENT_TYPE_LABEL } from '../vocab/document-types';
+import type { FactValue } from '../vocab/fact-value';
 
 /**
  * Verbatim-span validation — the central safety gate (architecture §5.2).
@@ -164,7 +165,10 @@ export function verifyLabValueInQuote(
     const valObj = value as Record<string, unknown>;
     if (valObj['value'] !== undefined) numStr = String(valObj['value']).trim();
     if (valObj['numeric'] !== undefined) numStr = String(valObj['numeric']).trim();
+    if (valObj['valueText'] !== undefined) numStr = String(valObj['valueText']).trim();
+    if (valObj['numericValue'] !== undefined && !numStr) numStr = String(valObj['numericValue']).trim();
     if (valObj['unit'] !== undefined) unitStr = String(valObj['unit']).trim();
+    if (valObj['unitText'] !== undefined) unitStr = String(valObj['unitText']).trim();
   } else if (typeof value === 'string' || typeof value === 'number') {
     const str = String(value).trim();
     const match = str.match(/^([\d.,]+)\s*(.*)$/);
@@ -326,26 +330,112 @@ export function validateCandidateProvenance(
 
   // --- STAGE B: Value-in-Quote Deterministic Entailment ---
   const val = candidate.value;
-  const isDateValue =
-    typeof val === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(val.trim());
-  const isLabValue =
-    (typeof val === 'object' && val !== null && ('value' in val || 'unit' in val)) ||
-    (typeof val === 'string' && /^\d+(\.\d+)?\s*[a-zA-Z/%]+$/.test(val.trim()));
 
-  if (isDateValue) {
-    const dateOk = verifyDateInQuote(val as string, quote);
-    if (!dateOk) {
-      return { valid: false, stageFailed: 'STAGE_B', reason: `Date value "${val}" not entailed in quote "${quote}"` };
+  if (typeof val === 'object' && val !== null && 'kind' in val) {
+    const fv = val as FactValue;
+    switch (fv.kind) {
+      case 'date': {
+        const ok = verifyDateInQuote(fv.date, quote);
+        if (!ok) {
+          return { valid: false, stageFailed: 'STAGE_B', reason: `Date value "${fv.date}" not entailed in quote "${quote}"` };
+        }
+        break;
+      }
+      case 'appointment': {
+        const ok = verifyDateInQuote(fv.date, quote);
+        if (!ok) {
+          return { valid: false, stageFailed: 'STAGE_B', reason: `Appointment date "${fv.date}" not entailed in quote "${quote}"` };
+        }
+        if (fv.detailText) {
+          const detailOk = verifyTokensOrVocabInQuote(fv.detailText, quote);
+          if (!detailOk) {
+            return { valid: false, stageFailed: 'STAGE_B', reason: `Appointment detail "${fv.detailText}" not entailed in quote "${quote}"` };
+          }
+        }
+        break;
+      }
+      case 'lab': {
+        const labOk = verifyLabValueInQuote(fv, quote);
+        if (!labOk) {
+          return { valid: false, stageFailed: 'STAGE_B', reason: `Lab value "${fv.valueText}" not entailed in quote "${quote}"` };
+        }
+        break;
+      }
+      case 'identifier': {
+        const idOk = verifyTokensOrVocabInQuote(fv.value, quote);
+        if (!idOk) {
+          return { valid: false, stageFailed: 'STAGE_B', reason: `Identifier value "${fv.value}" not entailed in quote "${quote}"` };
+        }
+        break;
+      }
+      case 'medication': {
+        const drugOk = verifyTokensOrVocabInQuote(fv.name, quote);
+        if (!drugOk) {
+          return { valid: false, stageFailed: 'STAGE_B', reason: `Medication name "${fv.name}" not entailed in quote "${quote}"` };
+        }
+        if (fv.doseText) {
+          const doseOk = normalizeForComparison(quote).toLowerCase().includes(normalizeForComparison(fv.doseText).toLowerCase());
+          if (!doseOk) {
+            return { valid: false, stageFailed: 'STAGE_B', reason: `Medication dose "${fv.doseText}" not entailed in quote "${quote}"` };
+          }
+        }
+        break;
+      }
+      case 'procedure': {
+        const procOk = verifyTokensOrVocabInQuote(fv.name, quote);
+        if (!procOk) {
+          return { valid: false, stageFailed: 'STAGE_B', reason: `Procedure name "${fv.name}" not entailed in quote "${quote}"` };
+        }
+        break;
+      }
+      case 'facility': {
+        const facOk = verifyTokensOrVocabInQuote(fv.name, quote);
+        if (!facOk) {
+          return { valid: false, stageFailed: 'STAGE_B', reason: `Facility name "${fv.name}" not entailed in quote "${quote}"` };
+        }
+        break;
+      }
+      case 'cycle': {
+        const cycleOk = verifyTokensOrVocabInQuote(fv.label, quote);
+        const labelNums = fv.label.match(/\d+/g) ?? [];
+        const quoteNums = new Set(quote.match(/\d+/g) ?? []);
+        const numsOk = labelNums.every((n) => quoteNums.has(n));
+        if (!cycleOk || !numsOk) {
+          return { valid: false, stageFailed: 'STAGE_B', reason: `Cycle label "${fv.label}" not entailed in quote "${quote}"` };
+        }
+        break;
+      }
+      case 'text': {
+        const textOk = verifyTokensOrVocabInQuote(fv.text, quote);
+        if (!textOk) {
+          return { valid: false, stageFailed: 'STAGE_B', reason: `Text value "${fv.text}" not entailed in quote "${quote}"` };
+        }
+        break;
+      }
     }
-  } else if (isLabValue) {
-    const labOk = verifyLabValueInQuote(val, quote);
-    if (!labOk) {
-      return { valid: false, stageFailed: 'STAGE_B', reason: `Lab value not entailed in quote "${quote}"` };
-    }
-  } else if (typeof val === 'string' && val.trim().length > 0) {
-    const tokenOk = verifyTokensOrVocabInQuote(val, quote);
-    if (!tokenOk) {
-      return { valid: false, stageFailed: 'STAGE_B', reason: `String value tokens not entailed in quote "${quote}"` };
+  } else {
+    // Legacy / unstructured value shapes
+    const isDateValue =
+      typeof val === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(val.trim());
+    const isLabValue =
+      (typeof val === 'object' && val !== null && ('value' in val || 'unit' in val)) ||
+      (typeof val === 'string' && /^\d+(\.\d+)?\s*[a-zA-Z/%]+$/.test(val.trim()));
+
+    if (isDateValue) {
+      const dateOk = verifyDateInQuote(val as string, quote);
+      if (!dateOk) {
+        return { valid: false, stageFailed: 'STAGE_B', reason: `Date value "${val}" not entailed in quote "${quote}"` };
+      }
+    } else if (isLabValue) {
+      const labOk = verifyLabValueInQuote(val, quote);
+      if (!labOk) {
+        return { valid: false, stageFailed: 'STAGE_B', reason: `Lab value not entailed in quote "${quote}"` };
+      }
+    } else if (typeof val === 'string' && val.trim().length > 0) {
+      const tokenOk = verifyTokensOrVocabInQuote(val, quote);
+      if (!tokenOk) {
+        return { valid: false, stageFailed: 'STAGE_B', reason: `String value tokens not entailed in quote "${quote}"` };
+      }
     }
   }
 

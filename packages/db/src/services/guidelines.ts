@@ -87,6 +87,17 @@ export async function searchGuidelineSpans(
     JOIN guideline_document gd ON gd.id = gs.guideline_document_id AND gd.org_id = gs.org_id
     WHERE gd.org_id = $1
       AND gd.is_active = true
+      AND NOT EXISTS (
+        SELECT 1 FROM guideline_document newer
+         WHERE newer.org_id = gd.org_id
+           AND newer.code = gd.code
+           AND newer.is_active = true
+           AND newer.id <> gd.id
+           AND (
+             newer.publication_date > gd.publication_date
+             OR (newer.publication_date = gd.publication_date AND newer.uploaded_at > gd.uploaded_at)
+           )
+      )
       ${options?.guidelineCode ? 'AND gd.code = $2' : ''}
     ORDER BY gs.page_number, gs.span_index
   `;
@@ -234,12 +245,24 @@ export async function listActiveGuidelineDocuments(
     uploaded_by: string;
     uploaded_at: Date;
   }>(
-    `SELECT id, org_id, code, title, issuing_body, version_label,
-            publication_date::text AS publication_date, content_sha256,
-            is_active, uploaded_by, uploaded_at
-       FROM guideline_document
-      WHERE org_id = $1 AND is_active = true
-      ORDER BY title, version_label`,
+    `SELECT gd.id, gd.org_id, gd.code, gd.title, gd.issuing_body, gd.version_label,
+            gd.publication_date::text AS publication_date, gd.content_sha256,
+            gd.is_active, gd.uploaded_by, gd.uploaded_at
+       FROM guideline_document gd
+      WHERE gd.org_id = $1
+        AND gd.is_active = true
+        AND NOT EXISTS (
+          SELECT 1 FROM guideline_document newer
+           WHERE newer.org_id = gd.org_id
+             AND newer.code = gd.code
+             AND newer.is_active = true
+             AND newer.id <> gd.id
+             AND (
+               newer.publication_date > gd.publication_date
+               OR (newer.publication_date = gd.publication_date AND newer.uploaded_at > gd.uploaded_at)
+             )
+        )
+      ORDER BY gd.title, gd.version_label`,
     [orgId],
   );
   return res.rows.map((r) => ({
@@ -326,3 +349,329 @@ export async function getGuidelineSpan(
     score: 1,
   };
 }
+
+export async function listGuidelineSpansForDocument(
+  q: Querier,
+  orgId: string,
+  guidelineDocumentId: string,
+): Promise<GuidelineSpanSearchResult[]> {
+  const res = await q.query<{
+    span_id: string;
+    guideline_document_id: string;
+    guideline_code: string;
+    guideline_title: string;
+    issuing_body: string;
+    version_label: string;
+    publication_date: string;
+    page_number: number;
+    section_heading: string;
+    span_index: number;
+    verbatim_text: string;
+    bbox_x: number;
+    bbox_y: number;
+    bbox_w: number;
+    bbox_h: number;
+    keywords: string[];
+  }>(
+    `SELECT
+       gs.id AS span_id,
+       gs.guideline_document_id,
+       gd.code AS guideline_code,
+       gd.title AS guideline_title,
+       gd.issuing_body,
+       gd.version_label,
+       gd.publication_date::text AS publication_date,
+       gs.page_number,
+       gs.section_heading,
+       gs.span_index,
+       gs.verbatim_text,
+       gs.bbox_x,
+       gs.bbox_y,
+       gs.bbox_w,
+       gs.bbox_h,
+       gs.keywords
+     FROM guideline_span gs
+     JOIN guideline_document gd ON gd.id = gs.guideline_document_id AND gd.org_id = gs.org_id
+     WHERE gs.org_id = $1 AND gs.guideline_document_id = $2
+     ORDER BY gs.page_number ASC, gs.span_index ASC`,
+    [orgId, guidelineDocumentId],
+  );
+  return res.rows.map((row) => ({
+    spanId: row.span_id,
+    guidelineDocumentId: row.guideline_document_id,
+    guidelineCode: row.guideline_code,
+    guidelineTitle: row.guideline_title,
+    issuingBody: row.issuing_body,
+    versionLabel: row.version_label,
+    publicationDate: row.publication_date,
+    pageNumber: row.page_number,
+    sectionHeading: row.section_heading,
+    spanIndex: row.span_index,
+    verbatimText: row.verbatim_text,
+    bbox: {
+      x: row.bbox_x,
+      y: row.bbox_y,
+      w: row.bbox_w,
+      h: row.bbox_h,
+    },
+    keywords: row.keywords || [],
+    score: 1,
+  }));
+}
+
+export interface IngestGuidelinePdfInput {
+  orgId: string;
+  uploadedBy: string;
+  code: string;
+  title: string;
+  issuingBody: string;
+  versionLabel: string;
+  publicationDate?: string;
+  filename: string;
+  mimeType: string;
+  bytes: Buffer;
+}
+
+export interface IngestGuidelinePdfResult {
+  guidelineDocumentId: string;
+  code: string;
+  title: string;
+  pageCount: number;
+  spansIndexed: number;
+}
+
+export async function ingestGuidelineDocumentPdf(
+  q: Querier,
+  ocr: {
+    extractDocument?: (input: {
+      documentId: string;
+      bytes: Buffer;
+      mimeType: string;
+      filename: string;
+    }) => Promise<
+      Array<{
+        pageNumber: number;
+        plainText: string;
+        spans: Array<{
+          index: number;
+          text: string;
+          bbox: { x: number; y: number; w: number; h: number };
+        }>;
+      }>
+    >;
+    extract: (input: {
+      documentId: string;
+      pageNumber: number;
+      imageBytes: Buffer | null;
+    }) => Promise<{
+      plainText: string;
+      spans: Array<{
+        index: number;
+        text: string;
+        bbox: { x: number; y: number; w: number; h: number };
+      }>;
+    }>;
+  },
+  input: IngestGuidelinePdfInput,
+): Promise<IngestGuidelinePdfResult> {
+  const { createHash } = await import('node:crypto');
+  const { appendAuditEvent } = await import('./audit');
+
+  const cleanCode = input.code.trim().toUpperCase();
+  const cleanTitle = input.title.trim();
+  const cleanIssuingBody = input.issuingBody.trim();
+  const cleanVersion = input.versionLabel.trim();
+  const pubDate =
+    input.publicationDate && /^\d{4}-\d{2}-\d{2}$/.test(input.publicationDate)
+      ? input.publicationDate
+      : new Date().toISOString().slice(0, 10);
+
+  if (!cleanCode || !cleanTitle || !cleanIssuingBody || !cleanVersion) {
+    throw new Error('guideline_metadata_required');
+  }
+  if (!input.bytes || input.bytes.byteLength === 0) {
+    throw new Error('guideline_file_empty');
+  }
+
+  const sha256 = createHash('sha256').update(input.bytes).digest();
+
+  // Check if same (org_id, code, version_label) already exists
+  const existing = await q.query<{ id: string }>(
+    `SELECT id FROM guideline_document WHERE org_id = $1 AND code = $2 AND version_label = $3`,
+    [input.orgId, cleanCode, cleanVersion],
+  );
+
+  let guidelineDocumentId: string;
+  const isApproved = (input as { approvalStatus?: string }).approvalStatus !== 'draft_unapproved';
+  if (existing.rows[0]) {
+    guidelineDocumentId = existing.rows[0].id;
+  } else {
+    const ins = await q.query<{ id: string }>(
+      `INSERT INTO guideline_document
+         (org_id, code, title, issuing_body, version_label, publication_date, content_sha256, is_active, uploaded_by)
+       VALUES ($1, $2, $3, $4, $5, $6::date, $7, $8, $9)
+       RETURNING id`,
+      [
+        input.orgId,
+        cleanCode,
+        cleanTitle,
+        cleanIssuingBody,
+        cleanVersion,
+        pubDate,
+        sha256,
+        isApproved,
+        input.uploadedBy,
+      ],
+    );
+    guidelineDocumentId = ins.rows[0]!.id;
+
+    // If this newly ingested version is approved, mark any older versions of the same code as superseded / inactive
+    if (isApproved) {
+      try {
+        await q.query(
+          `UPDATE guideline_document
+              SET is_active = false,
+                  approval_status = 'superseded',
+                  superseded_by_id = $3
+            WHERE org_id = $1 AND code = $2 AND id <> $3 AND is_active = true`,
+          [input.orgId, cleanCode, guidelineDocumentId],
+        );
+      } catch {
+        try {
+          await q.query(
+            `UPDATE guideline_document
+                SET is_active = false
+              WHERE org_id = $1 AND code = $2 AND id <> $3 AND is_active = true`,
+            [input.orgId, cleanCode, guidelineDocumentId],
+          );
+        } catch {
+          // Query-level NOT EXISTS guard in searchGuidelineSpans / listActiveGuidelineDocuments still enforces version precedence
+        }
+      }
+    }
+  }
+
+  // Extract pages and normalized spans via OCR port
+  let pages: Array<{
+    pageNumber: number;
+    plainText: string;
+    spans: Array<{
+      index: number;
+      text: string;
+      bbox: { x: number; y: number; w: number; h: number };
+    }>;
+  }> = [];
+
+  if (ocr.extractDocument) {
+    pages = await ocr.extractDocument({
+      documentId: guidelineDocumentId,
+      bytes: input.bytes,
+      mimeType: input.mimeType || 'application/pdf',
+      filename: input.filename || `${cleanCode}.pdf`,
+    });
+  } else {
+    const single = await ocr.extract({
+      documentId: guidelineDocumentId,
+      pageNumber: 1,
+      imageBytes: input.bytes,
+    });
+    pages = [{ pageNumber: 1, plainText: single.plainText, spans: single.spans }];
+  }
+
+  let spansIndexed = 0;
+  let currentHeading = `${cleanCode} — General Administrative & Workup Reference`;
+
+  for (const page of pages) {
+    let spanIdx = 0;
+    const rawSpans =
+      page.spans.length > 0
+        ? page.spans
+        : page.plainText
+            .split(/\r?\n/)
+            .map((l) => l.trim())
+            .filter((l) => l.length > 0)
+            .map((text, idx) => ({
+              index: idx,
+              text,
+              bbox: {
+                x: 0.05,
+                y: Math.min(0.92, Number((0.05 + idx * 0.035).toFixed(4))),
+                w: 0.9,
+                h: 0.03,
+              },
+            }));
+
+    for (const s of rawSpans) {
+      const trimmed = s.text.trim();
+      if (!trimmed) continue;
+
+      if (
+        /^(?:section|chapter|part|\d+(?:\.\d+)*|[A-Z][A-Z0-9\s/-]{5,60})$/i.test(trimmed) &&
+        trimmed.length <= 80
+      ) {
+        currentHeading = trimmed;
+      }
+
+      const bx = Math.max(0, Math.min(0.95, Number(s.bbox.x.toFixed(4))));
+      const by = Math.max(0, Math.min(0.95, Number(s.bbox.y.toFixed(4))));
+      const bw = Math.max(0.01, Math.min(Number((1 - bx).toFixed(4)), Number(s.bbox.w.toFixed(4))));
+      const bh = Math.max(0.01, Math.min(Number((1 - by).toFixed(4)), Number(s.bbox.h.toFixed(4))));
+
+      const keywords = Array.from(
+        new Set(
+          trimmed
+            .toLowerCase()
+            .split(/[^a-z0-9-]+/)
+            .filter((tok) => tok.length >= 3 && !STOP_WORDS.has(tok)),
+        ),
+      ).slice(0, 16);
+
+      await q.query(
+        `INSERT INTO guideline_span
+           (org_id, guideline_document_id, page_number, section_heading, span_index,
+            verbatim_text, bbox_x, bbox_y, bbox_w, bbox_h, keywords)
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
+         ON CONFLICT (guideline_document_id, page_number, span_index) DO NOTHING`,
+        [
+          input.orgId,
+          guidelineDocumentId,
+          page.pageNumber,
+          currentHeading,
+          spanIdx,
+          trimmed,
+          bx,
+          by,
+          bw,
+          bh,
+          keywords,
+        ],
+      );
+      spanIdx += 1;
+      spansIndexed += 1;
+    }
+  }
+
+  await appendAuditEvent(q, {
+    orgId: input.orgId,
+    actor: { userId: input.uploadedBy, role: null },
+    action: 'guideline.ingested',
+    entityKind: 'guideline_document',
+    entityId: guidelineDocumentId,
+    outcome: 'success',
+    metadata: {
+      code: cleanCode,
+      version: cleanVersion,
+      pages: pages.length,
+      spans_indexed: spansIndexed,
+    },
+  });
+
+  return {
+    guidelineDocumentId,
+    code: cleanCode,
+    title: cleanTitle,
+    pageCount: pages.length,
+    spansIndexed,
+  };
+}
+

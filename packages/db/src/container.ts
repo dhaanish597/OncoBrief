@@ -1,13 +1,17 @@
 import { env } from './env';
 import {
+  BedrockLlmProvider,
   createOcrAdapter,
+  createEcsCredentialsProvider,
   HttpAbdmGatewayAdapter,
+  LlmExtractionAdapter,
   LocalFsStorageAdapter,
   RuleBasedExtractor,
   S3StorageAdapter,
   SimulatedAbdmGatewayAdapter,
   SimulatedDeliveryAdapter,
   SystemClock,
+  WebhookDeliveryAdapter,
 } from '@oncobrief/adapters';
 import type {
   AbdmGatewayPort,
@@ -35,6 +39,9 @@ export function getStorage(): StoragePort {
     if (env.storageDriver === 's3') {
       const s3 = env.s3;
       storage = new S3StorageAdapter({
+        ...(process.env.AWS_CONTAINER_CREDENTIALS_RELATIVE_URI ? {
+          credentialProvider: createEcsCredentialsProvider(process.env.AWS_CONTAINER_CREDENTIALS_RELATIVE_URI),
+        } : {}),
         bucket: s3.bucket,
         region: s3.region,
         credentials: {
@@ -58,6 +65,8 @@ export function getStorage(): StoragePort {
  * clear configuration error locally rather than pretending to presign.
  */
 export function getPresignPut(): PresignPutPort | null {
+  // A presigned upload must not be offered without an asynchronous ingestion owner.
+  if (process.env.DOCUMENT_INGESTION_MODE === 'sync') return null;
   const s = getStorage();
   return 'presignPut' in s && typeof (s as PresignPutPort).presignPut === 'function'
     ? (s as PresignPutPort)
@@ -82,13 +91,78 @@ export function getOcr(): OcrPort {
   return ocr;
 }
 
+/**
+ * Dynamic Extractor Router with Resilient Fallback (`TASK-005`).
+ * When `EXTRACTOR_DRIVER=bedrock` (or `auto` with AWS Bedrock credentials + model ID),
+ * wraps `LlmExtractionAdapter(BedrockLlmProvider)` with an automatic fallback to
+ * `RuleBasedExtractor` so transient cloud failures never drop candidate extraction.
+ */
 export function getExtractor(): ExtractionPort {
-  if (!extractor) extractor = new RuleBasedExtractor();
+  if (!extractor) {
+    const driver = env.extractorDriver;
+    const accessKeyId = process.env['AWS_ACCESS_KEY_ID'];
+    const secretAccessKey = process.env['AWS_SECRET_ACCESS_KEY'];
+    const bedrockModelId = process.env['BEDROCK_MODEL_ID'];
+    const ruleFallback = new RuleBasedExtractor();
+
+    if (
+      (driver === 'bedrock' || (driver === 'auto' && bedrockModelId && accessKeyId && secretAccessKey)) &&
+      bedrockModelId &&
+      accessKeyId &&
+      secretAccessKey
+    ) {
+      const bedrockProvider = new BedrockLlmProvider({
+        region: process.env['AWS_REGION'] ?? 'ap-south-1',
+        modelId: bedrockModelId,
+        credentials: {
+          accessKeyId,
+          secretAccessKey,
+          ...(process.env['AWS_SESSION_TOKEN'] ? { sessionToken: process.env['AWS_SESSION_TOKEN'] } : {}),
+        },
+        ...(process.env['AWS_ENDPOINT_URL'] ? { endpoint: process.env['AWS_ENDPOINT_URL'] } : {}),
+      });
+      const llmExtractor = new LlmExtractionAdapter(bedrockProvider);
+      extractor = {
+        name: llmExtractor.name,
+        version: llmExtractor.version,
+        async extract(input) {
+          try {
+            const llmCandidates = await llmExtractor.extract(input);
+            if (llmCandidates.length > 0) return llmCandidates;
+          } catch {
+            // Fall through to deterministic rule-based extractor on cloud error
+          }
+          return ruleFallback.extract(input);
+        },
+      };
+    } else {
+      extractor = ruleFallback;
+    }
+  }
   return extractor;
 }
 
 export function getDelivery(): DeliveryPort {
-  if (!delivery) delivery = new SimulatedDeliveryAdapter();
+  if (!delivery) {
+    const driver = (process.env['DELIVERY_DRIVER'] ?? 'auto').toLowerCase();
+    const hasLiveDeliveryConfig = Boolean(
+      process.env['DELIVERY_WEBHOOK_URL']?.trim() ||
+        (process.env['TWILIO_ACCOUNT_SID']?.trim() &&
+          process.env['TWILIO_AUTH_TOKEN']?.trim() &&
+          process.env['TWILIO_FROM_NUMBER']?.trim()),
+    );
+    if (
+      driver === 'webhook' ||
+      driver === 'twilio' ||
+      (driver === 'auto' && hasLiveDeliveryConfig)
+    ) {
+      delivery = new WebhookDeliveryAdapter({
+        channel: process.env['DELIVERY_CHANNEL'] === 'whatsapp' ? 'whatsapp' : 'sms',
+      });
+    } else {
+      delivery = new SimulatedDeliveryAdapter();
+    }
+  }
   return delivery;
 }
 

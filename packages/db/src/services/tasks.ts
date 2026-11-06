@@ -552,3 +552,76 @@ export async function listMyTasks(
   }));
 }
 
+export async function updateTaskPriorityAndDueOn(
+  q: Querier,
+  input: {
+    taskId: string;
+    actorId: string;
+    priority: 'urgent' | 'high' | 'normal' | 'low';
+    dueOn?: string | null;
+    note?: string | null;
+  },
+): Promise<void> {
+  if (!['urgent', 'high', 'normal', 'low'].includes(input.priority)) {
+    throw new Error('invalid_task_priority');
+  }
+  validateTaskDueDate(input.dueOn);
+
+  const cur = await q.query<{
+    org_id: string;
+    status: TaskStatus;
+    due_on: string | null;
+  }>(
+    'SELECT org_id, status, due_on::text AS due_on FROM admin_task WHERE id = $1 FOR UPDATE',
+    [input.taskId],
+  );
+  const row = cur.rows[0];
+  if (!row) throw new Error('task_not_found');
+  if (['done', 'cancelled'].includes(row.status)) throw new Error('task_closed');
+
+  try {
+    await q.query(
+      `UPDATE admin_task
+          SET priority = $2,
+              due_on = CASE WHEN $3 THEN $4::date ELSE due_on END
+        WHERE id = $1`,
+      [input.taskId, input.priority, input.dueOn !== undefined, input.dueOn ?? null],
+    );
+  } catch {
+    // Fallback if priority column migration 0021 not yet applied
+    await q.query(
+      `UPDATE admin_task
+          SET due_on = CASE WHEN $2 THEN $3::date ELSE due_on END
+        WHERE id = $1`,
+      [input.taskId, input.dueOn !== undefined, input.dueOn ?? null],
+    );
+  }
+
+  await q.query(
+    `INSERT INTO task_event (org_id, task_id, action, actor_user_id, note)
+     VALUES ($1, $2, 'commented', $3, $4)`,
+    [
+      row.org_id,
+      input.taskId,
+      input.actorId,
+      input.note
+        ? `[Priority: ${input.priority.toUpperCase()}${input.dueOn ? ` · Due: ${input.dueOn}` : ''}] ${input.note}`
+        : `Updated task priority to ${input.priority.toUpperCase()}${input.dueOn ? ` and deadline to ${input.dueOn}` : ''}`,
+    ],
+  );
+
+  await appendAuditEvent(q, {
+    orgId: row.org_id,
+    actor: { userId: input.actorId, role: null },
+    action: 'task.priority_updated',
+    entityKind: 'admin_task',
+    entityId: input.taskId,
+    outcome: 'success',
+    metadata: {
+      priority: input.priority,
+      due_on: input.dueOn ?? row.due_on,
+    },
+  });
+}
+
+

@@ -29,3 +29,9 @@ export * from './services/admin';
 export * from './services/appointments';
 export * from './services/encounters';
 export * from './services/tumor-board';
+export * from './services/extension-grants';
+export * from './services/analytics';
+export * from './services/patient-portal';
+export * from './services/fhir-exchange';
+
+

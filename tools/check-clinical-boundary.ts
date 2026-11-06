@@ -24,6 +24,8 @@ const root = process.cwd();
 const TARGET_DIRS = [
   'apps/web/src',
   'apps/worker/src',
+  'apps/mobile/src',
+  'apps/mobile/app',
   'packages/domain/src',
   'packages/adapters/src',
   'packages/db/src',

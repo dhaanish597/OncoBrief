@@ -1,3 +1,4 @@
+import { scanForBoundaryViolation } from '@oncobrief/domain';
 import type { Querier } from '../client';
 import { appendAuditEvent } from './audit';
 import { changeAppointmentStatus } from './appointments';
@@ -10,6 +11,8 @@ export type EncounterType =
   | 'emergency'
   | 'tumor_board'
   | 'teleconsult';
+
+export type NoteGovernanceKind = 'human_operational_coordination' | 'ledger_anchored';
 
 export interface EncounterParticipantRow {
   id: string;
@@ -31,6 +34,9 @@ export interface EncounterNoteVersionRow {
   clinical_assessment: string | null;
   plan_and_instructions: string | null;
   follow_up_instructions: string | null;
+  consultation_packet_id: string | null;
+  cited_fact_ids: string[];
+  note_governance_kind: NoteGovernanceKind;
   authored_by: string;
   author_name: string;
   finalized_by: string | null;
@@ -82,6 +88,9 @@ export interface SaveNoteDraftInput {
   clinicalAssessment?: string | null;
   planAndInstructions?: string | null;
   followUpInstructions?: string | null;
+  consultationPacketId?: string | null;
+  citedFactIds?: string[];
+  noteGovernanceKind?: NoteGovernanceKind;
   actorId: string;
 }
 
@@ -103,7 +112,25 @@ export interface AmendNoteInput {
   clinicalAssessment?: string | null;
   planAndInstructions?: string | null;
   followUpInstructions?: string | null;
+  consultationPacketId?: string | null;
+  citedFactIds?: string[];
+  noteGovernanceKind?: NoteGovernanceKind;
   actorId: string;
+}
+
+/**
+ * Enforces OncoBrief's non-clinical boundary on Encounter Note fields (TASK-004, ADR-004).
+ * Prevents algorithmic clinical inference tokens (e.g. RECIST response scores,
+ * prognostic survival claims, or trial eligibility scores) from being stored.
+ */
+function assertEncounterNoteWithinBoundary(fields: (string | null | undefined)[]): void {
+  for (const field of fields) {
+    if (!field) continue;
+    const violations = scanForBoundaryViolation(field);
+    if (violations.length > 0) {
+      throw new Error(`clinical_boundary_violation:${violations[0]!.patternId}`);
+    }
+  }
 }
 
 export async function listEncounters(
@@ -341,6 +368,9 @@ export async function listEncounterNotes(
       env.clinical_assessment,
       env.plan_and_instructions,
       env.follow_up_instructions,
+      env.consultation_packet_id,
+      COALESCE(env.cited_fact_ids, '{}') AS cited_fact_ids,
+      COALESCE(env.note_governance_kind, 'human_operational_coordination') AS note_governance_kind,
       env.authored_by,
       u.display_name AS author_name,
       env.finalized_by,
@@ -362,6 +392,22 @@ export async function saveEncounterNoteDraft(
   q: Querier,
   input: SaveNoteDraftInput,
 ): Promise<string> {
+  assertEncounterNoteWithinBoundary([
+    input.title,
+    input.chiefComplaint,
+    input.historyPresentIllness,
+    input.clinicalAssessment,
+    input.planAndInstructions,
+    input.followUpInstructions,
+  ]);
+
+  const citedFactIds = [...new Set((input.citedFactIds ?? []).filter(Boolean))];
+  const governanceKind: NoteGovernanceKind =
+    input.noteGovernanceKind ??
+    (input.consultationPacketId || citedFactIds.length > 0
+      ? 'ledger_anchored'
+      : 'human_operational_coordination');
+
   // Check if an existing draft exists for this encounter
   const existingDraftRes = await q.query<{ id: string; version: number }>(
     `SELECT id, version FROM encounter_note_version
@@ -381,7 +427,10 @@ export async function saveEncounterNoteDraft(
            history_present_illness = $5,
            clinical_assessment = $6,
            plan_and_instructions = $7,
-           follow_up_instructions = $8
+           follow_up_instructions = $8,
+           consultation_packet_id = COALESCE($9, consultation_packet_id),
+           cited_fact_ids = CASE WHEN $10::uuid[] IS NOT NULL THEN $10::uuid[] ELSE cited_fact_ids END,
+           note_governance_kind = $11
        WHERE org_id = $1 AND id = $2`,
       [
         input.orgId,
@@ -392,6 +441,9 @@ export async function saveEncounterNoteDraft(
         input.clinicalAssessment ?? null,
         input.planAndInstructions ?? null,
         input.followUpInstructions ?? null,
+        input.consultationPacketId ?? null,
+        input.citedFactIds ? citedFactIds : null,
+        governanceKind,
       ],
     );
     return draftId;
@@ -417,8 +469,11 @@ export async function saveEncounterNoteDraft(
       clinical_assessment,
       plan_and_instructions,
       follow_up_instructions,
+      consultation_packet_id,
+      cited_fact_ids,
+      note_governance_kind,
       authored_by
-    ) VALUES ($1, $2, $3, 'draft', $4, $5, $6, $7, $8, $9, $10)
+    ) VALUES ($1, $2, $3, 'draft', $4, $5, $6, $7, $8, $9, $10, $11::uuid[], $12, $13)
     RETURNING id
   `;
 
@@ -432,6 +487,9 @@ export async function saveEncounterNoteDraft(
     input.clinicalAssessment ?? null,
     input.planAndInstructions ?? null,
     input.followUpInstructions ?? null,
+    input.consultationPacketId ?? null,
+    citedFactIds,
+    governanceKind,
     input.actorId,
   ]);
 
@@ -450,6 +508,15 @@ export async function finalizeEncounterNote(
   const note = noteRes.rows[0];
   if (!note) throw new Error('note_not_found');
   if (note.status !== 'draft') throw new Error(`cannot_finalize_non_draft: status is ${note.status}`);
+
+  assertEncounterNoteWithinBoundary([
+    note.title,
+    note.chief_complaint,
+    note.history_present_illness,
+    note.clinical_assessment,
+    note.plan_and_instructions,
+    note.follow_up_instructions,
+  ]);
 
   await q.query(
     `UPDATE encounter_note_version
@@ -470,6 +537,8 @@ export async function finalizeEncounterNote(
     metadata: {
       encounterId: input.encounterId,
       version: note.version,
+      consultationPacketId: note.consultation_packet_id ?? null,
+      citedFactsCount: (note.cited_fact_ids ?? []).length,
     },
   });
 }
@@ -489,6 +558,36 @@ export async function amendEncounterNote(
   const prevNote = noteRes.rows[0];
   if (!prevNote) throw new Error('note_not_found');
 
+  const title = input.title?.trim() || prevNote.title;
+  const chiefComplaint = input.chiefComplaint !== undefined ? input.chiefComplaint : prevNote.chief_complaint;
+  const historyPresentIllness = input.historyPresentIllness !== undefined ? input.historyPresentIllness : prevNote.history_present_illness;
+  const clinicalAssessment = input.clinicalAssessment !== undefined ? input.clinicalAssessment : prevNote.clinical_assessment;
+  const planAndInstructions = input.planAndInstructions !== undefined ? input.planAndInstructions : prevNote.plan_and_instructions;
+  const followUpInstructions = input.followUpInstructions !== undefined ? input.followUpInstructions : prevNote.follow_up_instructions;
+  const consultationPacketId =
+    input.consultationPacketId !== undefined
+      ? input.consultationPacketId
+      : prevNote.consultation_packet_id;
+  const citedFactIds =
+    input.citedFactIds !== undefined
+      ? [...new Set(input.citedFactIds.filter(Boolean))]
+      : (prevNote.cited_fact_ids ?? []);
+  const governanceKind: NoteGovernanceKind =
+    input.noteGovernanceKind ??
+    (consultationPacketId || citedFactIds.length > 0
+      ? 'ledger_anchored'
+      : (prevNote.note_governance_kind ?? 'human_operational_coordination'));
+
+  assertEncounterNoteWithinBoundary([
+    title,
+    chiefComplaint,
+    historyPresentIllness,
+    clinicalAssessment,
+    planAndInstructions,
+    followUpInstructions,
+    input.amendmentReason,
+  ]);
+
   // Mark previous note as amended
   await q.query(
     `UPDATE encounter_note_version
@@ -505,13 +604,6 @@ export async function amendEncounterNote(
   );
   const nextVersion = (maxVersionRes.rows[0]?.max_v ?? prevNote.version) + 1;
 
-  const title = input.title?.trim() || prevNote.title;
-  const chiefComplaint = input.chiefComplaint !== undefined ? input.chiefComplaint : prevNote.chief_complaint;
-  const historyPresentIllness = input.historyPresentIllness !== undefined ? input.historyPresentIllness : prevNote.history_present_illness;
-  const clinicalAssessment = input.clinicalAssessment !== undefined ? input.clinicalAssessment : prevNote.clinical_assessment;
-  const planAndInstructions = input.planAndInstructions !== undefined ? input.planAndInstructions : prevNote.plan_and_instructions;
-  const followUpInstructions = input.followUpInstructions !== undefined ? input.followUpInstructions : prevNote.follow_up_instructions;
-
   const insertSql = `
     INSERT INTO encounter_note_version (
       org_id,
@@ -524,11 +616,14 @@ export async function amendEncounterNote(
       clinical_assessment,
       plan_and_instructions,
       follow_up_instructions,
+      consultation_packet_id,
+      cited_fact_ids,
+      note_governance_kind,
       authored_by,
       finalized_by,
       finalized_at,
       amendment_reason
-    ) VALUES ($1, $2, $3, 'finalized', $4, $5, $6, $7, $8, $9, $10, $10, now(), $11)
+    ) VALUES ($1, $2, $3, 'finalized', $4, $5, $6, $7, $8, $9, $10, $11::uuid[], $12, $13, $13, now(), $14)
     RETURNING id
   `;
 
@@ -542,6 +637,9 @@ export async function amendEncounterNote(
     clinicalAssessment,
     planAndInstructions,
     followUpInstructions,
+    consultationPacketId ?? null,
+    citedFactIds,
+    governanceKind,
     input.actorId,
     input.amendmentReason.trim(),
   ]);
@@ -566,7 +664,8 @@ export async function amendEncounterNote(
       encounterId: input.encounterId,
       previousVersion: prevNote.version,
       newVersion: nextVersion,
-      amendmentReason: input.amendmentReason,
+      consultationPacketId: consultationPacketId ?? null,
+      citedFactsCount: citedFactIds.length,
     },
   });
 

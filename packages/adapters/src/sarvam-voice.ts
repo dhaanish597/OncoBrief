@@ -61,11 +61,148 @@ export function isSupportedLanguage(code: string): code is SupportedLanguage {
   return SUPPORTED_LANGUAGES.includes(code as SupportedLanguage);
 }
 
+const SHORT_TO_BCP47: Record<string, SupportedLanguage> = {
+  en: 'en-IN',
+  hi: 'hi-IN',
+  ta: 'ta-IN',
+  te: 'te-IN',
+  kn: 'kn-IN',
+  ml: 'ml-IN',
+  bn: 'bn-IN',
+  mr: 'mr-IN',
+  gu: 'gu-IN',
+  pa: 'pa-IN',
+  or: 'or-IN',
+  od: 'or-IN',
+};
+
 export function normalizeLanguageCode(code: string): SupportedLanguage {
-  const normalized = code.toLowerCase().replace(/_/g, '-');
-  if (isSupportedLanguage(normalized)) return normalized;
-  // Default to English India
+  if (!code || typeof code !== 'string') return 'en-IN';
+  const cleaned = code.trim().replace(/_/g, '-');
+  if (!cleaned) return 'en-IN';
+  if (isSupportedLanguage(cleaned)) return cleaned;
+  const lower = cleaned.toLowerCase();
+  if (SHORT_TO_BCP47[lower]) return SHORT_TO_BCP47[lower]!;
+  if (lower === 'od-in') return 'or-IN';
+  const parts = lower.split('-');
+  if (parts.length >= 2 && parts[0] && parts[1]) {
+    const candidate = `${parts[0].toLowerCase()}-${parts[1].toUpperCase()}`;
+    if (candidate === 'od-IN') return 'or-IN';
+    if (isSupportedLanguage(candidate)) return candidate;
+    if (SHORT_TO_BCP47[parts[0]]) return SHORT_TO_BCP47[parts[0]]!;
+  }
   return 'en-IN';
+}
+
+export function toSarvamApiLanguageCode(code: string): string {
+  const normalized = normalizeLanguageCode(code);
+  return normalized === 'or-IN' ? 'od-IN' : normalized;
+}
+
+interface ParsedWav {
+  format: {
+    audioFormat: number;
+    numChannels: number;
+    sampleRate: number;
+    byteRate: number;
+    blockAlign: number;
+    bitsPerSample: number;
+  };
+  pcmData: Buffer;
+}
+
+function parseWavBuffer(buf: Buffer): ParsedWav | null {
+  if (buf.byteLength < 44) return null;
+  if (buf.subarray(0, 4).toString('ascii') !== 'RIFF') return null;
+  if (buf.subarray(8, 12).toString('ascii') !== 'WAVE') return null;
+
+  let offset = 12;
+  let format: ParsedWav['format'] | null = null;
+  let pcmData: Buffer | null = null;
+
+  while (offset + 8 <= buf.byteLength) {
+    const chunkId = buf.subarray(offset, offset + 4).toString('ascii');
+    const chunkSize = buf.readUInt32LE(offset + 4);
+    const chunkStart = offset + 8;
+    const chunkEnd = Math.min(buf.byteLength, chunkStart + chunkSize);
+
+    if (chunkId === 'fmt ') {
+      if (chunkSize >= 16 && chunkStart + 16 <= buf.byteLength) {
+        format = {
+          audioFormat: buf.readUInt16LE(chunkStart),
+          numChannels: buf.readUInt16LE(chunkStart + 2),
+          sampleRate: buf.readUInt32LE(chunkStart + 4),
+          byteRate: buf.readUInt32LE(chunkStart + 8),
+          blockAlign: buf.readUInt16LE(chunkStart + 12),
+          bitsPerSample: buf.readUInt16LE(chunkStart + 14),
+        };
+      }
+    } else if (chunkId === 'data') {
+      pcmData = buf.subarray(chunkStart, chunkEnd);
+    }
+
+    const paddedSize = chunkSize + (chunkSize % 2);
+    offset = chunkStart + paddedSize;
+  }
+
+  if (!format || !pcmData) return null;
+  return { format, pcmData };
+}
+
+export function mergeWavBase64Chunks(chunks: string[]): string {
+  if (!chunks || !Array.isArray(chunks)) return '';
+  const filtered = chunks.map((c) => (c ? c.trim() : '')).filter(Boolean);
+  if (filtered.length === 0) return '';
+  if (filtered.length === 1) return filtered[0]!;
+
+  const parsedChunks: ParsedWav[] = [];
+  for (const b64 of filtered) {
+    const buf = Buffer.from(b64, 'base64');
+    const parsed = parseWavBuffer(buf);
+    if (parsed) {
+      parsedChunks.push(parsed);
+    } else if (parsedChunks.length > 0 && buf.byteLength > 0) {
+      parsedChunks.push({
+        format: parsedChunks[0]!.format,
+        pcmData: buf,
+      });
+    }
+  }
+
+  if (parsedChunks.length === 0) {
+    return filtered[0] ?? '';
+  }
+
+  if (parsedChunks.length === 1) {
+    return filtered[0]!;
+  }
+
+  const baseFormat = parsedChunks[0]!.format;
+  const pcmBuffers: Buffer[] = [];
+  let totalPcmBytes = 0;
+
+  for (const item of parsedChunks) {
+    pcmBuffers.push(item.pcmData);
+    totalPcmBytes += item.pcmData.byteLength;
+  }
+
+  const header = Buffer.alloc(44);
+  header.write('RIFF', 0, 'ascii');
+  header.writeUInt32LE(36 + totalPcmBytes, 4);
+  header.write('WAVE', 8, 'ascii');
+  header.write('fmt ', 12, 'ascii');
+  header.writeUInt32LE(16, 16);
+  header.writeUInt16LE(baseFormat.audioFormat, 20);
+  header.writeUInt16LE(baseFormat.numChannels, 22);
+  header.writeUInt32LE(baseFormat.sampleRate, 24);
+  header.writeUInt32LE(baseFormat.byteRate, 28);
+  header.writeUInt16LE(baseFormat.blockAlign, 32);
+  header.writeUInt16LE(baseFormat.bitsPerSample, 34);
+  header.write('data', 36, 'ascii');
+  header.writeUInt32LE(totalPcmBytes, 40);
+
+  const mergedBuffer = Buffer.concat([header, ...pcmBuffers]);
+  return mergedBuffer.toString('base64');
 }
 
 export function isSarvamConfigured(): boolean {
@@ -120,7 +257,7 @@ export async function sarvamStt(options: SarvamSttOptions): Promise<SarvamSttRes
   const blob = new Blob([bytes], { type: mimeType });
   formData.append('file', blob, filename);
   formData.append('model', model);
-  formData.append('language_code', languageCode);
+  formData.append('language_code', toSarvamApiLanguageCode(languageCode));
 
   const controller = new AbortController();
   const timeoutId = setTimeout(() => controller.abort(), 60000);
@@ -179,7 +316,7 @@ export async function sarvamTts(options: SarvamTtsOptions): Promise<SarvamTtsRes
 
   const payload = {
     text: options.text,
-    target_language_code: languageCode,
+    target_language_code: toSarvamApiLanguageCode(languageCode),
     speaker,
     model,
     enable_preprocessing: true,
@@ -214,9 +351,14 @@ export async function sarvamTts(options: SarvamTtsOptions): Promise<SarvamTtsRes
       throw new SarvamError(errorMessage, response.status, retryable);
     }
 
-    // Current Sarvam TTS returns `audios`, an array of base64 chunks.
+    // Current Sarvam TTS returns `audios`, an array of base64 chunks, or `audio_base64`.
     const data = (await response.json()) as { audios?: string[]; audio_base64?: string };
-    const audioBase64 = data.audios?.join('') ?? data.audio_base64 ?? '';
+    let audioBase64 = '';
+    if (Array.isArray(data.audios) && data.audios.length > 0) {
+      audioBase64 = mergeWavBase64Chunks(data.audios);
+    } else if (data.audio_base64) {
+      audioBase64 = data.audio_base64;
+    }
     return {
       audioBase64,
       sampleRate: 22050,
@@ -271,4 +413,57 @@ export async function sarvamTtsWithRetry(
     }
   }
   throw lastError;
+}
+
+/**
+ * Synthesizes an audible 16-bit 22050Hz mono PCM WAV containing a warm 3-note
+ * prosodic triad (`440Hz -> 554.37Hz -> 659.25Hz` with ADSR envelope,
+ * `maxAmplitude > 12000`) when `SARVAM_API_KEY` is not configured (`TASK-012`).
+ * Never emits zero-filled silent bytes.
+ */
+export function generateAudibleFallbackWav(
+  text = '',
+  languageCode = 'en-IN',
+): string {
+  void text;
+  void languageCode;
+  const sampleRate = 22050;
+  const durationSec = 0.9;
+  const numSamples = Math.floor(sampleRate * durationSec);
+  const dataBytes = numSamples * 2;
+  const buf = Buffer.alloc(44 + dataBytes);
+
+  buf.write('RIFF', 0, 'ascii');
+  buf.writeUInt32LE(36 + dataBytes, 4);
+  buf.write('WAVE', 8, 'ascii');
+  buf.write('fmt ', 12, 'ascii');
+  buf.writeUInt32LE(16, 16);
+  buf.writeUInt16LE(1, 20); // PCM
+  buf.writeUInt16LE(1, 22); // Mono
+  buf.writeUInt32LE(sampleRate, 24);
+  buf.writeUInt32LE(sampleRate * 2, 28);
+  buf.writeUInt16LE(2, 32);
+  buf.writeUInt16LE(16, 34); // 16-bit
+  buf.write('data', 36, 'ascii');
+  buf.writeUInt32LE(dataBytes, 40);
+
+  const notes = [440.0, 554.37, 659.25];
+  const segSamples = Math.floor(numSamples / notes.length);
+
+  for (let i = 0; i < numSamples; i++) {
+    const noteIdx = Math.min(notes.length - 1, Math.floor(i / segSamples));
+    const freq = notes[noteIdx]!;
+    const localIdx = i - noteIdx * segSamples;
+    const localT = localIdx / segSamples;
+    const env = localT < 0.08 ? localT / 0.08 : Math.exp(-3.2 * (localT - 0.08));
+    const t = i / sampleRate;
+    const raw =
+      15000 *
+      env *
+      (0.75 * Math.sin(2 * Math.PI * freq * t) + 0.25 * Math.sin(4 * Math.PI * freq * t));
+    const clamped = Math.max(-32767, Math.min(32767, Math.round(raw)));
+    buf.writeInt16LE(clamped, 44 + i * 2);
+  }
+
+  return buf.toString('base64');
 }
