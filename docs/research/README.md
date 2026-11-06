@@ -9,3 +9,6 @@ These are dated research notes and source collections, not fresh validation or m
 - [Safety and responsible-AI slide evidence](SAFETY_AND_RESPONSIBLE_AI_SLIDE_EVIDENCE.md)
 
 No pilot efficacy percentages, certifications or real-patient validation are established by these documents.
+
+- [November 6 deployment slide QA](DEPLOYMENT_SLIDE_EDITABILITY_QA.md)
+- [November 6 evaluation slide QA](EVALUATION_SLIDE_RECONSTRUCTION_QA.md)

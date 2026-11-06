@@ -18,6 +18,7 @@ Current URLs are collected in [submission links](LINKS.md).
 - [Submission presentation](OncoBrief_Healthathon_2026_ICONIX_6FQ4CN.pptx)
 - [Submission PDF](OncoBrief_Healthathon_2026_Final_Submission.pdf)
 - [Editable presentation assets](presentation-assets/)
+- [November 6 editable slide drafts](presentation-assets/2026-11-06/) — 14 slides with two evaluation alternatives; consolidate before a final portal upload
 - [Earlier decks and templates](archive/) — preserved originals; filenames containing “Final” do not establish current approval
 - [Asset move/checksum manifest](ASSET_MANIFEST.json)
 - [Historical short demo videos](../reports/visual-proof/index.html)

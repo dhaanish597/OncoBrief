@@ -1413,4 +1413,3 @@ qualified people retain clinical judgment and responsibility.
 354
 00:30:02,424 --> 00:30:07,582
 All records and outcomes shown in this tutorial are synthetic training examples.
-

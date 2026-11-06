@@ -14,7 +14,8 @@ Preserve all application work and branch history, make main contain web, worker,
 - [x] Organize research, historical plans and presentation assets; add docs/README.md and submission/README.md. Keep existing cross-document entry paths as forwarding notes when moved.
 - [x] Correct README deployment/runtime/mobile guidance and CI/runtime mismatches. Run frozen installation, typecheck, lint, tests, worker/web builds, mobile exports and relevant browser flows with an isolated disposable PostgreSQL cluster.
 - [x] Record exact results and remaining limits in submission/RELEASE_CHECKLIST.md; scan staged files and verify links/diff.
-- [ ] Fast-forward local main to verified integration, push main without force and confirm remote SHA and workflow results.
+- [x] Fast-forward local main and push without force; remote main matched 06bd405 after initial publication.
+- [ ] Finish remote CI follow-up and AWS chatbot model correction requested during release.
 
 ## Review focus
 
