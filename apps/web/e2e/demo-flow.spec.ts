@@ -115,7 +115,12 @@ test.describe('OncoBrief — evidence-first demo flow', () => {
     await expect(page.getByRole('heading', { name: /Missing documents/i })).toBeVisible();
 
     // Each run exercises a new approval, even if another spec approved the previous packet.
+    const packetId = page.getByTestId('approve-packet')
+      .locator('xpath=ancestor::form[1]').locator('input[name="packetId"]');
+    const previousPacketId = await packetId.inputValue();
     await page.getByRole('button', { name: 'assemble draft', exact: true }).click();
+    // Wait for the assembled successor instead of submitting the old, still-visible form.
+    await expect(packetId).not.toHaveValue(previousPacketId);
     await page.getByTestId('approve-packet').click();
     await expect(page.getByText(/ledger seq/i)).toBeVisible();
     await expect(page.getByTestId('export-packet')).toBeVisible();

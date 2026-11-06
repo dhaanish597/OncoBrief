@@ -61,7 +61,7 @@ test.describe('Unknown.png Design Parity — Screen 2, 3 & 5', () => {
 
     // Capture screenshot of Screen 2
     await page.screenshot({
-      path: '/Users/dhaanish/.gemini/antigravity-cli/brain/5e508f7e-8bf8-43fc-aad7-5963d6af656c/screenshots/screenshot-screen2-upload-import.png',
+      path: test.info().outputPath('screenshot-screen2-upload-import.png'),
       fullPage: true,
     });
   });
@@ -119,7 +119,7 @@ test.describe('Unknown.png Design Parity — Screen 2, 3 & 5', () => {
 
     // Capture screenshot of Screen 3 during execution
     await page.screenshot({
-      path: '/Users/dhaanish/.gemini/antigravity-cli/brain/5e508f7e-8bf8-43fc-aad7-5963d6af656c/screenshots/screenshot-screen3-processing-status.png',
+      path: test.info().outputPath('screenshot-screen3-processing-status.png'),
       fullPage: true,
     });
 
@@ -186,7 +186,7 @@ test.describe('Unknown.png Design Parity — Screen 2, 3 & 5', () => {
 
     // Capture screenshot of Screen 5
     await page.screenshot({
-      path: '/Users/dhaanish/.gemini/antigravity-cli/brain/5e508f7e-8bf8-43fc-aad7-5963d6af656c/screenshots/screenshot-screen5-longitudinal-timeline.png',
+      path: test.info().outputPath('screenshot-screen5-longitudinal-timeline.png'),
       fullPage: true,
     });
   });

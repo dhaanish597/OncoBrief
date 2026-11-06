@@ -84,7 +84,7 @@ test.describe('Evidence Viewer & Website Remediation', () => {
     // Switch back to overlay and capture screenshot
     await page.getByRole('button', { name: /Scan \+ BBox/i }).click();
     await page.screenshot({
-      path: '/Users/dhaanish/.gemini/antigravity-cli/brain/5e508f7e-8bf8-43fc-aad7-5963d6af656c/screenshots/screenshot-01-cbc-source-inspector.png',
+      path: test.info().outputPath('screenshot-01-cbc-source-inspector.png'),
       fullPage: true,
     });
   });
@@ -121,7 +121,7 @@ test.describe('Evidence Viewer & Website Remediation', () => {
     expect(Number(xVal)).toBe(50);
 
     await page.screenshot({
-      path: '/Users/dhaanish/.gemini/antigravity-cli/brain/5e508f7e-8bf8-43fc-aad7-5963d6af656c/screenshots/screenshot-02-appointment-letter-alignment.png',
+      path: test.info().outputPath('screenshot-02-appointment-letter-alignment.png'),
       fullPage: true,
     });
 
@@ -168,7 +168,7 @@ test.describe('Evidence Viewer & Website Remediation', () => {
     await expect(page.getByTestId('source-pane')).toBeVisible();
 
     await page.screenshot({
-      path: '/Users/dhaanish/.gemini/antigravity-cli/brain/5e508f7e-8bf8-43fc-aad7-5963d6af656c/screenshots/screenshot-03-mobile-375px-scan-bbox.png',
+      path: test.info().outputPath('screenshot-03-mobile-375px-scan-bbox.png'),
       fullPage: true,
     });
 
@@ -184,7 +184,7 @@ test.describe('Evidence Viewer & Website Remediation', () => {
     await expect(page.getByTestId('source-pane').getByText('Regional Cancer Institute').first()).toBeVisible();
 
     await page.screenshot({
-      path: '/Users/dhaanish/.gemini/antigravity-cli/brain/5e508f7e-8bf8-43fc-aad7-5963d6af656c/screenshots/screenshot-04-mobile-375px-structured-ocr.png',
+      path: test.info().outputPath('screenshot-04-mobile-375px-structured-ocr.png'),
       fullPage: true,
     });
 
@@ -206,7 +206,7 @@ test.describe('Evidence Viewer & Website Remediation', () => {
     await expect(page.getByTestId('readiness-band').first()).toBeVisible();
 
     await page.screenshot({
-      path: '/Users/dhaanish/.gemini/antigravity-cli/brain/5e508f7e-8bf8-43fc-aad7-5963d6af656c/screenshots/screenshot-05-longitudinal-timeline.png',
+      path: test.info().outputPath('screenshot-05-longitudinal-timeline.png'),
       fullPage: true,
     });
 
@@ -217,7 +217,7 @@ test.describe('Evidence Viewer & Website Remediation', () => {
     await expect(page.getByText(/sources disagree/i).first()).toBeVisible();
 
     await page.screenshot({
-      path: '/Users/dhaanish/.gemini/antigravity-cli/brain/5e508f7e-8bf8-43fc-aad7-5963d6af656c/screenshots/screenshot-06-reconciliation-conflicts.png',
+      path: test.info().outputPath('screenshot-06-reconciliation-conflicts.png'),
       fullPage: true,
     });
 
@@ -227,7 +227,7 @@ test.describe('Evidence Viewer & Website Remediation', () => {
     await expect(page.getByRole('heading', { name: /Record map/i })).toBeVisible();
 
     await page.screenshot({
-      path: '/Users/dhaanish/.gemini/antigravity-cli/brain/5e508f7e-8bf8-43fc-aad7-5963d6af656c/screenshots/screenshot-07-record-map-readiness.png',
+      path: test.info().outputPath('screenshot-07-record-map-readiness.png'),
       fullPage: true,
     });
   });
