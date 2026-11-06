@@ -47,6 +47,41 @@ jobs:
         # Playwright's webServer starts `pnpm start` against the build above.
         run: pnpm --filter @oncobrief/web build && pnpm --filter @oncobrief/web test:e2e
 
+  patient-mobile:
+    name: Patient Mobile Verification Gate (REQ-MOB-045)
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: oncobrief
+        ports: ['5432:5432']
+        options: >-
+          --health-cmd "pg_isready -U postgres -d oncobrief"
+          --health-interval 5s --health-timeout 5s --health-retries 20
+    env:
+      DATABASE_URL: postgres://oncobrief_app:oncobrief_app@localhost:5432/oncobrief
+      DATABASE_MIGRATOR_URL: postgres://postgres:postgres@localhost:5432/oncobrief
+      SESSION_COOKIE_SECRET: ci-only-secret-not-used-in-production-0000000000
+      STORAGE_DRIVER: fs
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - run: pnpm install --frozen-lockfile
+
+      - name: Migrate and seed test database
+        run: pnpm demo:reset
+
+      - name: Patient mobile verification gate (REQ-MOB-045)
+        run: pnpm verify:patient-mobile
+
   terraform:
     runs-on: ubuntu-latest
     steps:
