@@ -16,10 +16,10 @@ test.describe('ABDM V3 Integration (M2 HIP + M3 HIU)', () => {
 
     // Open first patient
     await page.getByRole('link', { name: /DEMO-001/ }).first().click();
-    await expect(page).toHaveURL(/\/patients\/.+\/evidence/);
+    await expect(page).toHaveURL(/\/patients\/[^/]+/);
 
     // Navigate to Sources tab
-    await page.getByRole('link', { name: 'Sources' }).click();
+    await page.getByTestId('tab-sources').click();
     await expect(page).toHaveURL(/\/patients\/.+\/sources/);
 
     // Select ABDM tab
@@ -46,10 +46,10 @@ test.describe('ABDM V3 Integration (M2 HIP + M3 HIU)', () => {
 
     // Open DEMO-003 (which has ready/approved packet)
     await page.getByRole('link', { name: /DEMO-003/ }).first().click();
-    await expect(page).toHaveURL(/\/patients\/.+\/evidence/);
+    await expect(page).toHaveURL(/\/patients\/[^/]+/);
 
     // Navigate to Consultation packet tab
-    await page.getByRole('link', { name: 'Packet' }).click();
+    await page.getByTestId('tab-packet').click();
     await expect(page).toHaveURL(/\/patients\/.+\/packet/);
 
     // Check for packet status

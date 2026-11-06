@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
+import type { AssistantPendingActionProposal, GraphExecutionTraceStep } from '@oncobrief/domain';
 import { SourceCard, type SourceCardData } from './SourceCard';
 import { useVoice, VOICE_LANGUAGES, type VoiceState } from './useVoice';
 
@@ -21,6 +22,9 @@ interface Message {
   navigation?: NavigationSuggestion | null;
   conflict?: boolean;
   suggestedQuestions?: string[];
+  executionTrace?: GraphExecutionTraceStep[];
+  pendingAction?: AssistantPendingActionProposal | null;
+  providerMode?: string;
 }
 
 interface ConversationListItem {
@@ -56,6 +60,7 @@ export function AssistantPanel({ onClose }: { onClose: () => void }) {
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState('');
   const [loading, setLoading] = useState(false);
+  const [actionBusyId, setActionBusyId] = useState<string | null>(null);
   const [conversationId, setConversationId] = useState<string | null>(null);
   const [conversations, setConversations] = useState<ConversationListItem[]>([]);
   const [showHistory, setShowHistory] = useState(false);
@@ -137,7 +142,7 @@ export function AssistantPanel({ onClose }: { onClose: () => void }) {
         if (data.conversationId) setConversationId(data.conversationId);
 
         const assistantMessage: Message = {
-          id: `a-${Date.now()}`,
+          id: data.messageId ?? `a-${Date.now()}`,
           role: 'assistant',
           content: data.answer,
           intent: data.intent,
@@ -146,6 +151,9 @@ export function AssistantPanel({ onClose }: { onClose: () => void }) {
           navigation: data.navigation ?? null,
           conflict: data.conflict ?? false,
           suggestedQuestions: data.suggestedQuestions ?? [],
+          executionTrace: data.executionTrace ?? [],
+          pendingAction: data.pendingAction ?? null,
+          providerMode: data.providerMode ?? 'deterministic',
         };
         setMessages((prev) => [...prev, assistantMessage]);
         if (data.navigation) setPendingNav(data.navigation);
@@ -167,6 +175,40 @@ export function AssistantPanel({ onClose }: { onClose: () => void }) {
     [context, conversationId, languageCode, loadConversations, loading, readAloud, voice],
   );
 
+  const handleActionDecision = useCallback(
+    async (messageId: string, decision: 'confirm' | 'cancel') => {
+      if (!conversationId) return;
+      setActionBusyId(messageId);
+      try {
+        const res = await fetch('/api/v1/assistant/confirm-action', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ conversationId, messageId, decision }),
+        });
+        if (!res.ok) return;
+        const data = await res.json();
+        setMessages((prev) =>
+          prev.map((m) =>
+            m.id === messageId
+              ? {
+                  ...m,
+                  pendingAction: data.pendingAction ?? (m.pendingAction ? { ...m.pendingAction, status: decision === 'confirm' ? 'confirmed' : 'cancelled' } : null),
+                }
+              : m,
+          ),
+        );
+        if (decision === 'confirm') {
+          router.refresh();
+        }
+      } catch {
+        /* non-fatal */
+      } finally {
+        setActionBusyId(null);
+      }
+    },
+    [conversationId, router],
+  );
+
   const openConversation = useCallback(async (id: string) => {
     try {
       const res = await fetch(`/api/v1/assistant/conversations/${id}`);
@@ -183,6 +225,9 @@ export function AssistantPanel({ onClose }: { onClose: () => void }) {
             grounded?: boolean;
             sources?: SourceCardData[];
             navigation?: NavigationSuggestion | null;
+            executionTrace?: GraphExecutionTraceStep[];
+            pendingAction?: AssistantPendingActionProposal | null;
+            providerMode?: string;
           }) => ({
             id: m.id,
             role: m.role,
@@ -191,6 +236,9 @@ export function AssistantPanel({ onClose }: { onClose: () => void }) {
             grounded: m.grounded,
             sources: m.sources ?? [],
             navigation: m.navigation ?? null,
+            executionTrace: m.executionTrace ?? [],
+            pendingAction: m.pendingAction ?? null,
+            providerMode: m.providerMode ?? 'deterministic',
             suggestedQuestions: [],
           }),
         ),
@@ -304,14 +352,13 @@ export function AssistantPanel({ onClose }: { onClose: () => void }) {
                   <button
                     type="button"
                     onClick={() => void openConversation(c.id)}
-                    className="min-w-0 flex-1 truncate text-left text-xs hover:underline"
+                    className="flex-1 truncate text-left text-xs hover:underline"
                   >
                     {c.title}
                   </button>
                   <button
                     type="button"
-                    aria-label="Delete conversation"
-                    data-testid="assistant-delete"
+                    aria-label={`Delete conversation ${c.title}`}
                     onClick={() => void deleteConversation(c.id)}
                     className="mono text-[10px] text-[var(--color-state-conflicting)] hover:underline"
                   >
@@ -358,7 +405,68 @@ export function AssistantPanel({ onClose }: { onClose: () => void }) {
                   </p>
                 ) : null}
                 {m.content}
+
+                {/* Persistent State-Graph Execution Trace (TASK-009) */}
+                {m.role === 'assistant' && (m.executionTrace?.length ?? 0) > 0 ? (
+                  <details className="mt-2 border-t border-[var(--color-rule)] pt-1.5" data-testid="assistant-execution-trace">
+                    <summary className="mono cursor-pointer text-[10px] uppercase tracking-wider text-[var(--color-ink-soft)]">
+                      State-Graph Trace ({m.executionTrace!.length} steps · {m.providerMode ?? 'deterministic'})
+                    </summary>
+                    <ol className="mono mt-1.5 space-y-1 text-[10px] text-[var(--color-ink-soft)]">
+                      {m.executionTrace!.map((step) => (
+                        <li key={`${step.stepIndex}-${step.nodeId}`} className="flex flex-wrap items-baseline justify-between gap-1">
+                          <span>
+                            {step.stepIndex + 1}. <strong>{step.label}</strong>
+                            {step.detail ? ` (${step.detail})` : ''}
+                          </span>
+                          <span className="uppercase">{step.outcome} · {step.durationMs}ms</span>
+                        </li>
+                      ))}
+                    </ol>
+                  </details>
+                ) : null}
               </div>
+
+              {/* Human-Confirmed Administrative Task Proposal Card (TASK-009) */}
+              {m.role === 'assistant' && m.pendingAction ? (
+                <div
+                  className="mt-2 max-w-[95%] border border-[var(--color-rule-strong)] bg-white p-2.5 text-xs"
+                  data-testid="assistant-pending-action-card"
+                >
+                  <div className="flex items-center justify-between gap-2">
+                    <span className="mono text-[10px] font-semibold uppercase tracking-wider text-[var(--color-accent)]">
+                      Proposed Administrative Task
+                    </span>
+                    <span className="mono border border-[var(--color-rule)] px-1.5 py-0.5 text-[9px] uppercase">
+                      {m.pendingAction.status.replaceAll('_', ' ')}
+                    </span>
+                  </div>
+                  <p className="mt-1 font-semibold text-[var(--color-ink)]">{m.pendingAction.title}</p>
+                  <p className="mt-0.5 text-[11px] text-[var(--color-ink-soft)]">{m.pendingAction.detail}</p>
+                  {m.pendingAction.status === 'awaiting_human_approval' ? (
+                    <div className="mt-2 flex items-center gap-2">
+                      <button
+                        type="button"
+                        disabled={actionBusyId === m.id}
+                        data-testid="assistant-confirm-action"
+                        onClick={() => void handleActionDecision(m.id, 'confirm')}
+                        className="mono border border-[var(--color-state-verified)] bg-[var(--color-state-verified)] px-2.5 py-1 text-[10px] uppercase tracking-wider text-white disabled:opacity-50"
+                      >
+                        {actionBusyId === m.id ? 'Creating…' : 'Approve & Create Task'}
+                      </button>
+                      <button
+                        type="button"
+                        disabled={actionBusyId === m.id}
+                        data-testid="assistant-dismiss-action"
+                        onClick={() => void handleActionDecision(m.id, 'cancel')}
+                        className="mono border border-[var(--color-rule-strong)] px-2.5 py-1 text-[10px] uppercase tracking-wider text-[var(--color-ink-soft)]"
+                      >
+                        Dismiss
+                      </button>
+                    </div>
+                  ) : null}
+                </div>
+              ) : null}
 
               {m.role === 'assistant' && (m.sources?.length ?? 0) > 0 ? (
                 <div className="mt-2 space-y-2" data-testid="assistant-sources">

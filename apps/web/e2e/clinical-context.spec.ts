@@ -76,8 +76,8 @@ test.describe('OncoBrief — Clinical Context & Oncology Charts', () => {
     const tooltip = page.locator('[role="tooltip"]');
     await expect(tooltip).toBeVisible();
 
-    // Assert key evidence provenance fields are present in tooltip
-    await expect(tooltip).toContainText(/\.pdf/i); // Source filename
+    // Assert key evidence provenance fields are present in tooltip (supports both PDF reports and ABDM FHIR JSON bundles)
+    await expect(tooltip).toContainText(/\.(pdf|json)/i); // Source filename
     await expect(tooltip.locator('[data-testid^="state-"]')).toBeVisible(); // StateBadge
 
     // Click point to open traceable source card

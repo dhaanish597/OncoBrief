@@ -474,6 +474,38 @@ export default async function EncounterConsultationPage({
                   />
                 </div>
 
+                {/* Evidence Ledger Provenance Citations (TASK-004, ADR-004) */}
+                <div className="border border-[var(--color-rule)] bg-[var(--color-paper)] p-3 space-y-2">
+                  <span className="mono block text-[10px] uppercase tracking-wider text-[var(--color-ink)] font-semibold">
+                    Evidence Ledger Citations (Provenance Anchoring)
+                  </span>
+                  <p className="text-[11px] text-[var(--color-ink-soft)]">
+                    Select verified or extracted ledger facts referenced in this consultation note:
+                  </p>
+                  {timeline.length === 0 ? (
+                    <p className="mono text-[11px] text-[var(--color-ink-soft)] italic">
+                      No ledger facts available yet; note will be recorded under human operational coordination governance.
+                    </p>
+                  ) : (
+                    <div className="max-h-36 overflow-y-auto space-y-1.5 border border-[var(--color-rule)] bg-white p-2">
+                      {timeline.slice(0, 12).map((evt) => (
+                        <label key={evt.evidenceFactId || evt.id} className="flex items-start gap-2 text-xs cursor-pointer">
+                          <input
+                            type="checkbox"
+                            name="citedFactIds"
+                            value={evt.evidenceFactId || evt.id}
+                            defaultChecked={currentNote?.cited_fact_ids?.includes(evt.evidenceFactId || evt.id)}
+                            className="mt-0.5"
+                          />
+                          <span className="mono text-[11px]">
+                            <strong>{evt.factType.replaceAll('.', ' · ')}:</strong> {evt.valueText} ({evt.documentName})
+                          </span>
+                        </label>
+                      ))}
+                    </div>
+                  )}
+                </div>
+
                 <div className="flex flex-wrap items-center justify-between gap-3 border-t border-[var(--color-rule)] pt-3">
                   <button
                     type="submit"

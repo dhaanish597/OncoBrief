@@ -1,7 +1,14 @@
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
-import { getDocument, getPageSpans, getProvenance, getStorage, getTimeline } from '@oncobrief/db';
-import { segmentDocumentPacket } from '@oncobrief/domain';
+import {
+  getDocument,
+  getPageSpans,
+  getProvenance,
+  getStorage,
+  getTimeline,
+  listDocumentSubpackets,
+} from '@oncobrief/db';
+import { segmentDocumentPacket, type SubDocumentCategory } from '@oncobrief/domain';
 import { withSession } from '@/lib/session';
 import { EvidenceRow } from '@/components/EvidenceRow';
 import { PageViewBeacon } from '@/components/PageViewBeacon';
@@ -37,9 +44,15 @@ export default async function SourceInspectorPage({
       effectiveFactId = null;
     }
     if (!provenance) {
-      // Find the first fact explicitly anchored to this specific document
+      // Find the first fact explicitly anchored to this specific document in visual reading order
       const firstFactRes = await q.query<{ id: string }>(
-        'SELECT id FROM evidence_fact WHERE document_id = $1 ORDER BY created_at LIMIT 1',
+        `SELECT ef.id
+         FROM evidence_fact ef
+         LEFT JOIN evidence_span_link esl ON esl.evidence_fact_id = ef.id AND esl.ordinal = 0
+         LEFT JOIN text_span ts ON ts.id = esl.text_span_id
+         WHERE ef.document_id = $1
+         ORDER BY ts.bbox_y ASC NULLS LAST, ts.bbox_x ASC NULLS LAST, ef.created_at ASC
+         LIMIT 1`,
         [documentId],
       );
       if (firstFactRes.rows[0]) {
@@ -62,16 +75,29 @@ export default async function SourceInspectorPage({
       }
     }
 
-    const allPagesRes = await q.query<{ page_number: number; plain_text: string }>(
-      'SELECT page_number, plain_text FROM document_page WHERE document_id = $1 ORDER BY page_number',
-      [documentId],
-    );
-    const subDocs = segmentDocumentPacket(
-      allPagesRes.rows.map((r) => ({
-        pageNumber: r.page_number,
-        plainText: r.plain_text,
-      })),
-    );
+    const persistedSubpackets = await listDocumentSubpackets(q, documentId);
+    let subDocs = persistedSubpackets.map((sp) => ({
+      index: sp.subpacketIndex,
+      startPage: sp.startPage,
+      endPage: sp.endPage,
+      category: sp.category as SubDocumentCategory,
+      statedDate: sp.statedDate,
+      statedFacility: sp.statedFacility,
+      confidence: sp.confidence,
+    }));
+
+    if (subDocs.length === 0) {
+      const allPagesRes = await q.query<{ page_number: number; plain_text: string }>(
+        'SELECT page_number, plain_text FROM document_page WHERE document_id = $1 ORDER BY page_number',
+        [documentId],
+      );
+      subDocs = [...segmentDocumentPacket(
+        allPagesRes.rows.map((r) => ({
+          pageNumber: r.page_number,
+          plainText: r.plain_text,
+        })),
+      )];
+    }
 
     return { doc, provenance, page, pageNumber, row, documentUrl, subDocs };
   });

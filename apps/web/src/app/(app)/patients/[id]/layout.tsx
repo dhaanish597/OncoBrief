@@ -1,3 +1,4 @@
+import Link from 'next/link';
 import { forbidden, notFound } from 'next/navigation';
 import { can } from '@oncobrief/domain';
 import { getPatient, listConflicts, listRecordMap, listTasks } from '@oncobrief/db';
@@ -26,16 +27,20 @@ export default async function PatientLayout({
     const recordMap = await listRecordMap(q, id);
     const conflicts = await listConflicts(q, id, 'open');
     const tasks = await listTasks(q, id);
-    return { patient, recordMap, openConflicts: conflicts.length, tasks };
+    return { patient, recordMap, conflicts, openConflicts: conflicts.length, tasks };
   });
 
   if (!data) notFound();
-  const { patient, recordMap, openConflicts, tasks } = data;
-  const openTasks = tasks.filter((t) => !['done', 'cancelled'].includes(t.status)).length;
+  const { patient, recordMap, conflicts, openConflicts, tasks } = data;
+  const openTaskRows = tasks.filter((t) => !['done', 'cancelled'].includes(t.status));
+  const openTasks = openTaskRows.length;
+  const todayIso = new Date().toISOString().slice(0, 10);
+  const overdueTasks = openTaskRows.filter((t) => t.dueOn && t.dueOn < todayIso);
   const gaps = recordMap.readiness
     ? (recordMap.readiness.inputs as { counts?: { missingRequired?: number; missingExpected?: number } })
         .counts
     : null;
+  const missingRequiredCount = gaps?.missingRequired ?? 0;
 
   return (
     <div className="mx-auto max-w-[1500px] px-4 py-5 pb-24 sm:px-6 sm:py-6">
@@ -73,6 +78,81 @@ export default async function PatientLayout({
             <li key={r}>· {r}</li>
           ))}
         </ul>
+      ) : null}
+
+      {/* TASK-011: Dynamic Evidence-Driven Patient Snapshot Alert Banners */}
+      {(openConflicts > 0 || missingRequiredCount > 0 || overdueTasks.length > 0) ? (
+        <section
+          aria-label="Active patient record alerts"
+          data-testid="patient-snapshot-alerts"
+          className="mt-4 grid gap-2 sm:grid-cols-3"
+        >
+          {openConflicts > 0 ? (
+            <div
+              data-testid="snapshot-alert-conflicts"
+              className="flex items-center justify-between gap-3 border border-[var(--color-state-conflicting)] bg-[#fbe9e8] px-3 py-2 text-xs text-[var(--color-state-conflicting)]"
+            >
+              <div>
+                <span className="mono font-semibold uppercase">
+                  {openConflicts} Unresolved Source Conflict{openConflicts === 1 ? '' : 's'}
+                </span>
+                <span className="mono block text-[11px]">
+                  Slot: {conflicts[0]?.slotKey ?? 'ledger discrepancy'}
+                </span>
+              </div>
+              <Link
+                href={`/patients/${patient.id}/conflicts`}
+                className="mono shrink-0 border border-[var(--color-state-conflicting)] bg-white px-2 py-1 text-[10px] uppercase hover:bg-[#fbe9e8]"
+              >
+                Resolve →
+              </Link>
+            </div>
+          ) : null}
+
+          {missingRequiredCount > 0 ? (
+            <div
+              data-testid="snapshot-alert-gaps"
+              className="flex items-center justify-between gap-3 border border-amber-700 bg-[#fdf3df] px-3 py-2 text-xs text-amber-950"
+            >
+              <div>
+                <span className="mono font-semibold uppercase">
+                  {missingRequiredCount} Missing Required Document{missingRequiredCount === 1 ? '' : 's'}
+                </span>
+                <span className="mono block text-[11px]">
+                  Blocks consultation packet readiness
+                </span>
+              </div>
+              <Link
+                href={`/patients/${patient.id}/record-map`}
+                className="mono shrink-0 border border-amber-800 bg-white px-2 py-1 text-[10px] uppercase hover:bg-amber-50"
+              >
+                Inspect Gaps →
+              </Link>
+            </div>
+          ) : null}
+
+          {overdueTasks.length > 0 ? (
+            <div
+              data-testid="snapshot-alert-overdue-tasks"
+              className="flex items-center justify-between gap-3 border border-[var(--color-rule-strong)] bg-[var(--color-paper-raised)] px-3 py-2 text-xs text-[var(--color-ink)]"
+            >
+              <div>
+                <span className="mono font-semibold uppercase">
+                  {overdueTasks.length} Overdue Admin Task{overdueTasks.length === 1 ? '' : 's'}
+                </span>
+                <span className="mono block text-[11px] text-[var(--color-ink-soft)]">
+                  Earliest due {overdueTasks[0]?.dueOn}
+                </span>
+              </div>
+              <Link
+                href={`/patients/${patient.id}/tasks`}
+                className="mono shrink-0 border border-[var(--color-rule-strong)] bg-white px-2 py-1 text-[10px] uppercase hover:bg-[var(--color-accent-soft)]"
+              >
+                View Tasks →
+              </Link>
+            </div>
+          ) : null}
+        </section>
       ) : null}
 
       <div className="mt-5">

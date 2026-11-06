@@ -1,0 +1,97 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>OncoBrief Scoped EHR Capture</title>
+    <style>
+      body {
+        width: 360px;
+        margin: 0;
+        padding: 14px;
+        font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+        font-size: 12px;
+        color: #171717;
+        background: #faf8f4;
+      }
+      h1 {
+        font-size: 13px;
+        text-transform: uppercase;
+        letter-spacing: 0.06em;
+        margin: 0 0 6px 0;
+      }
+      p.notice {
+        font-size: 11px;
+        color: #525252;
+        margin: 0 0 12px 0;
+        line-height: 1.4;
+      }
+      label {
+        display: block;
+        font-size: 10px;
+        text-transform: uppercase;
+        color: #525252;
+        margin-top: 8px;
+      }
+      input, select, textarea {
+        width: 100%;
+        box-sizing: border-box;
+        margin-top: 4px;
+        padding: 6px;
+        border: 1px solid #262626;
+        background: #ffffff;
+        font-family: inherit;
+        font-size: 11px;
+      }
+      button {
+        width: 100%;
+        margin-top: 12px;
+        padding: 8px 10px;
+        border: 1px solid #171717;
+        background: #171717;
+        color: #ffffff;
+        font-family: inherit;
+        font-size: 11px;
+        text-transform: uppercase;
+        cursor: pointer;
+      }
+      button:disabled {
+        opacity: 0.5;
+        cursor: not-allowed;
+      }
+      #status {
+        margin-top: 10px;
+        padding: 8px;
+        border: 1px solid #d4d4d4;
+        background: #ffffff;
+        font-size: 11px;
+        display: none;
+      }
+    </style>
+  </head>
+  <body>
+    <h1>OncoBrief EHR Capture</h1>
+    <p class="notice">
+      Zero persistent credentials. Paste a single-use 10-minute <code>ob_ext_*</code> grant token minted from the patient's Sources workspace.
+    </p>
+
+    <label for="apiBase">OncoBrief Server URL</label>
+    <input id="apiBase" type="url" value="http://localhost:3000" />
+
+    <label for="grantToken">Single-Use Grant Token (ob_ext_*)</label>
+    <input id="grantToken" type="password" placeholder="ob_ext_..." autocomplete="off" />
+
+    <label for="facility">Issuing Hospital / EHR Origin</label>
+    <input id="facility" type="text" placeholder="https://ehr.hospital.example" />
+
+    <label for="captureMode">Capture Mode</label>
+    <select id="captureMode">
+      <option value="capture:dom_text">Active EHR Report Text (DOM Selection / Page)</option>
+      <option value="capture:fhir_json">Embedded FHIR R4 / NRCeS JSON Resource</option>
+    </select>
+
+    <button id="captureBtn" type="button">Capture &amp; Ingest into Evidence Ledger</button>
+    <div id="status" role="status"></div>
+
+    <script type="module" src="popup.js"></script>
+  </body>
+</html>

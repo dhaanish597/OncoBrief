@@ -42,7 +42,8 @@ export default async function ContinuityPage({ params }: { params: Promise<{ id:
 
   const data = await withSession(async (q, s) => {
     const templates = await listMessageTemplates(q);
-    const messages = await listMessages(q, id);
+    const allMessages = await listMessages(q, id);
+    const messages = allMessages.filter((m) => m.status !== 'withdrawn');
     const appointments = await listVerifiedAppointments(q, id);
     const caregivers = await listCaregivers(q, s.orgId, id);
     const variablesFor = new Map<string, Awaited<ReturnType<typeof listMessageVariables>>>();
@@ -51,15 +52,41 @@ export default async function ContinuityPage({ params }: { params: Promise<{ id:
   });
 
   const { templates, messages, appointments, caregivers } = data;
+  const isSarvamLive = Boolean(process.env['SARVAM_API_KEY']?.trim());
+  const isDeliveryLive =
+    process.env['SIMULATE_DELIVERY_ONLY'] !== '1' &&
+    Boolean(
+      process.env['DELIVERY_WEBHOOK_URL']?.trim() ||
+        (process.env['TWILIO_ACCOUNT_SID']?.trim() &&
+          process.env['TWILIO_AUTH_TOKEN']?.trim() &&
+          process.env['TWILIO_FROM_NUMBER']?.trim()),
+    );
 
   return (
     <div className="space-y-8">
       <div>
         <div className="flex flex-wrap items-end justify-between gap-4">
           <SectionHeading title="Care continuity & caregiver network" count={messages.length} />
-          <p className="mono text-[11px] text-[var(--color-ink-soft)]">
-            simulated delivery · verified administrative facts only
-          </p>
+          <div className="flex flex-wrap items-center gap-2" data-testid="continuity-provider-badges">
+            <span
+              className={`mono border px-2 py-0.5 text-[10px] font-medium ${
+                isSarvamLive
+                  ? 'border-emerald-700 bg-emerald-50 text-emerald-900'
+                  : 'border-amber-700 bg-[#fdf3df] text-amber-950'
+              }`}
+            >
+              VOICE TTS: {isSarvamLive ? 'SARVAM BULBUL V3 (LIVE)' : 'AUDIBLE TONE CHIME + WEB SPEECH FALLBACK'}
+            </span>
+            <span
+              className={`mono border px-2 py-0.5 text-[10px] font-medium ${
+                isDeliveryLive
+                  ? 'border-emerald-700 bg-emerald-50 text-emerald-900'
+                  : 'border-amber-700 bg-[#fdf3df] text-amber-950'
+              }`}
+            >
+              OUTBOUND SMS/WHATSAPP: {isDeliveryLive ? 'LIVE WEBHOOK / TWILIO' : 'SIMULATED LOCAL OUTBOX'}
+            </span>
+          </div>
         </div>
 
         <p className="mt-3 max-w-4xl text-sm leading-relaxed text-[var(--color-ink-soft)]">

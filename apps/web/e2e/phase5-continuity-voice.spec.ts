@@ -74,6 +74,21 @@ test.describe.serial('Phase 5: Consented Caregiver Network, Voice Continuity, At
     await loginAsCoordinator(page);
     await page.goto(`/patients/${demo3PatientId}/continuity`);
 
+    // Intercept outbound /api/v1/continuity/tts request to verify languageCode
+    let requestedLanguageCode: string | null = null;
+    await page.route('**/api/v1/continuity/tts', async (route) => {
+      const request = route.request();
+      if (request.method() === 'POST') {
+        try {
+          const body = request.postDataJSON() as { languageCode?: string };
+          requestedLanguageCode = body?.languageCode ?? null;
+        } catch {
+          // Ignore JSON parse errors
+        }
+      }
+      await route.continue();
+    });
+
     // Locate the first message audio player
     const localeSelect = page.getByTestId('audio-locale-select').first();
     await expect(localeSelect).toBeVisible();
@@ -84,6 +99,14 @@ test.describe.serial('Phase 5: Consented Caregiver Network, Voice Continuity, At
     // Click generate voice note
     const generateBtn = page.getByTestId('generate-voice-note').first();
     await generateBtn.click();
+
+    // Verify outbound request sent languageCode = 'ta-IN'
+    await expect.poll(() => requestedLanguageCode).toBe('ta-IN');
+
+    // Verify source-grounded localized Tamil preview script is rendered
+    const localizedPreview = page.getByTestId('continuity-localized-preview').first();
+    await expect(localizedPreview).toBeVisible({ timeout: 10_000 });
+    await expect(localizedPreview).toContainText('உங்கள் மருத்துவ சந்திப்பு');
 
     // Either Sarvam generated audio or the fallback note is presented
     const fallbackNote = page.getByTestId('tts-fallback-note').first();

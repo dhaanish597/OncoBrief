@@ -108,6 +108,9 @@ test.describe('Phase 4 — Evidence Journey & Filtering', () => {
   test('evidence filters and historical visual distinctions function cleanly', async ({ page }) => {
     await login(page);
     await page.getByRole('link', { name: /DEMO-001/i }).first().click();
+    if (!page.url().includes('/evidence')) {
+      await page.getByTestId('tab-evidence').click();
+    }
     await expect(page.getByRole('heading', { name: /evidence journey/i })).toBeVisible();
 
     // Filter chips exist

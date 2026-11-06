@@ -9,6 +9,13 @@ export type Intent =
   | 'guideline_knowledge_question'
   | 'ambiguous_question';
 
+export type SubIntent =
+  | 'evidence_question'
+  | 'missing_documents_question'
+  | 'continuity_question'
+  | 'guideline_knowledge_question'
+  | 'propose_task_action';
+
 const NAVIGATION_PATTERNS = [
   /\b(go to|take me to|open|navigate to|show me the|where (?:is|can i find|are)|how do i (?:get to|find))\b/i,
   /\bi (?:want|need|would like) to (?:see|view|open|find)\b/i,
@@ -27,6 +34,11 @@ const CONTINUITY_PATTERNS = [
 
 const CONFLICT_PATTERNS = [
   /\b(conflict|conflicting|disagree|reconcil)\b/i,
+];
+
+const ACTION_PROPOSAL_PATTERNS = [
+  /\b(?:create|propose|draft|add|assign|open)\b[^?]*\b(?:task|follow[- ]?up task|retrieval task|action item)\b/i,
+  /\b(?:task)\b[^?]*\b(?:to retrieve|for missing|for pending)\b/i,
 ];
 
 const UNSUPPORTED_MEDICAL_PATTERNS = [
@@ -76,6 +88,60 @@ export interface ClassificationResult {
   intent: Intent;
   confidence: 'high' | 'low';
   rationale: string;
+}
+
+/**
+ * Multi-intent planner (`TASK-009`).
+ * Inspects a user prompt and returns all applicable retrieval/action sub-goals
+ * so compound questions (e.g. "What is the latest pathology report, what documents
+ * are missing, and propose a retrieval task?") invoke multiple approved tools
+ * in a single state-graph turn.
+ */
+export function detectSubIntents(message: string, primaryIntent: Intent): SubIntent[] {
+  if (primaryIntent === 'unsupported_medical_question' || primaryIntent === 'navigation_question') {
+    return [];
+  }
+
+  const text = message.trim();
+  const subIntents = new Set<SubIntent>();
+
+  if (
+    primaryIntent === 'evidence_question' ||
+    primaryIntent === 'missing_documents_question' ||
+    primaryIntent === 'continuity_question' ||
+    primaryIntent === 'guideline_knowledge_question'
+  ) {
+    subIntents.add(primaryIntent);
+  }
+
+  if (GUIDELINE_PATTERNS.some((p) => p.test(text))) {
+    subIntents.add('guideline_knowledge_question');
+  }
+  if (MISSING_DOC_PATTERNS.some((p) => p.test(text))) {
+    subIntents.add('missing_documents_question');
+  }
+  if (CONTINUITY_PATTERNS.some((p) => p.test(text))) {
+    subIntents.add('continuity_question');
+  }
+  if (
+    CONFLICT_PATTERNS.some((p) => p.test(text)) ||
+    /\b(pathology|biopsy|histology|mri|ct|pet|lab|hemoglobin|platelets|chemo|radiation|surgery|diagnosis|stage|biomarker|her2)\b/i.test(text)
+  ) {
+    subIntents.add('evidence_question');
+  }
+  if (ACTION_PROPOSAL_PATTERNS.some((p) => p.test(text))) {
+    subIntents.add('propose_task_action');
+    if (subIntents.size === 1) {
+      subIntents.add('missing_documents_question');
+      subIntents.add('evidence_question');
+    }
+  }
+
+  if (subIntents.size === 0) {
+    subIntents.add('evidence_question');
+  }
+
+  return [...subIntents];
 }
 
 /**

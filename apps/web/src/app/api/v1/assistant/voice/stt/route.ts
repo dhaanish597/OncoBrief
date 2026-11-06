@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
-import { sarvamStt, SarvamError, isSarvamConfigured } from '@oncobrief/adapters';
+import { can } from '@oncobrief/domain';
+import { sarvamSttWithRetry, SarvamError, isSarvamConfigured } from '@oncobrief/adapters';
 import { getSession } from '@/lib/session';
 
 export const runtime = 'nodejs';
@@ -15,13 +16,19 @@ export async function GET() {
 }
 
 /**
- * Speech-to-text via Sarvam. Audio is transcribed and immediately discarded —
- * nothing is persisted.
+ * Speech-to-text via Sarvam (`TASK-01.03`).
+ * Audio is transcribed and immediately discarded — nothing is persisted.
+ * Explicitly guards role permission (patient:read), upload size (< 10 MiB),
+ * and uses sarvamSttWithRetry for reliability against transient network glitches.
  */
 export async function POST(request: Request) {
   const session = await getSession();
   if (!session) {
     return NextResponse.json({ error: { code: 'unauthorized' } }, { status: 401 });
+  }
+
+  if (!can(session.role, 'patient:read')) {
+    return NextResponse.json({ error: { code: 'forbidden' } }, { status: 403 });
   }
 
   let formData: FormData;
@@ -34,6 +41,16 @@ export async function POST(request: Request) {
   const file = formData.get('audio');
   if (!(file instanceof Blob)) {
     return NextResponse.json({ error: { code: 'no_audio' } }, { status: 400 });
+  }
+
+  // Pre-allocation upload-size enforcement (< 10 MiB)
+  const MAX_AUDIO_SIZE = 10 * 1024 * 1024;
+  if (file.size > MAX_AUDIO_SIZE) {
+    return NextResponse.json({ error: { code: 'audio_too_large' } }, { status: 413 });
+  }
+
+  if (file.size < 100) {
+    return NextResponse.json({ error: { code: 'audio_too_short' } }, { status: 400 });
   }
 
   const arrayBuffer = await file.arrayBuffer();
@@ -54,12 +71,15 @@ export async function POST(request: Request) {
           : 'audio.webm';
 
   try {
-    const result = await sarvamStt({
-      audioData: Buffer.from(arrayBuffer),
-      languageCode,
-      mimeType,
-      filename,
-    });
+    const result = await sarvamSttWithRetry(
+      {
+        audioData: Buffer.from(arrayBuffer),
+        languageCode,
+        mimeType,
+        filename,
+      },
+      1,
+    );
     return NextResponse.json({
       transcript: result.transcript,
       languageCode: result.languageCode,

@@ -67,13 +67,13 @@ test.describe('OncoBrief — public landing page', () => {
     // Anonymous: /workspace's own session guard forwards the visitor to /login,
     // so `/` stays statically prerenderable and needs no session check.
     await cta.click();
-    await expect(page).toHaveURL(/\/login$/);
+    await expect(page).toHaveURL(/\/login(\?|$)/);
     await expect(page.getByRole('heading', { name: 'Sign in' })).toBeVisible();
   });
 
   test('4 /workspace still requires a session', async ({ page }) => {
     await page.goto('/workspace');
-    await expect(page).toHaveURL(/\/login$/);
+    await expect(page).toHaveURL(/\/login(\?|$)/);
   });
 
   test('5 no workspace chrome leaks onto /', async ({ page }) => {

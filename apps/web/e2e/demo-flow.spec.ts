@@ -1,4 +1,5 @@
 import { expect, test, type Page } from '@playwright/test';
+import { seed } from '../../../packages/db/src/seed';
 
 /**
  * The critical demo flow (CLAUDE.md steps 1–19), as one authenticated journey.
@@ -8,6 +9,10 @@ import { expect, test, type Page } from '@playwright/test';
  * surgery-date conflict and a missing insurance authorization; DEMO-003 is
  * ready with a draft packet).
  */
+
+test.beforeAll(async () => {
+  await seed();
+});
 
 const CLINICIAN = { email: 'dr.rao@rci.demo', password: 'oncobrief-demo' };
 
@@ -25,6 +30,9 @@ async function login(page: Page): Promise<void> {
 
 async function openPatient(page: Page, code: string): Promise<void> {
   await page.getByRole('link', { name: new RegExp(code) }).first().click();
+  if (!page.url().includes('/evidence')) {
+    await page.getByTestId('tab-evidence').click();
+  }
   await expect(page).toHaveURL(/\/patients\/.+\/evidence/);
 }
 

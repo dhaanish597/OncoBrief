@@ -57,6 +57,7 @@ export function DocumentUploadForm({
   const [abdmStatus, setAbdmStatus] = useState<string | null>(null);
   const [abdmBusy, setAbdmBusy] = useState<boolean>(false);
   const [searchQuery, setSearchQuery] = useState<string>('');
+  const [documentLanguage, setDocumentLanguage] = useState<string>('en-IN');
   const [bundleBusy, setBundleBusy] = useState<boolean>(false);
   const [bundleStatus, setBundleStatus] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
   const [searchResults, setSearchResults] = useState<DocumentSearchResult[] | null>(null);
@@ -198,50 +199,20 @@ export function DocumentUploadForm({
     setError(false);
     setShowProcessingCard(true);
 
-    const runStepSequence = async () => {
-      // Step 0: Validation & security scan
-      setProcessingStep(0);
-      setStatusMsg('File validation & security scan in progress…');
-      await new Promise((r) => setTimeout(r, 600));
-
-      // Step 1: Format normalization
-      setProcessingStep(1);
-      setStatusMsg('Normalizing multi-modal document layout…');
-      await new Promise((r) => setTimeout(r, 600));
-
-      // Step 2: Document classification
-      setProcessingStep(2);
-      setStatusMsg('Classifying document type and issuing facility…');
-      await new Promise((r) => setTimeout(r, 700));
-
-      // Step 3: OCR & table extraction
-      setProcessingStep(3);
-      setStatusMsg('Extracting tabular text spans with Sarvam Vision…');
-      await new Promise((r) => setTimeout(r, 800));
-
-      // Step 4: Structured data extraction
-      setProcessingStep(4);
-      setStatusMsg('Extracting structured clinical entities…');
-      await new Promise((r) => setTimeout(r, 700));
-
-      // Step 5: Save to evidence ledger
-      setProcessingStep(5);
-      setStatusMsg('Anchoring cryptographically to evidence ledger…');
-      await new Promise((r) => setTimeout(r, 600));
-
-      // Step 6: All 6 stages completed!
-      setProcessingStep(6);
-      setStatusMsg('All 6 pipeline stages complete. Saved to Evidence Ledger.');
-    };
-
     try {
       if (!directUploadAvailable) {
         const fd = new FormData();
         fd.set('patientId', patientId);
         fd.set('file', file);
-        await Promise.all([runStepSequence(), fallbackAction(fd)]);
+        fd.set('language', documentLanguage);
+
+        setProcessingStep(2);
+        setStatusMsg('Ingesting document and extracting clinical evidence…');
+
+        await fallbackAction(fd);
 
         setProcessingStep(6);
+        setStatusMsg('All pipeline stages complete. Saved to Evidence Ledger.');
         setBusy(false);
 
         if (form) form.reset();
@@ -251,6 +222,7 @@ export function DocumentUploadForm({
       }
 
       // S3 Cloud Path
+      setProcessingStep(1);
       setStatusMsg('Reserving an upload slot…');
       const res = await fetch(`/api/v1/patients/${patientId}/documents/upload-url`, {
         method: 'POST',
@@ -259,6 +231,7 @@ export function DocumentUploadForm({
           filename: file.name,
           mimeType: file.type || 'application/octet-stream',
           byteSize: file.size,
+          language: documentLanguage,
         }),
       });
 
@@ -279,18 +252,20 @@ export function DocumentUploadForm({
         setUploadedDocId(body.document_id);
       }
 
-      const putPromise = fetch(body.presigned_url, {
+      setProcessingStep(2);
+      setStatusMsg('Uploading document bytes to secure storage…');
+
+      await fetch(body.presigned_url, {
         method: 'PUT',
         headers: body.required_headers ?? {},
         body: file,
       });
 
-      await Promise.all([runStepSequence(), putPromise]);
-
       setProcessingStep(6);
+      setStatusMsg('All pipeline stages complete. Saved to Evidence Ledger.');
       setBusy(false);
 
-      form.reset();
+      if (form) form.reset();
       setSelectedFile(null);
       router.refresh();
     } catch {
@@ -316,8 +291,22 @@ export function DocumentUploadForm({
             <h3 className="text-sm font-semibold tracking-tight text-slate-900">
               Upload / Import Records
             </h3>
-            <span className="text-xs text-slate-400">·</span>
-            <span className="text-xs text-slate-500">Multiple file types and import options</span>
+            <span className="text-xs text-slate-600">·</span>
+            <span className="text-xs text-slate-600">Multiple file types and import options</span>
+          </div>
+          <div className="flex flex-wrap items-center gap-1.5" data-testid="upload-provider-badges">
+            <span className="mono border border-amber-700 bg-[#fdf3df] px-2 py-0.5 text-[10px] font-medium text-amber-950">
+              OCR: LocalMultimodal + Pixel Engine
+            </span>
+            <span
+              className={`mono border px-2 py-0.5 text-[10px] font-medium ${
+                abdmDriver === 'sandbox'
+                  ? 'border-blue-700 bg-blue-50 text-blue-900'
+                  : 'border-amber-700 bg-[#fdf3df] text-amber-950'
+              }`}
+            >
+              ABDM: {abdmDriver === 'sandbox' ? 'SANDBOX GATEWAY' : 'SIMULATED LOOPBACK + FIDELIUS ECDH'}
+            </span>
           </div>
         </div>
 
@@ -446,7 +435,32 @@ export function DocumentUploadForm({
                 </span>
               </div>
 
-              <div className="flex items-center gap-2">
+              <div className="flex items-center gap-3">
+                <div className="flex items-center gap-1.5">
+                  <label htmlFor="doc-language-select" className="text-xs text-slate-600 font-medium">
+                    Language:
+                  </label>
+                  <select
+                    id="doc-language-select"
+                    name="language"
+                    value={documentLanguage}
+                    onChange={(e) => setDocumentLanguage(e.target.value)}
+                    className="rounded border border-slate-300 bg-white px-2 py-1 text-xs text-slate-800 shadow-2xs focus:border-blue-500 focus:outline-none"
+                  >
+                    <option value="en-IN">English (India)</option>
+                    <option value="hi-IN">Hindi (हिन्दी)</option>
+                    <option value="ta-IN">Tamil (தமிழ்)</option>
+                    <option value="te-IN">Telugu (తెలుగు)</option>
+                    <option value="bn-IN">Bengali (বাংলা)</option>
+                    <option value="mr-IN">Marathi (मराठी)</option>
+                    <option value="gu-IN">Gujarati (ગુજરાતી)</option>
+                    <option value="kn-IN">Kannada (ಕನ್ನಡ)</option>
+                    <option value="ml-IN">Malayalam (മലയാളം)</option>
+                    <option value="pa-IN">Punjabi (ਪੰਜਾਬੀ)</option>
+                    <option value="or-IN">Odia (ଓଡ଼ିଆ)</option>
+                  </select>
+                </div>
+
                 <button
                   type="submit"
                   disabled={busy}
@@ -667,6 +681,9 @@ export function DocumentUploadForm({
                 )}
               </form>
             </div>
+
+            {/* Scoped Browser Extension Grant & EHR Capture Section (TASK-016) */}
+            <ExtensionGrantCapturePanel patientId={patientId} onCaptured={() => router.refresh()} />
           </div>
         ) : null}
 
@@ -847,7 +864,7 @@ export function DocumentUploadForm({
           detectedContent={{
             pages: activeFilename.includes('CBC') ? 1 : 4,
             type: activeFilename.includes('CBC') ? 'Laboratory Report' : 'Laboratory Report',
-            language: 'English',
+            language: documentLanguage,
             tables: activeFilename.includes('CBC') ? 1 : 3,
             textBlocks: activeFilename.includes('CBC') ? 9 : 28,
           }}
@@ -856,3 +873,198 @@ export function DocumentUploadForm({
     </div>
   );
 }
+
+function ExtensionGrantCapturePanel({
+  patientId,
+  onCaptured,
+}: {
+  patientId: string;
+  onCaptured: () => void;
+}) {
+  const [origin, setOrigin] = useState('https://ehr.hospital.example');
+  const [mintedToken, setMintedToken] = useState<string | null>(null);
+  const [expiresAt, setExpiresAt] = useState<string | null>(null);
+  const [captureText, setCaptureText] = useState(
+    'HISTOPATHOLOGY REPORT\nIssuing Facility: Regional Cancer Centre\nDate: 2026-05-18\nBiopsy: Invasive ductal carcinoma, Grade 2\nER: Positive, PR: Positive, HER2: Negative\nHemoglobin: 11.8 g/dL',
+  );
+  const [busy, setBusy] = useState(false);
+  const [status, setStatus] = useState<{ ok: boolean; msg: string } | null>(null);
+
+  async function handleMintGrant() {
+    setBusy(true);
+    setStatus(null);
+    try {
+      const res = await fetch(`/api/v1/patients/${patientId}/extension-grants`, {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({
+          origin,
+          scope: ['capture:pdf', 'capture:dom_text', 'capture:fhir_json'],
+          ttlSeconds: 600,
+        }),
+      });
+      const data = (await res.json()) as {
+        ok: boolean;
+        grant?: { token: string; expiresAt: string };
+        error?: string;
+      };
+      if (!res.ok || !data.ok || !data.grant) {
+        throw new Error(data.error || `HTTP ${res.status}`);
+      }
+      setMintedToken(data.grant.token);
+      setExpiresAt(data.grant.expiresAt);
+      setStatus({
+        ok: true,
+        msg: 'Single-use 10-minute extension grant token minted and hashed in extension_grant.',
+      });
+    } catch (err: unknown) {
+      setStatus({
+        ok: false,
+        msg: err instanceof Error ? err.message : 'Failed to mint extension grant',
+      });
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function handleRedeemCapture() {
+    if (!mintedToken) return;
+    setBusy(true);
+    setStatus(null);
+    try {
+      const res = await fetch('/api/v1/extension/capture', {
+        method: 'POST',
+        headers: {
+          'content-type': 'application/json',
+          authorization: `Bearer ${mintedToken}`,
+          'x-extension-origin': origin,
+        },
+        body: JSON.stringify({
+          token: mintedToken,
+          origin,
+          scope: 'capture:dom_text',
+          filename: 'ehr_extension_captured_report.txt',
+          mimeType: 'text/plain',
+          plainText: captureText,
+          issuingFacility: origin,
+        }),
+      });
+      const data = (await res.json()) as {
+        ok: boolean;
+        documentId?: string;
+        promotedFacts?: number;
+        subPacketCount?: number;
+        error?: string;
+      };
+      if (!res.ok || !data.ok) {
+        throw new Error(data.error || `HTTP ${res.status}`);
+      }
+      setMintedToken(null);
+      setStatus({
+        ok: true,
+        msg: `Extension capture ingested (Doc ${data.documentId?.slice(0, 8)}… · ${data.promotedFacts ?? 0} facts promoted · ${data.subPacketCount ?? 1} sub-packet(s)). Single-use token consumed.`,
+      });
+      onCaptured();
+    } catch (err: unknown) {
+      setStatus({
+        ok: false,
+        msg: err instanceof Error ? err.message : 'Extension capture failed',
+      });
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  return (
+    <div
+      data-testid="extension-grant-panel"
+      className="rounded-lg border border-slate-200 bg-white p-4"
+    >
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <div>
+          <h4 className="text-xs font-semibold text-slate-900">
+            Browser Extension Scoped EHR Capture (Manifest V3 · <code>apps/extension</code>)
+          </h4>
+          <p className="mt-0.5 text-xs text-slate-500">
+            Mint a single-use, 10-minute <code>ob_ext_*</code> grant token bound to this patient and origin. No persistent credentials are stored in the extension.
+          </p>
+        </div>
+        <span className="rounded bg-slate-100 px-2 py-0.5 font-mono text-[10px] text-slate-700">
+          SHA-256 token_hash · 10m TTL
+        </span>
+      </div>
+
+      <div className="mt-3 flex flex-wrap items-end gap-3">
+        <label className="block text-[11px] font-medium text-slate-700">
+          Allowed Hospital EHR Origin
+          <input
+            type="text"
+            value={origin}
+            onChange={(e) => setOrigin(e.target.value)}
+            data-testid="extension-origin-input"
+            className="mt-1 block w-64 rounded border border-slate-300 bg-white px-2.5 py-1.5 font-mono text-xs text-slate-800"
+          />
+        </label>
+        <button
+          type="button"
+          disabled={busy}
+          onClick={handleMintGrant}
+          data-testid="mint-extension-grant-btn"
+          className="rounded-lg border border-slate-800 bg-slate-900 px-3.5 py-1.5 text-xs font-semibold text-white hover:bg-black disabled:opacity-50"
+        >
+          Mint 10-Min Single-Use Grant
+        </button>
+      </div>
+
+      {mintedToken ? (
+        <div
+          data-testid="minted-extension-grant-box"
+          className="mt-3 space-y-2 rounded border border-blue-200 bg-blue-50/50 p-3 text-xs"
+        >
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <span className="font-mono font-semibold text-blue-950">
+              Active Token: <code>{mintedToken}</code>
+            </span>
+            <span className="font-mono text-[10px] text-blue-800">
+              Expires: {expiresAt ? new Date(expiresAt).toLocaleTimeString() : '10m'}
+            </span>
+          </div>
+          <label className="block text-[11px] font-medium text-slate-700">
+            EHR DOM / FHIR Report Payload to Capture with Token
+            <textarea
+              rows={3}
+              value={captureText}
+              onChange={(e) => setCaptureText(e.target.value)}
+              data-testid="extension-capture-textarea"
+              className="mt-1 block w-full rounded border border-slate-300 bg-white p-2 font-mono text-xs text-slate-800"
+            />
+          </label>
+          <button
+            type="button"
+            disabled={busy}
+            onClick={handleRedeemCapture}
+            data-testid="redeem-extension-capture-btn"
+            className="rounded bg-blue-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-blue-700 disabled:opacity-50"
+          >
+            Redeem Token &amp; Capture into Evidence Ledger
+          </button>
+        </div>
+      ) : null}
+
+      {status ? (
+        <p
+          role={status.ok ? 'status' : 'alert'}
+          data-testid="extension-grant-status"
+          className={`mt-2 rounded border p-2 font-mono text-xs ${
+            status.ok
+              ? 'border-emerald-200 bg-emerald-50 text-emerald-900'
+              : 'border-red-200 bg-red-50 text-red-900'
+          }`}
+        >
+          {status.msg}
+        </p>
+      ) : null}
+    </div>
+  );
+}
+

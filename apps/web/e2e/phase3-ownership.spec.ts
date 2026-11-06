@@ -6,6 +6,7 @@ import {
   createTask,
   insertFact,
   verifyEvidence,
+  seed,
 } from '@oncobrief/db';
 
 // Real persisted synthetic oncology fixture data. No reset or production connection is performed here.
@@ -25,6 +26,7 @@ async function login(page: Page, email: string) {
   await expect(page).toHaveURL(/\/workspace/);
 }
 test.beforeAll(async () => {
+  await seed();
   const db = getMigratorPool();
   const org = await db.query<{ id: string }>(
     "SELECT id FROM organization WHERE slug='rci' AND is_demo_fixture",

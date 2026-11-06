@@ -11,8 +11,20 @@ import {
   amendEncounterNote,
   completeEncounter,
   type EncounterType,
+  type NoteGovernanceKind,
 } from '@oncobrief/db';
-import { requireSession, withSession } from '@/lib/session';
+import { assertPatientBelongsToOrg, requireSession, withSession } from '@/lib/session';
+
+function parseUuidList(formData: FormData, key: string): string[] {
+  const multi = formData
+    .getAll(key)
+    .filter((v): v is string => typeof v === 'string' && v.trim().length > 0)
+    .map((v) => v.trim());
+  if (multi.length > 0) return [...new Set(multi)];
+  const raw = String(formData.get(`${key}Csv`) || formData.get(key) || '').trim();
+  if (!raw) return [];
+  return [...new Set(raw.split(',').map((s) => s.trim()).filter(Boolean))];
+}
 
 export async function startEncounterAction(formData: FormData): Promise<void> {
   const session = await requireSession();
@@ -27,6 +39,7 @@ export async function startEncounterAction(formData: FormData): Promise<void> {
   if (!patientId) throw new Error('Patient is required');
 
   const id = await withSession(async (q, s) => {
+    await assertPatientBelongsToOrg(q, s.orgId, patientId);
     return startEncounter(q, {
       orgId: s.orgId,
       patientId,
@@ -57,10 +70,18 @@ export async function saveEncounterNoteDraftAction(formData: FormData): Promise<
   const clinicalAssessment = String(formData.get('clinicalAssessment') || '').trim() || null;
   const planAndInstructions = String(formData.get('planAndInstructions') || '').trim() || null;
   const followUpInstructions = String(formData.get('followUpInstructions') || '').trim() || null;
+  const consultationPacketId = String(formData.get('consultationPacketId') || '').trim() || null;
+  const citedFactIds = parseUuidList(formData, 'citedFactIds');
+  const noteGovernanceKindRaw = String(formData.get('noteGovernanceKind') || '').trim();
+  const noteGovernanceKind: NoteGovernanceKind | undefined =
+    noteGovernanceKindRaw === 'ledger_anchored' || noteGovernanceKindRaw === 'human_operational_coordination'
+      ? noteGovernanceKindRaw
+      : undefined;
 
   if (!encounterId) throw new Error('Encounter is required');
 
   await withSession(async (q, s) => {
+    if (patientId) await assertPatientBelongsToOrg(q, s.orgId, patientId);
     return saveEncounterNoteDraft(q, {
       orgId: s.orgId,
       encounterId,
@@ -70,6 +91,9 @@ export async function saveEncounterNoteDraftAction(formData: FormData): Promise<
       clinicalAssessment,
       planAndInstructions,
       followUpInstructions,
+      consultationPacketId,
+      citedFactIds,
+      ...(noteGovernanceKind ? { noteGovernanceKind } : {}),
       actorId: s.userId,
     });
   });
@@ -91,6 +115,7 @@ export async function finalizeEncounterNoteAction(formData: FormData): Promise<v
   if (!noteId) throw new Error('Note ID is required');
 
   await withSession(async (q, s) => {
+    if (patientId) await assertPatientBelongsToOrg(q, s.orgId, patientId);
     return finalizeEncounterNote(q, {
       orgId: s.orgId,
       encounterId,
@@ -119,12 +144,17 @@ export async function amendEncounterNoteAction(formData: FormData): Promise<void
   const clinicalAssessment = String(formData.get('clinicalAssessment') || '').trim() || null;
   const planAndInstructions = String(formData.get('planAndInstructions') || '').trim() || null;
   const followUpInstructions = String(formData.get('followUpInstructions') || '').trim() || null;
+  const consultationPacketId = String(formData.get('consultationPacketId') || '').trim() || undefined;
+  const citedFactIds = formData.has('citedFactIds') || formData.has('citedFactIdsCsv')
+    ? parseUuidList(formData, 'citedFactIds')
+    : undefined;
 
   if (!encounterId) throw new Error('Encounter is required');
   if (!noteId) throw new Error('Note ID is required');
   if (!amendmentReason) throw new Error('Documented amendment reason is required');
 
   await withSession(async (q, s) => {
+    if (patientId) await assertPatientBelongsToOrg(q, s.orgId, patientId);
     return amendEncounterNote(q, {
       orgId: s.orgId,
       encounterId,
@@ -133,6 +163,8 @@ export async function amendEncounterNoteAction(formData: FormData): Promise<void
       clinicalAssessment,
       planAndInstructions,
       followUpInstructions,
+      ...(consultationPacketId !== undefined ? { consultationPacketId } : {}),
+      ...(citedFactIds !== undefined ? { citedFactIds } : {}),
       actorId: s.userId,
     });
   });
@@ -157,6 +189,7 @@ export async function addEncounterParticipantAction(formData: FormData): Promise
   if (!userId) throw new Error('Participant User ID is required');
 
   await withSession(async (q, s) => {
+    if (patientId) await assertPatientBelongsToOrg(q, s.orgId, patientId);
     return addEncounterParticipant(q, {
       orgId: s.orgId,
       encounterId,
@@ -183,6 +216,7 @@ export async function completeEncounterAction(formData: FormData): Promise<void>
   if (!encounterId) throw new Error('Encounter is required');
 
   await withSession(async (q, s) => {
+    if (patientId) await assertPatientBelongsToOrg(q, s.orgId, patientId);
     return completeEncounter(q, {
       orgId: s.orgId,
       encounterId,
@@ -194,6 +228,6 @@ export async function completeEncounterAction(formData: FormData): Promise<void>
     revalidatePath(`/patients/${patientId}/encounters/${encounterId}`);
     revalidatePath(`/patients/${patientId}/encounters`);
     revalidatePath(`/patients/${patientId}/overview`);
-    revalidatePath('/workspace');
   }
+  revalidatePath('/workspace');
 }

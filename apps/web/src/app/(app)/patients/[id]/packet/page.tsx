@@ -1,13 +1,20 @@
 import { can } from '@oncobrief/domain';
-import { getPacket, listPackets, listStudioArtifacts } from '@oncobrief/db';
+import {
+  getPacket,
+  listActiveGuidelineDocuments,
+  listPackets,
+  listStudioArtifacts,
+} from '@oncobrief/db';
 import { requireSession, withSession } from '@/lib/session';
 import { EmptyFinding, SectionHeading, StateBadge } from '@/components/evidence';
 import { ProductivityStudio } from '@/components/ProductivityStudio';
+import { GuidelineLibraryPanel } from '@/components/GuidelineLibraryPanel';
 import { PrintButton } from '@/components/PrintButton';
 import {
   approvePacketAction,
   createPacketAction,
   submitPacketAction,
+  withdrawPacketAction,
   linkPacketCareContextAction,
 } from '@/lib/actions';
 
@@ -44,10 +51,11 @@ export default async function PacketPage({ params }: { params: Promise<{ id: str
       }
     }
     const studioArtifacts = await listStudioArtifacts(q, s.orgId, id);
-    return { packets, latest, abdmCareContext, studioArtifacts };
+    const guidelines = await listActiveGuidelineDocuments(q, s.orgId);
+    return { packets, latest, abdmCareContext, studioArtifacts, guidelines };
   });
 
-  const { packets, latest, abdmCareContext, studioArtifacts } = data;
+  const { packets, latest, abdmCareContext, studioArtifacts, guidelines } = data;
 
   return (
     <div>
@@ -106,6 +114,26 @@ export default async function PacketPage({ params }: { params: Promise<{ id: str
                     <input type="hidden" name="packetId" value={latest.id} />
                     <button type="submit" className="mono border border-[var(--color-rule-strong)] px-3 py-1 text-[11px] uppercase">
                       submit for approval
+                    </button>
+                  </form>
+                ) : null}
+                {(latest.status === 'draft' || latest.status === 'pending_approval') && canDraft ? (
+                  <form action={withdrawPacketAction} className="flex items-center gap-1.5" data-testid="withdraw-packet-form">
+                    <input type="hidden" name="patientId" value={id} />
+                    <input type="hidden" name="packetId" value={latest.id} />
+                    <input
+                      name="reason"
+                      placeholder="withdrawal reason"
+                      aria-label="Packet withdrawal reason"
+                      defaultValue="Superseded by updated record review"
+                      className="mono border border-[var(--color-rule-strong)] bg-white px-2 py-1 text-xs"
+                    />
+                    <button
+                      type="submit"
+                      data-testid="withdraw-packet"
+                      className="mono border border-[var(--color-state-conflicting)] px-2.5 py-1 text-[11px] uppercase text-[var(--color-state-conflicting)] hover:bg-[#fbe9e8]"
+                    >
+                      withdraw packet
                     </button>
                   </form>
                 ) : null}
@@ -281,13 +309,21 @@ export default async function PacketPage({ params }: { params: Promise<{ id: str
         </>
       )}
 
-      {/* Clinician Productivity Studio (Use Case 05) */}
+      {/* Clinician Productivity Studio (Use Case 05, TASK-021) */}
       <ProductivityStudio
         patientId={id}
         artifacts={studioArtifacts}
+        guidelines={guidelines}
         canDraft={canDraft}
         canApprove={canApprove}
         canExport={canExport}
+      />
+
+      {/* Institutional Guideline & SOP Reference Library (TASK-018) */}
+      <GuidelineLibraryPanel
+        patientId={id}
+        guidelines={guidelines}
+        canUpload={canDraft}
       />
     </div>
   );

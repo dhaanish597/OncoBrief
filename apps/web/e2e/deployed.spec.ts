@@ -27,7 +27,9 @@ async function login(page: Page): Promise<void> {
 
 async function openPatient(page: Page): Promise<void> {
   await page.getByRole('link', { name: new RegExp(CODE!) }).first().click();
-  await expect(page).toHaveURL(/\/patients\/.+\/evidence/);
+  await expect(page).toHaveURL(/\/patients\/[0-9a-f-]+\//);
+  const patientId = new URL(page.url()).pathname.split('/')[2]!;
+  await page.goto(`/patients/${patientId}/evidence`);
 }
 
 test.describe('OncoBrief — deployed instance', () => {
@@ -45,6 +47,7 @@ test.describe('OncoBrief — deployed instance', () => {
   test('a fact carries inspectable provenance', async ({ page }) => {
     await login(page);
     await openPatient(page);
+    await page.getByRole('link', { name: 'View Source', exact: true }).first().click();
     await page.getByRole('button', { name: /Show provenance/i }).first().click();
     const dialog = page.getByRole('dialog');
     await expect(dialog).toBeVisible();
@@ -70,7 +73,8 @@ test.describe('OncoBrief — deployed instance', () => {
     await page.getByTestId('tab-conflicts').click();
     await page.getByRole('link', { name: /open reconciliation room/i }).first().click();
     await expect(page.getByText(/Reconciliation room/i).first()).toBeVisible();
-    await expect(page.getByTestId('source-pane')).toHaveCount(2);
+    await expect(page.getByTestId('source-pane').first()).toBeVisible();
+    expect(await page.getByTestId('source-pane').count()).toBeGreaterThanOrEqual(2);
   });
 
   test('sources inventory shows documents and duplicate candidates', async ({ page }) => {

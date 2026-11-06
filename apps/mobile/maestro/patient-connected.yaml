@@ -1,0 +1,72 @@
+appId: org.oncobrief.patient
+---
+# 1. Start from Landing Screen
+- extendedWaitUntil:
+    visible: ".*(Sign in to my hospital|Sign in with Hospital Portal|About signing in|Explore a sample patient).*"
+    timeout: 10000
+
+# 2. Tap Sign in to my hospital
+- runFlow:
+    when:
+      visible: "Sign in to my hospital"
+    commands:
+      - tapOn:
+          id: "landing-signin-btn"
+
+- runFlow:
+    when:
+      visible: "Sign in with Hospital Portal"
+    commands:
+      - tapOn: "Sign in with Hospital Portal"
+
+- runFlow:
+    when:
+      visible: "About signing in"
+    commands:
+      - tapOn: "About signing in"
+
+# 3. On Signin Screen - Switch to Connected Portal Mode if not already
+- extendedWaitUntil:
+    visible: ".*(Connect to Live Hospital Portal|Hospital Portal Connection|Sign In to Portal).*"
+    timeout: 8000
+
+- runFlow:
+    when:
+      visible: "Connect to Live Hospital Portal"
+    commands:
+      - tapOn: "Connect to Live Hospital Portal"
+
+# 4. Populate synthetic test credentials
+- scrollUntilVisible:
+    element: "Prefill Synthetic Test Credentials"
+    direction: DOWN
+    timeout: 8000
+
+- tapOn: "Prefill Synthetic Test Credentials"
+
+# 5. Scroll to and Tap Sign In to Portal to authenticate against live PostgreSQL backend
+- scrollUntilVisible:
+    element: "Sign In to Portal"
+    direction: DOWN
+    timeout: 8000
+
+- tapOn: "Sign In to Portal"
+
+# 6. Verify authentication succeeded and landed on Connected Home
+- extendedWaitUntil:
+    visible: ".*(CONNECTED HOSPITAL PORTAL|Verified EHR|Regional Cancer Institute).*"
+    timeout: 15000
+
+# 7. Check Records tab connected to live evidence ledger
+- tapOn:
+    point: "30%,94%"
+- extendedWaitUntil:
+    visible: ".*(Medical Document Vault|Authorized Documents|Your records, together|Search reports).*"
+    timeout: 8000
+
+# 8. Check Journey tab connected to live timeline
+- tapOn:
+    point: "50%,94%"
+- extendedWaitUntil:
+    visible: ".*(Care journey|chronological view|evidence ledger|The story in your records).*"
+    timeout: 8000

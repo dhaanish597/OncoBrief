@@ -1,0 +1,24 @@
+FROM node:22-bookworm-slim
+ENV PNPM_HOME=/pnpm
+ENV PATH=$PNPM_HOME:$PATH
+ENV COREPACK_HOME=/pnpm/corepack
+ENV NEXT_TELEMETRY_DISABLED=1
+RUN corepack enable && corepack prepare pnpm@9.15.4 --activate
+WORKDIR /app
+COPY package.json pnpm-lock.yaml pnpm-workspace.yaml tsconfig.base.json ./
+COPY packages/domain/package.json ./packages/domain/package.json
+COPY packages/ports/package.json ./packages/ports/package.json
+COPY packages/adapters/package.json ./packages/adapters/package.json
+COPY packages/db/package.json ./packages/db/package.json
+COPY apps/web/package.json ./apps/web/package.json
+RUN pnpm install --frozen-lockfile --filter @oncobrief/web... --filter oncobrief
+COPY packages ./packages
+COPY apps/web ./apps/web
+ENV NODE_ENV=production
+RUN pnpm --filter @oncobrief/web build
+COPY tools/hackathon-bootstrap.ts ./tools/hackathon-bootstrap.ts
+RUN chown -R node:node /app
+USER node
+ENV PORT=3000 HOSTNAME=0.0.0.0
+EXPOSE 3000
+CMD ["pnpm", "--filter", "@oncobrief/web", "start"]

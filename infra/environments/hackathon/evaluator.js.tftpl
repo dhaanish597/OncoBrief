@@ -1,0 +1,19 @@
+var crypto = require('crypto');
+function handler(event) {
+  var request = event.request;
+  var auth = request.headers.authorization;
+  if (auth && auth.value.length < 512 && crypto.createHash('sha256').update(auth.value).digest('hex') === '${auth_hash}') {
+    delete request.headers.authorization;
+    return request;
+  }
+  return {
+    statusCode: 401,
+    statusDescription: 'Unauthorized',
+    headers: {
+      'www-authenticate': { value: 'Basic realm="OncoBrief hackathon evaluation", charset="UTF-8"' },
+      'cache-control': { value: 'private, no-store' },
+      'x-robots-tag': { value: 'noindex, nofollow, noarchive' }
+    },
+    body: 'Evaluator access required.'
+  };
+}

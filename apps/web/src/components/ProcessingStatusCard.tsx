@@ -28,6 +28,7 @@ export interface ProcessingStatusCardProps {
   documentId?: string | null;
   activeStep?: number; // 0 to 6
   isProcessing?: boolean;
+  activeOcrLabel?: string;
   onCancel?: () => void;
   onClose?: () => void;
   autoCloseSeconds?: number;
@@ -47,6 +48,7 @@ export function ProcessingStatusCard({
   documentId,
   activeStep = 3,
   isProcessing = false,
+  activeOcrLabel,
   onCancel,
   onClose,
   autoCloseSeconds = 5,
@@ -370,7 +372,7 @@ export function ProcessingStatusCard({
 
             <ul className="mt-2.5 space-y-2 text-xs">
               <li className="flex items-center justify-between">
-                <span className="text-slate-700">Sarvam Vision (OCR)</span>
+                <span className="text-slate-700">{activeOcrLabel || 'Optical Character Recognition (OCR)'}</span>
                 <span className="inline-flex items-center rounded-full bg-emerald-50 px-2 py-0.5 text-[10px] font-medium text-emerald-700">
                   Active
                 </span>

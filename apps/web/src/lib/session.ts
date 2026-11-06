@@ -1,6 +1,7 @@
 import 'server-only';
 import { cookies } from 'next/headers';
 import { redirect } from 'next/navigation';
+import { can, type Permission, type Role } from '@oncobrief/domain';
 import {
   validateSessionToken,
   withTenant,
@@ -42,10 +43,40 @@ export async function getSession(): Promise<ValidatedSession | null> {
   return validateSessionToken(token);
 }
 
+export const getSessionFromCookies = getSession;
+
 export async function requireSession(): Promise<ValidatedSession> {
   const session = await getSession();
   if (!session) redirect('/login');
   return session;
+}
+
+export function assertRolePermission(role: Role, permission: Permission): void {
+  if (!can(role, permission)) {
+    throw new Error(`forbidden: Role '${role}' lacks required permission '${permission}'`);
+  }
+}
+
+/**
+ * Defense-in-depth tenant ownership check (TASK-003, ADR-003).
+ * Ensures a target patient ID belongs to the caller's active organization
+ * before executing any mutation inside a Server Action or Route Handler.
+ */
+export async function assertPatientBelongsToOrg(
+  q: Querier,
+  orgId: string,
+  patientId: string,
+): Promise<void> {
+  if (!patientId || !orgId) {
+    throw new Error('patient_not_found_or_unauthorized');
+  }
+  const res = await q.query<{ id: string }>(
+    'SELECT id FROM patient WHERE org_id = $1 AND id = $2 LIMIT 1',
+    [orgId, patientId],
+  );
+  if (!res.rows[0]) {
+    throw new Error('patient_not_found_or_unauthorized');
+  }
 }
 
 export function tenantCtx(session: ValidatedSession): TenantContext {

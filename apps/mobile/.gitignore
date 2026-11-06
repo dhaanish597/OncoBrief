@@ -1,0 +1,27 @@
+node_modules/
+.expo/
+dist/
+dist-android/
+android/
+ios/
+*.jks
+*.keystore
+*.apk
+*.aab
+test-results/
+playwright-report/
+expo-env.d.ts
+!assets/icon.png
+!assets/consultation.png
+
+# local secrets and generated verification files
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+*.p12
+*.pfx
+*.log
+coverage/
+*.tsbuildinfo

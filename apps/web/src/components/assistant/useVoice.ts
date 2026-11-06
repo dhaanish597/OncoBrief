@@ -255,10 +255,14 @@ export function useVoice({ languageCode, onTranscript }: UseVoiceOptions): UseVo
           try {
             await transcribeWithSarvam(blob);
           } catch (err) {
-            console.error('[Voice] Sarvam transcription failed:', err);
-            const msg = err instanceof Error ? err.message : 'Transcription failed';
-            setError(`Voice transcription failed: ${msg}`);
-            setState('error');
+            console.error('[Voice] Sarvam transcription failed, falling back to browser recognition:', err);
+            setSarvamAvailable(false);
+            const fallbackStarted = startBrowserRecognition();
+            if (!fallbackStarted) {
+              const msg = err instanceof Error ? err.message : 'Transcription failed';
+              setError(`Sarvam STT failed (${msg}) and browser speech recognition is not available.`);
+              setState('error');
+            }
           }
         };
         mediaRecorderRef.current = recorder;
@@ -298,9 +302,13 @@ export function useVoice({ languageCode, onTranscript }: UseVoiceOptions): UseVo
             await transcribeWithSarvam(blob);
           } catch (err) {
             console.error('[Voice] Sarvam transcription failed:', err);
-            const msg = err instanceof Error ? err.message : 'Transcription failed';
-            setError(`Voice transcription failed: ${msg}`);
-            setState('error');
+            setSarvamAvailable(false);
+            const fallbackStarted = startBrowserRecognition();
+            if (!fallbackStarted) {
+              const msg = err instanceof Error ? err.message : 'Transcription failed';
+              setError(`Voice transcription failed: ${msg}`);
+              setState('error');
+            }
           }
         };
         mediaRecorderRef.current = recorder;
@@ -342,14 +350,19 @@ export function useVoice({ languageCode, onTranscript }: UseVoiceOptions): UseVo
       setState('error');
       return;
     }
-    const voice = window.speechSynthesis.getVoices().find((candidate) => candidate.localService && candidate.lang.toLowerCase().split('-')[0] === languageCode.toLowerCase().split('-')[0]);
-    if (!voice) {
-      setError('No installed local browser voice matches this locale.');
-      setState('error');
-      return;
-    }
+    const voices = window.speechSynthesis.getVoices();
+    const langPrefix = languageCode.toLowerCase().split('-')[0]!;
+    // Match order: exact match local > exact match any > prefix match local > prefix match any
+    const voice =
+      voices.find((c) => c.localService && c.lang.toLowerCase() === languageCode.toLowerCase()) ??
+      voices.find((c) => c.lang.toLowerCase() === languageCode.toLowerCase()) ??
+      voices.find((c) => c.localService && c.lang.toLowerCase().split('-')[0] === langPrefix) ??
+      voices.find((c) => c.lang.toLowerCase().split('-')[0] === langPrefix);
+
     const utterance = new SpeechSynthesisUtterance(text);
-    utterance.voice = voice;
+    if (voice) {
+      utterance.voice = voice;
+    }
     utterance.lang = languageCode;
     utterance.onend = () => {
       setIsSpeaking(false);

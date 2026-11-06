@@ -17,6 +17,9 @@ export default defineConfig({
   reporter: [['list']],
   use: {
     baseURL: process.env.E2E_BASE_URL ?? 'http://localhost:3000',
+    httpCredentials: process.env.E2E_HTTP_USERNAME && process.env.E2E_HTTP_PASSWORD
+      ? { username: process.env.E2E_HTTP_USERNAME, password: process.env.E2E_HTTP_PASSWORD }
+      : undefined,
     trace: 'retain-on-failure',
     screenshot: 'only-on-failure',
   },

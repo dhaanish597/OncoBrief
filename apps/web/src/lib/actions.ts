@@ -537,6 +537,7 @@ export async function readBoundedUploadFile(
 
 export async function uploadDocumentAction(fd: FormData): Promise<void> {
   const patientId = str(fd, 'patientId');
+  const language = optionalStr(fd, 'language');
   const file = fd.get('file');
   await withSession(async (q, s) => {
     requirePermission(s.role, 'document:upload');
@@ -552,9 +553,16 @@ export async function uploadDocumentAction(fd: FormData): Promise<void> {
       mimeType: file.type || 'application/octet-stream',
       content: bytes,
       sourceKind: 'upload',
+      language: language ?? null,
     });
     // Use the configured OCR provider. Offline scans require human transcription.
-    await ingestDocument(q, { storage: getStorage(), ocr: await ocrPort(), extractor: await extractorPort() }, documentId);
+    await ingestDocument(
+      q,
+      { storage: getStorage(), ocr: await ocrPort(), extractor: await extractorPort() },
+      documentId,
+      undefined,
+      { language: language ?? undefined },
+    );
   });
   revalidatePath(`/patients/${patientId}`);
   revalidatePath(`/patients/${patientId}/sources`);
@@ -682,8 +690,8 @@ async function ocrPort() {
   return getOcr();
 }
 async function extractorPort() {
-  const { RuleBasedExtractor } = await import('@oncobrief/adapters');
-  return new RuleBasedExtractor();
+  const { getExtractor } = await import('@oncobrief/db');
+  return getExtractor();
 }
 
 // --- packets ---------------------------------------------------------------
@@ -1011,10 +1019,28 @@ export async function createStudioArtifactAction(fd: FormData): Promise<void> {
   const patientId = str(fd, 'patientId');
   const kind = (str(fd, 'artifactKind') || 'referral_letter') as StudioArtifactKind;
   if (!['referral_letter', 'tumor_board_deck', 'academic_case_abstract', 'patient_info_sheet'].includes(kind)) throw new Error('invalid_artifact_kind');
+  const selectedGuidelineIds = fd
+    .getAll('selectedGuidelineIds')
+    .filter((v): v is string => typeof v === 'string' && v.trim().length > 0);
+
   await withSession(async (q, s) => {
     requirePermission(s.role, 'packet:draft');
     const input = await loadStudioDraftInput(q, s, patientId, kind, fd.get('includeUnverified') === 'true');
+    if (selectedGuidelineIds.length > 0) {
+      input.guidelines = input.guidelines.filter(
+        (g) => selectedGuidelineIds.includes(g.guidelineDocumentId) || selectedGuidelineIds.includes(g.spanId),
+      );
+    }
     const draft = generateStudioDraft(input);
+    const { checkTextForBoundary } = await import('@oncobrief/domain');
+    const boundaryCheck = checkTextForBoundary(draft.markdownBody);
+    if (!boundaryCheck.ok) {
+      throw new Error(`clinical_boundary_violation:${boundaryCheck.violations.join(',')}`);
+    }
+    if (draft.isDeidentified) {
+      const check = validateDeidentification(draft.markdownBody, input.patient);
+      if (!check.isValid) throw new Error('cannot_save_privacy_leak');
+    }
     await createStudioArtifact(q, { orgId: s.orgId, patientId, artifactKind: kind,
       title: draft.title, markdownBody: draft.markdownBody, citedFactIds: draft.citedFactIds,
       citedGuidelineIds: draft.citedGuidelineIds, isDeidentified: draft.isDeidentified, createdBy: s.userId });
@@ -1029,9 +1055,19 @@ export async function updateStudioArtifactAction(fd: FormData): Promise<void> {
     const artifact = await getStudioArtifact(q, s.orgId, str(fd, 'artifactId'));
     if (!artifact || artifact.patientId !== patientId) throw new Error('artifact_patient_mismatch');
     const input = await loadStudioDraftInput(q, s, artifact.patientId, artifact.artifactKind, false, artifact);
-    validateBoundStudioBody(str(fd, 'markdownBody'), input, { ...artifact, title: str(fd, 'title') });
+    const nextMarkdown = str(fd, 'markdownBody');
+    const { checkTextForBoundary } = await import('@oncobrief/domain');
+    const boundaryCheck = checkTextForBoundary(nextMarkdown);
+    if (!boundaryCheck.ok) {
+      throw new Error(`clinical_boundary_violation:${boundaryCheck.violations.join(',')}`);
+    }
+    if (artifact.isDeidentified) {
+      const check = validateDeidentification(nextMarkdown, input.patient);
+      if (!check.isValid) throw new Error('cannot_save_privacy_leak');
+    }
+    validateBoundStudioBody(nextMarkdown, input, { ...artifact, title: str(fd, 'title') });
     await updateStudioArtifact(q, { orgId: s.orgId, artifactId: artifact.id,
-      title: str(fd, 'title'), markdownBody: str(fd, 'markdownBody'),
+      title: str(fd, 'title'), markdownBody: nextMarkdown,
       citedFactIds: artifact.citedFactIds, citedGuidelineIds: artifact.citedGuidelineIds, updatedBy: s.userId });
   });
   revalidatePath(`/patients/${patientId}/packet`);
@@ -1044,6 +1080,11 @@ export async function approveStudioArtifactAction(fd: FormData): Promise<void> {
     const artifact = await getStudioArtifact(q, s.orgId, str(fd, 'artifactId'));
     if (!artifact || artifact.patientId !== patientId) throw new Error('artifact_patient_mismatch');
     const input = await loadStudioDraftInput(q, s, artifact.patientId, artifact.artifactKind, false, artifact);
+    const { checkTextForBoundary } = await import('@oncobrief/domain');
+    const boundaryCheck = checkTextForBoundary(artifact.markdownBody);
+    if (!boundaryCheck.ok) {
+      throw new Error(`clinical_boundary_violation:${boundaryCheck.violations.join(',')}`);
+    }
     validateBoundStudioBody(artifact.markdownBody, input, artifact);
     if (artifact.isDeidentified) {
       const check = validateDeidentification(artifact.markdownBody, input.patient);
@@ -1056,3 +1097,89 @@ export async function approveStudioArtifactAction(fd: FormData): Promise<void> {
   });
   revalidatePath(`/patients/${patientId}/packet`);
 }
+
+// --- guidelines (TASK-018) -------------------------------------------------
+
+export async function uploadGuidelinePdfAction(fd: FormData): Promise<{
+  ok: boolean;
+  guidelineDocumentId?: string;
+  code?: string;
+  title?: string;
+  pageCount?: number;
+  spansIndexed?: number;
+  error?: string;
+}> {
+  try {
+    const patientId = optionalStr(fd, 'patientId');
+    const code = str(fd, 'code');
+    const title = str(fd, 'title');
+    const issuingBody = str(fd, 'issuingBody');
+    const versionLabel = str(fd, 'versionLabel');
+    const file = fd.get('file');
+    if (!(file instanceof File) || file.size === 0) {
+      return { ok: false, error: 'Please select a non-empty PDF or text guideline file.' };
+    }
+    const bytes = Buffer.from(await file.arrayBuffer());
+    const ocr = await ocrPort();
+    const { ingestGuidelineDocumentPdf } = await import('@oncobrief/db');
+
+    const result = await withSession(async (q, s) => {
+      requirePermission(s.role, 'packet:draft');
+      return ingestGuidelineDocumentPdf(q, ocr, {
+        orgId: s.orgId,
+        uploadedBy: s.userId,
+        code,
+        title,
+        issuingBody,
+        versionLabel,
+        filename: file.name || `${code}.pdf`,
+        mimeType: file.type || 'application/pdf',
+        bytes,
+      });
+    });
+
+    if (patientId) {
+      revalidatePath(`/patients/${patientId}/packet`);
+      revalidatePath(`/patients/${patientId}/sources`);
+    }
+    return {
+      ok: true,
+      guidelineDocumentId: result.guidelineDocumentId,
+      code: result.code,
+      title: result.title,
+      pageCount: result.pageCount,
+      spansIndexed: result.spansIndexed,
+    };
+  } catch (err: unknown) {
+    return {
+      ok: false,
+      error: err instanceof Error ? err.message : 'Guideline upload failed.',
+    };
+  }
+}
+
+// --- task priority & deadline escalation (TASK-022) ------------------------
+
+export async function updateTaskPriorityAndDeadlineAction(fd: FormData): Promise<void> {
+  const patientId = str(fd, 'patientId');
+  const taskId = str(fd, 'taskId');
+  const priority = optionalStr(fd, 'priority') ?? 'normal';
+  const dueOn = optionalStr(fd, 'dueOn');
+  const note = optionalStr(fd, 'note');
+
+  await withSession(async (q, s) => {
+    requirePermission(s.role, 'task:assign');
+    const { updateTaskPriorityAndDueOn } = await import('@oncobrief/db');
+    await updateTaskPriorityAndDueOn(q, {
+      taskId,
+      actorId: s.userId,
+      priority: priority as 'urgent' | 'high' | 'normal' | 'low',
+      dueOn,
+      note,
+    });
+  });
+  revalidatePath(`/patients/${patientId}/tasks`);
+  revalidatePath(`/patients/${patientId}/overview`);
+  revalidatePath(`/patients/${patientId}`);
+}
+

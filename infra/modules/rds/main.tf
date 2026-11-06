@@ -16,6 +16,12 @@ variable "allocated_storage" {
   type    = number
   default = 20
 }
+variable "deletion_protection" { default = false }
+variable "skip_final_snapshot" { default = true }
+variable "final_snapshot_identifier" {
+  type    = string
+  default = null
+}
 
 resource "aws_db_subnet_group" "this" {
   name       = "${var.name_prefix}-db"
@@ -69,8 +75,9 @@ resource "aws_db_instance" "this" {
   publicly_accessible             = false
   multi_az                        = false
   backup_retention_period         = 7
-  deletion_protection             = false
-  skip_final_snapshot             = true
+  deletion_protection             = var.deletion_protection
+  skip_final_snapshot             = var.skip_final_snapshot
+  final_snapshot_identifier       = var.final_snapshot_identifier
   apply_immediately               = true
   auto_minor_version_upgrade      = false
   db_subnet_group_name            = aws_db_subnet_group.this.name

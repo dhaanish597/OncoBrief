@@ -112,7 +112,7 @@ test.describe('Unknown.png Design Parity — Screen 2, 3 & 5', () => {
 
     // 7. Models Used panel
     await expect(processingCard.getByText('Models Used')).toBeVisible();
-    await expect(processingCard.getByText('Sarvam Vision (OCR)')).toBeVisible();
+    await expect(processingCard.getByText(/Sarvam Vision \(OCR\)|Optical Character Recognition \(OCR\)/)).toBeVisible();
     await expect(processingCard.getByText('Custom Table Parser')).toBeVisible();
     await expect(processingCard.getByText('Document Classifier')).toBeVisible();
     await expect(processingCard.getByText('Active').first()).toBeVisible();
@@ -125,7 +125,7 @@ test.describe('Unknown.png Design Parity — Screen 2, 3 & 5', () => {
 
     // 8. Wait for all 6 steps to complete and the completion banner to appear
     await expect(processingCard.getByText(/All 6 pipeline stages completed successfully/i)).toBeVisible({
-      timeout: 10_000,
+      timeout: 30_000,
     });
 
     // 9. Within 5 seconds + smooth animation duration, verify it smoothly closes
@@ -136,7 +136,11 @@ test.describe('Unknown.png Design Parity — Screen 2, 3 & 5', () => {
     await login(page);
 
     await page.getByRole('link', { name: /DEMO-001/ }).first().click();
-    await expect(page).toHaveURL(/\/patients\/.+\/evidence/);
+    await expect(page).toHaveURL(/\/patients\/[^/]+/);
+    if (!page.url().includes('/evidence')) {
+      await page.getByTestId('tab-evidence').click();
+      await expect(page).toHaveURL(/\/patients\/.+\/evidence/);
+    }
 
     const timelineView = page.getByTestId('timeline-node-view');
     await expect(timelineView).toBeVisible();

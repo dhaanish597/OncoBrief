@@ -19,6 +19,9 @@ async function loginAndOpenPatient(page: Page, code = 'DEMO-001'): Promise<void>
   await page.getByRole('button', { name: 'Open the workspace' }).click();
   await expect(page).toHaveURL(/\/workspace/);
   await page.getByRole('link', { name: new RegExp(code) }).first().click();
+  if (!page.url().includes('/evidence')) {
+    await page.getByTestId('tab-evidence').click();
+  }
   await expect(page).toHaveURL(/\/patients\/.+\/evidence/);
 }
 

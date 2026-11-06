@@ -69,7 +69,7 @@ export default async function EvidencePage({
   return (
     <EvidenceViewContainer
       patientId={id}
-      patientCode={patient?.demoCode || 'DEMO-001'}
+      patientCode={patient?.demoCode ?? patient?.displayName ?? ''}
       timeline={timeline}
       interval={review?.interval ?? defaultInterval}
       labFlowsheet={review?.labFlowsheet ?? []}

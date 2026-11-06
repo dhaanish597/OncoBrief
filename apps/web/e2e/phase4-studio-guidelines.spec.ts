@@ -11,7 +11,7 @@ async function loginAsClinician(page: Page) {
 
 async function openDemoPatient(page: Page, code = 'DEMO-001') {
   await page.getByRole('link', { name: new RegExp(code) }).first().click();
-  await expect(page).toHaveURL(/\/patients\/.+\/evidence/);
+  await expect(page).toHaveURL(/\/patients\/[^/]+/);
 }
 
 async function queryDb(sql: string, params: unknown[] = []) {

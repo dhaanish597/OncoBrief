@@ -31,9 +31,9 @@ export interface TimelineNodeViewProps {
 export function TimelineNodeView({
   patientId,
   rows,
-  patientCode: _patientCode = 'DEMO-001',
-  openTasksCount = 3,
-  documentsCount = 8,
+  patientCode: _patientCode = '',
+  openTasksCount = 0,
+  documentsCount = 0,
 }: TimelineNodeViewProps) {
   // Helper to map clinical fact types to Screen 5 modalities & visual styling
   function getModalityInfo(factType: string, docName: string, quote: string) {
@@ -177,8 +177,8 @@ export function TimelineNodeView({
 
       {/* Main Longitudinal Timeline Rail */}
       <div className="mt-6 relative">
-        {/* Continuous vertical connector line */}
-        <div className="absolute left-[135px] top-4 bottom-4 w-0.5 bg-slate-200" aria-hidden="true" />
+        {/* Continuous vertical connector line (hidden on narrow mobile, shown on sm+) */}
+        <div className="hidden sm:block absolute left-[135px] top-4 bottom-4 w-0.5 bg-slate-200" aria-hidden="true" />
 
         <div className="space-y-6">
           {rows.map((row) => {
@@ -193,10 +193,10 @@ export function TimelineNodeView({
                 key={row.evidenceFactId}
                 data-testid="evidence-row"
                 data-state={row.state}
-                className="relative flex items-start gap-4 group"
+                className="relative flex flex-col sm:flex-row items-start gap-2 sm:gap-4 group"
               >
-                {/* Left Date Rail (Fixed Width) */}
-                <div className="w-[110px] shrink-0 pt-1 text-right">
+                {/* Left Date Rail (Responsive on mobile, Fixed Width on sm+) */}
+                <div className="w-full sm:w-[110px] shrink-0 pt-1 text-left sm:text-right">
                   <span className="text-xs font-semibold text-slate-700 font-mono">
                     {dateStr}
                   </span>

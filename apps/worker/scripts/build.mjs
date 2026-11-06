@@ -1,5 +1,5 @@
 import { build } from 'esbuild';
-import { rmSync, mkdirSync } from 'node:fs';
+import { rmSync, mkdirSync, readdirSync, writeFileSync, copyFileSync } from 'node:fs';
 import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -25,6 +25,17 @@ const outdir = resolve(repoRoot, 'infra', 'build', 'worker');
 
 rmSync(outdir, { recursive: true, force: true });
 mkdirSync(outdir, { recursive: true });
+
+// Keep the optional Lambda path aligned with the on-disk CLI migrations.
+const migrationNames = readdirSync(resolve(repoRoot, 'packages/db/migrations')).filter(name => name.endsWith('.sql')).sort();
+writeFileSync(resolve(workerRoot, 'src/bundled-migrations.ts'), [
+  "import type { MigrationFile } from '@oncobrief/db/worker';",
+  ...migrationNames.map((name, i) => `import m${i} from '../../../packages/db/migrations/${name}';`),
+  'export const BUNDLED_MIGRATIONS: MigrationFile[] = [',
+  ...migrationNames.map((name, i) => `  { name: '${name}', sql: m${i} },`),
+  '];', '',
+].join('\n'));
+copyFileSync(resolve(repoRoot, 'packages/db/certs/rds-global-bundle.pem'), resolve(outdir, 'rds-global-bundle.pem'));
 
 const result = await build({
   entryPoints: [

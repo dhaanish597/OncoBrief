@@ -77,7 +77,7 @@ export async function POST(request: Request) {
 
     const response = await runAssistant(q, { message, context, history });
 
-    await addMessage(q, {
+    const savedMsg = await addMessage(q, {
       conversationId,
       role: 'assistant',
       content: response.answer,
@@ -85,24 +85,33 @@ export async function POST(request: Request) {
       grounded: response.grounded,
       sources: response.sources,
       navigation: response.navigation,
+      executionTrace: response.executionTrace ?? [],
+      pendingAction: response.pendingAction ?? null,
+      providerMode: response.providerMode ?? 'deterministic',
     });
 
     if (history.length === 0) {
       await updateConversationTitle(q, conversationId, session.userId, message.slice(0, 60));
     }
 
-    return { conversationId, response };
+    return { conversationId, messageId: savedMsg.id, response };
   });
 
   return NextResponse.json({
     conversationId: result.conversationId,
+    messageId: result.messageId,
     answer: result.response.answer,
     intent: result.response.intent,
+    subIntents: result.response.subIntents ?? [],
     grounded: result.response.grounded,
     sources: result.response.sources,
     navigation: result.response.navigation,
     conflict: result.response.conflict,
     suggestedQuestions: result.response.suggestedQuestions,
+    executionTrace: result.response.executionTrace ?? [],
+    visitedNodes: result.response.visitedNodes ?? [],
+    pendingAction: result.response.pendingAction ?? null,
+    providerMode: result.response.providerMode ?? 'deterministic',
     requestId: result.response.requestId,
   });
 }

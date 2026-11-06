@@ -398,4 +398,48 @@ describe('runAssistant — safety and navigation', () => {
     expect(result.answer).toContain('Reference Guideline Extract — For Clinician Review Only (Not a Patient-Specific Order)');
     expect(result.answer).toContain('*This extract is provided for clinician reference only and does not constitute a patient-specific order or recommendation.*');
   });
+
+  it('TASK-009: executes multi-intent retrieval, records state-graph executionTrace, and stages confirmation-gated task proposals without unauthorized DB writes', async () => {
+    vi.mocked(isLlmConfigured).mockReturnValueOnce(false);
+    vi.mocked(db.listRecordMap).mockResolvedValueOnce({
+      gaps: [
+        {
+          id: 'gap-001',
+          label: 'Staging radiology report',
+          requirementKind: 'required',
+          status: 'missing',
+          rationale: 'Baseline cross-sectional staging imaging report expected.',
+          requiredDocumentType: 'radiology_report',
+          satisfiedByDocumentId: null,
+          candidateDocumentId: null,
+        },
+      ],
+      origins: [],
+      readiness: null,
+    });
+
+    const result = await runAssistant(q, {
+      message: 'What documents are missing and create a follow-up task for the missing report?',
+      context: ctx,
+    });
+
+    expect(result.subIntents).toContain('missing_documents_question');
+    expect(result.subIntents).toContain('propose_task_action');
+    expect(result.visitedNodes).toEqual([
+      'safety_and_intent_gate',
+      'plan_subgoals_node',
+      'retrieve_sources_node',
+      'propose_action_gate',
+      'grounded_synthesis_node',
+      'citation_verification_gate',
+    ]);
+    expect(Array.isArray(result.executionTrace)).toBe(true);
+    expect(result.executionTrace!.length).toBe(6);
+    expect(result.pendingAction).toBeDefined();
+    expect(result.pendingAction?.status).toBe('awaiting_human_approval');
+    expect(result.pendingAction?.actionKind).toBe('create_task_from_gap');
+    expect(result.pendingAction?.title).toContain('Staging radiology report');
+    expect(result.answer).toContain('Proposed Action Ready for Confirmation');
+  });
 });
+

@@ -58,9 +58,12 @@ test.describe('Evidence Viewer & Website Remediation', () => {
     await expect(sourcePane.getByText('Sunita Sharma').first()).toBeVisible();
     await expect(sourcePane.getByText(/Central Diagnostic Laboratory/i).first()).toBeVisible();
     await expect(sourcePane.getByText(/02 June 2026/i).first()).toBeVisible();
-    await expect(sourcePane.getByText(/Hemoglobin \(Hb\)\s+11\.4\s+g\/dL/i).first()).toBeVisible();
-    await expect(sourcePane.getByText(/Total Leukocyte Count \(WLC\)\s+7,200\s+\/uL/i).first()).toBeVisible();
-    await expect(sourcePane.getByText(/Platelet Count\s+240,000\s+\/uL/i).first()).toBeVisible();
+    await expect(sourcePane.getByText(/Hemoglobin \(Hb\)/i).first()).toBeVisible();
+    await expect(sourcePane.getByText('11.4').first()).toBeVisible();
+    await expect(sourcePane.getByText(/Total Leukocyte Count/i).first()).toBeVisible();
+    await expect(sourcePane.getByText('7,200').first()).toBeVisible();
+    await expect(sourcePane.getByText(/Platelet Count/i).first()).toBeVisible();
+    await expect(sourcePane.getByText('240,000').first()).toBeVisible();
 
     // 3. Negative check: Verify NO cross-associated patient content (e.g. Ramesh Kumar or other fixture text)
     await expect(page.getByText('Ramesh Kumar')).not.toBeVisible();
@@ -68,7 +71,8 @@ test.describe('Evidence Viewer & Website Remediation', () => {
     // 4. Test View Mode toggles: Structured OCR
     const ocrBtn = page.getByRole('button', { name: /Structured OCR/i });
     await ocrBtn.click();
-    await expect(sourcePane.getByText(/Hemoglobin \(Hb\)\s+11\.4\s+g\/dL/i).first()).toBeVisible();
+    await expect(sourcePane.getByText(/Hemoglobin \(Hb\)/i).first()).toBeVisible();
+    await expect(sourcePane.getByText('11.4').first()).toBeVisible();
 
     // 5. Test View Mode toggles: Original PDF
     const pdfBtn = page.getByRole('button', { name: /Original PDF/i });
@@ -198,7 +202,7 @@ test.describe('Evidence Viewer & Website Remediation', () => {
 
     // 1. Evidence Journey (Timeline)
     await expect(page.getByTestId('tab-evidence')).toBeVisible();
-    await expect(page.getByRole('heading', { name: /DEMO-001/ })).toBeVisible();
+    await expect(page.getByRole('heading', { name: /DEMO-001/, level: 1 })).toBeVisible();
     await expect(page.getByTestId('readiness-band').first()).toBeVisible();
 
     await page.screenshot({

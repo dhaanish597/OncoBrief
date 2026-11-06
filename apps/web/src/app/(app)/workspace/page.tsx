@@ -1,6 +1,12 @@
 import Link from 'next/link';
 import { forbidden } from 'next/navigation';
-import { can, OPD_TRANSITIONS } from '@oncobrief/domain';
+import {
+  can,
+  OPD_TRANSITIONS,
+  READINESS_BAND_LABEL,
+  computeWorklistReadinessSummary,
+  filterWorklistPatients,
+} from '@oncobrief/domain';
 import {
   listPatients,
   listOpdWorkspace,
@@ -89,28 +95,12 @@ export default async function WorkspacePage({
 
   const { allPatients, clinicians, departments, workspace, selectedPatient, timelineRows, selectedDocsCount, selectedTasksCount } = data;
 
-  // Filter patients for the Readiness Worklist
-  const filteredPatients = allPatients.filter((p) => {
-    if (searchFilter) {
-      const matchName = p.displayName.toLowerCase().includes(searchFilter);
-      const matchMrn = p.mrn?.toLowerCase().includes(searchFilter);
-      const matchDemo = p.demoCode?.toLowerCase().includes(searchFilter);
-      if (!matchName && !matchMrn && !matchDemo) return false;
-    }
-    if (bandFilter !== 'all') {
-      if (bandFilter === 'none') {
-        if (p.readinessBand) return false;
-      } else if (p.readinessBand?.toLowerCase() !== bandFilter.toLowerCase()) {
-        return false;
-      }
-    }
-    if (clinicianFilter && p.primaryClinicianName && !p.primaryClinicianName.toLowerCase().includes(clinicianFilter.toLowerCase())) {
-      return false;
-    }
-    if (departmentFilter && p.departmentName && !p.departmentName.toLowerCase().includes(departmentFilter.toLowerCase())) {
-      return false;
-    }
-    return true;
+  // Filter patients for the Readiness Worklist using canonical readiness states ('ready' | 'gaps' | 'blocked' | 'none')
+  const filteredPatients = filterWorklistPatients(allPatients, {
+    search: searchFilter,
+    band: bandFilter,
+    clinician: clinicianFilter,
+    department: departmentFilter,
   });
 
   // Filter timeline rows by category if in timeline view
@@ -123,18 +113,22 @@ export default async function WorkspacePage({
     return ft.includes(cat) || val.includes(cat) || doc.includes(cat);
   });
 
-  // Aggregate metrics
-  const totalPatients = allPatients.length;
-  const completeCount = allPatients.filter((p) => p.readinessBand === 'complete').length;
-  const totalConflicts = allPatients.reduce((acc, p) => acc + (p.openConflicts || 0), 0);
-  const totalUnverified = allPatients.reduce((acc, p) => acc + (p.unverifiedFacts || 0), 0);
+  // Aggregate metrics from canonical readiness bands
+  const {
+    totalPatients,
+    readyCount,
+    gapsCount,
+    blockedCount,
+    totalConflicts,
+    totalUnverified,
+  } = computeWorklistReadinessSummary(allPatients);
 
   return (
     <main className="mx-auto max-w-[1500px] px-4 py-6 sm:px-6 sm:py-10">
       {/* Header */}
       <div className="flex flex-wrap items-end justify-between gap-4 border-b border-[var(--color-rule-strong)] pb-6">
         <div>
-          <h1 className="text-2xl font-semibold tracking-tight sm:text-3xl">Oncology Clinical Workspace</h1>
+          <h1 className="text-2xl font-semibold tracking-tight sm:text-3xl">Oncology Consultation Workspace</h1>
           <p className="mt-2 max-w-3xl text-sm leading-relaxed text-[var(--color-ink-soft)]">
             Evidence-first oncology operational workspace. Every view is backed by the persistent <strong>Evidence Ledger</strong> and organization-scoped records.
           </p>
@@ -196,9 +190,16 @@ export default async function WorkspacePage({
         )}
       </div>
 
-      {/* VIEW MODE 1: READINESS WORKLIST */}
-      {currentView === 'list' && (
-        <div className="mt-6 space-y-6">
+      {/* VIEW MODE 1 & 3: READINESS WORKLIST & OPD FLOW */}
+      {currentView !== 'timeline' && (
+        <OpdWorkspace
+          transitions={OPD_TRANSITIONS}
+          containsSyntheticData={allPatients.some((p) => p.isDemoFixture)}
+          workspace={workspace}
+          canManage={can(session.role, 'opd:manage')}
+          initialView={currentView === 'opd' ? 'opd' : 'readiness'}
+          worklist={
+            <div className="mt-6 space-y-6">
           {/* Quick Stats Grid */}
           <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
             <div className="border border-[var(--color-rule-strong)] bg-[var(--color-paper-raised)] p-4">
@@ -207,9 +208,11 @@ export default async function WorkspacePage({
               <p className="mt-0.5 text-xs text-[var(--color-ink-soft)]">Tenant registry</p>
             </div>
             <div className="border border-[var(--color-rule-strong)] bg-[var(--color-paper-raised)] p-4">
-              <p className="mono text-[11px] uppercase tracking-wider text-[var(--color-ink-soft)]">Record Complete</p>
-              <p className="mt-1 text-2xl font-semibold tracking-tight text-emerald-800">{completeCount}</p>
-              <p className="mt-0.5 text-xs text-[var(--color-ink-soft)]">Ready for consultation</p>
+              <p className="mono text-[11px] uppercase tracking-wider text-[var(--color-ink-soft)]">{READINESS_BAND_LABEL.ready}</p>
+              <p className="mt-1 text-2xl font-semibold tracking-tight text-emerald-800" data-testid="worklist-ready-count">{readyCount}</p>
+              <p className="mt-0.5 text-xs text-[var(--color-ink-soft)]">
+                Ready for consultation ({gapsCount} gaps · {blockedCount} blocked)
+              </p>
             </div>
             <div className="border border-[var(--color-rule-strong)] bg-[var(--color-paper-raised)] p-4">
               <p className="mono text-[11px] uppercase tracking-wider text-[var(--color-ink-soft)]">Unresolved Conflicts</p>
@@ -257,12 +260,10 @@ export default async function WorkspacePage({
                   className="mt-1 w-full border border-[var(--color-rule-strong)] bg-[var(--color-paper)] px-3 py-1.5 text-xs focus:outline-none focus:ring-1 focus:ring-[var(--color-accent)]"
                 >
                   <option value="all">All Bands</option>
-                  <option value="complete">Complete</option>
-                  <option value="high">High</option>
-                  <option value="medium">Medium</option>
-                  <option value="low">Low</option>
-                  <option value="incomplete">Incomplete</option>
-                  <option value="none">No Snapshot</option>
+                  <option value="ready">{READINESS_BAND_LABEL.ready}</option>
+                  <option value="gaps">{READINESS_BAND_LABEL.gaps}</option>
+                  <option value="blocked">{READINESS_BAND_LABEL.blocked}</option>
+                  <option value="none">Not assessed</option>
                 </select>
               </div>
 
@@ -424,6 +425,8 @@ export default async function WorkspacePage({
             </div>
           </div>
         </div>
+          }
+        />
       )}
 
       {/* VIEW MODE 2: LONGITUDINAL PATIENT TIMELINE */}
@@ -530,23 +533,6 @@ export default async function WorkspacePage({
               </p>
             </div>
           )}
-        </div>
-      )}
-
-      {/* VIEW MODE 3: OPD FLOW */}
-      {currentView === 'opd' && (
-        <div className="mt-6">
-          <OpdWorkspace
-            transitions={OPD_TRANSITIONS}
-            containsSyntheticData={allPatients.some((p) => p.isDemoFixture)}
-            workspace={workspace}
-            canManage={can(session.role, 'opd:manage')}
-            worklist={
-              <div className="mt-6 border border-[var(--color-rule-strong)] bg-[var(--color-paper-raised)] p-4 text-xs mono text-[var(--color-ink-soft)]">
-                Viewing today's OPD consultation flow. Status transitions are authorized and recorded in real time.
-              </div>
-            }
-          />
         </div>
       )}
     </main>

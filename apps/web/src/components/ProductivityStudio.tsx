@@ -1,16 +1,18 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import type { StudioArtifactRecord } from '@oncobrief/db';
+import type { GuidelineDocumentRow, StudioArtifactRecord } from '@oncobrief/db';
 import {
   createStudioArtifactAction,
   updateStudioArtifactAction,
   approveStudioArtifactAction,
 } from '@/lib/actions';
+import { ProviderModeBadge } from './ProviderModeBadge';
 
 interface ProductivityStudioProps {
   patientId: string;
   artifacts: StudioArtifactRecord[];
+  guidelines?: GuidelineDocumentRow[];
   canDraft: boolean;
   canApprove: boolean;
   canExport: boolean;
@@ -26,6 +28,7 @@ const ARTIFACT_KINDS = [
 export function ProductivityStudio({
   patientId,
   artifacts,
+  guidelines = [],
   canDraft,
   canApprove,
   canExport,
@@ -81,15 +84,22 @@ export function ProductivityStudio({
       <div className="flex flex-wrap items-center justify-between gap-3 border-b border-[var(--color-rule)] pb-4">
         <div>
           <h2 className="mono text-sm font-semibold uppercase tracking-wider text-[var(--color-ink)]">
-            Clinician Productivity & Document Studio
+            Clinician Productivity &amp; Document Studio
           </h2>
           <p className="mono mt-1 text-xs text-[var(--color-ink-soft)]">
             Generate and edit source-cited oncology artifacts from verified Evidence Ledger facts and institutional SOPs
           </p>
         </div>
-        <span className="mono border border-[var(--color-rule)] bg-white px-2.5 py-1 text-[11px] text-[var(--color-ink-soft)]">
-          {artifacts.length} draft{artifacts.length === 1 ? '' : 's'} available
-        </span>
+        <div className="flex flex-wrap items-center gap-2">
+          <ProviderModeBadge
+            capability="Studio Engine"
+            mode="fallback"
+            providerName="Deterministic Ledger + NCG SOP Synthesizer"
+          />
+          <span className="mono border border-[var(--color-rule)] bg-white px-2.5 py-1 text-[11px] text-[var(--color-ink-soft)]">
+            {artifacts.length} draft{artifacts.length === 1 ? '' : 's'} available
+          </span>
+        </div>
       </div>
 
       {/* Draft Creation Form */}
@@ -147,6 +157,36 @@ export function ProductivityStudio({
               </button>
             </div>
           </div>
+
+          {/* TASK-021: Interactive Reference Guideline Citation Selector ([G#]) */}
+          {guidelines.length > 0 ? (
+            <fieldset
+              data-testid="studio-guideline-picker"
+              className="mt-3 border-t border-[var(--color-rule)] pt-3"
+            >
+              <legend className="mono text-[11px] font-semibold uppercase tracking-wider text-[var(--color-ink-soft)]">
+                Cite Institutional / NCG Guidelines in Draft ([G#])
+              </legend>
+              <div className="mt-2 flex flex-wrap gap-3">
+                {guidelines.map((g, idx) => (
+                  <label
+                    key={g.id}
+                    className="mono flex items-center gap-1.5 border border-[var(--color-rule)] bg-slate-50 px-2.5 py-1 text-[11px] text-[var(--color-ink)] cursor-pointer"
+                  >
+                    <input
+                      type="checkbox"
+                      name="selectedGuidelineIds"
+                      value={g.id}
+                      defaultChecked
+                      data-testid={`select-guideline-${g.code}`}
+                    />
+                    <span className="font-semibold text-blue-800">[G{idx + 1}]</span>
+                    <span>{g.code} ({g.versionLabel})</span>
+                  </label>
+                ))}
+              </div>
+            </fieldset>
+          ) : null}
         </form>
       ) : null}
 
@@ -279,11 +319,23 @@ export function ProductivityStudio({
               {/* View Content */}
               {activeTab === 'slides' && selected.artifactKind === 'tumor_board_deck' ? (
                 <div className="mt-4 space-y-4" data-testid="tumor-board-slides-view">
-                  <div className="flex justify-between items-center mb-2">
+                  <div className="flex flex-wrap justify-between items-center gap-2 mb-2">
                     <span className="mono text-[11px] text-[var(--color-ink-soft)]">
                       Printable Slide Deck ({slides.length} slides)
                     </span>
-                    <span className="mono text-[10px] text-[var(--color-ink-soft)]">Use an audited export below to save this document.</span>
+                    <div className="flex items-center gap-2">
+                      <button
+                        type="button"
+                        onClick={() => window.print()}
+                        data-testid="print-slide-deck-btn"
+                        className="no-print mono border border-[var(--color-rule-strong)] bg-white px-2.5 py-1 text-[10px] uppercase tracking-wider hover:bg-[var(--color-accent-soft)]"
+                      >
+                        Print Slide Deck / Save PDF
+                      </button>
+                      <span className="mono text-[10px] text-[var(--color-ink-soft)]">
+                        Use an audited export below to save this document.
+                      </span>
+                    </div>
                   </div>
                   {slides.map((slide, idx) => (
                     <article
@@ -323,13 +375,17 @@ export function ProductivityStudio({
                     {selected.citedGuidelineIds.map((guideId, idx) => (
                       <div
                         key={guideId}
-                        className="border border-[var(--color-rule)] p-2.5 bg-blue-50/30 text-xs flex justify-between items-center"
+                        className="border border-[var(--color-rule)] p-2.5 bg-blue-50/30 text-xs flex justify-between items-center gap-2"
                       >
                         <span className="mono font-semibold text-blue-800">[G{idx + 1}]</span>
                         <span className="mono text-[11px] text-slate-700 truncate max-w-md">Guideline Doc ID: {guideId}</span>
-                        <span className="mono text-[10px] uppercase text-blue-700 bg-blue-50 px-1.5 py-0.5 border border-blue-200">
-                          Institutional Reference
-                        </span>
+                        <a
+                          href={`/patients/${patientId}/sources?guideline=${guideId}&page=1`}
+                          data-testid={`studio-guideline-citation-${idx + 1}`}
+                          className="mono text-[10px] uppercase text-blue-700 bg-blue-50 px-1.5 py-0.5 border border-blue-200 underline decoration-dotted hover:decoration-solid"
+                        >
+                          Inspect [G{idx + 1}] Source →
+                        </a>
                       </div>
                     ))}
                   </div>

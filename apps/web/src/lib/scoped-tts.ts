@@ -1,7 +1,15 @@
 import { NextResponse } from 'next/server';
 import { can } from '@oncobrief/domain';
-import { sarvamTts, SarvamError } from '@oncobrief/adapters';
-import { withTenant, getMessage, checkMessageGate, getConversation, getPatient, getDocument } from '@oncobrief/db';
+import { sarvamTtsWithRetry, SarvamError, generateAudibleFallbackWav } from '@oncobrief/adapters';
+import {
+  withTenant,
+  getMessage,
+  checkMessageGate,
+  getConversation,
+  getPatient,
+  getDocument,
+  resolveLocalizedMessageText,
+} from '@oncobrief/db';
 import { getSession, tenantCtx } from '@/lib/session';
 import { SUPPORTED_LOCALES } from '@/lib/locales';
 
@@ -9,7 +17,7 @@ const ALLOWED_LOCALES = new Set<string>(SUPPORTED_LOCALES.map((l) => l.code));
 const headers = { 'Cache-Control': 'no-store, no-cache, must-revalidate, max-age=0', Pragma: 'no-cache' };
 const failure = (code: string, status: number) => NextResponse.json({ error: { code } }, { status, headers });
 
-/** Only saved, tenant-scoped text may leave the server for speech synthesis. */
+/** Only saved, tenant-scoped text may leave the server for speech synthesis (`TASK-01.03`, `TASK-01.04`). */
 export function scopedTts(scope: 'continuity' | 'assistant') {
   return async (request: Request) => {
     const session = await getSession();
@@ -21,7 +29,7 @@ export function scopedTts(scope: 'continuity' | 'assistant') {
       if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) return failure('bad_request', 400);
       body = parsed as Record<string, unknown>;
     } catch { return failure('bad_request', 400); }
-    const languageCode = body.languageCode ?? 'en-IN';
+    const languageCode = (body.languageCode as string | undefined) ?? 'en-IN';
     if (typeof languageCode !== 'string' || !ALLOWED_LOCALES.has(languageCode)) return failure('unsupported_locale', 400);
     if (scope === 'continuity' && (typeof body.messageId !== 'string' || typeof body.patientId !== 'string')) return failure('bad_request', 400);
     if (scope === 'assistant' && (typeof body.conversationId !== 'string' || typeof body.text !== 'string')) return failure('bad_request', 400);
@@ -33,7 +41,10 @@ export function scopedTts(scope: 'continuity' | 'assistant') {
         if (message.status === 'withdrawn') return { error: 'source_unavailable', status: 409 };
         const gate = await checkMessageGate(q, message.id);
         if (!gate.ok) return { error: 'source_unavailable', status: 409 };
-        return { text: message.bodyRendered };
+
+        const localized = await resolveLocalizedMessageText(q, message.id, languageCode);
+        const text = localized?.text || message.bodyRendered;
+        return { text };
       }
       const conversation = await getConversation(q, body.conversationId as string, session.userId);
       if (!conversation || (conversation.patientId && !await getPatient(q, conversation.patientId))) return { error: 'not_found', status: 404 };
@@ -49,10 +60,29 @@ export function scopedTts(scope: 'continuity' | 'assistant') {
     if ('error' in resolved) return failure(resolved.error!, resolved.status!);
     if (!resolved.text.trim() || resolved.text.length > 2000) return failure('invalid_text_length', 400);
     try {
-      const result = await sarvamTts({ text: resolved.text, languageCode });
-      return NextResponse.json({ audioBase64: result.audioBase64, sampleRate: result.sampleRate, provider: 'sarvam' }, { headers });
+      const result = await sarvamTtsWithRetry({ text: resolved.text, languageCode }, 1);
+      return NextResponse.json({
+        audioBase64: result.audioBase64,
+        sampleRate: result.sampleRate,
+        provider: 'sarvam',
+        localizedText: resolved.text,
+        languageCode,
+      }, { headers });
     } catch (error) {
-      return NextResponse.json({ error: { code: error instanceof SarvamError ? 'sarvam_unavailable' : 'tts_failed' }, fallbackText: resolved.text }, { status: 503, headers });
+      const fallbackAudioBase64 =
+        typeof generateAudibleFallbackWav === 'function'
+          ? generateAudibleFallbackWav(resolved.text, languageCode)
+          : undefined;
+      return NextResponse.json(
+        {
+          error: { code: error instanceof SarvamError ? 'sarvam_unavailable' : 'tts_failed' },
+          fallbackText: resolved.text,
+          localizedText: resolved.text,
+          languageCode,
+          ...(fallbackAudioBase64 ? { fallbackAudioBase64, sampleRate: 22050 } : {}),
+        },
+        { status: 503, headers },
+      );
     }
   };
 }

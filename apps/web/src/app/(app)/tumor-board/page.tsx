@@ -6,6 +6,7 @@ import {
   listTumorBoardCases,
   listClinicians,
   listPatients,
+  listVerifiedPatientStagingFacts,
   type TumorBoardStatus,
 } from '@oncobrief/db';
 import { requireSession, withSession } from '@/lib/session';
@@ -49,11 +50,12 @@ export default async function TumorBoardPage({
     const cases = activeMeetingId ? await listTumorBoardCases(q, s.orgId, activeMeetingId) : [];
     const clinicians = await listClinicians(q);
     const patients = await listPatients(q);
+    const stagingFacts = await listVerifiedPatientStagingFacts(q, s.orgId);
 
-    return { meetings, activeMeeting, cases, clinicians, patients };
+    return { meetings, activeMeeting, cases, clinicians, patients, stagingFacts };
   });
 
-  const { meetings, activeMeeting, cases, clinicians, patients } = data;
+  const { meetings, activeMeeting, cases, clinicians, patients, stagingFacts } = data;
   const canManage = can(session.role, 'tumor_board:manage');
 
   return (
@@ -84,8 +86,9 @@ export default async function TumorBoardPage({
               <h3 className="font-semibold text-sm mb-3">Schedule Multidisciplinary Board</h3>
               <form action={createTumorBoardMeetingAction} className="space-y-3">
                 <div>
-                  <label className="mono block text-[10px] uppercase text-[var(--color-ink-soft)]">Title *</label>
+                  <label htmlFor="tb-title" className="mono block text-[10px] uppercase text-[var(--color-ink-soft)]">Title *</label>
                   <input
+                    id="tb-title"
                     name="title"
                     required
                     defaultValue="Thoracic Oncology Tumor Board"
@@ -94,8 +97,9 @@ export default async function TumorBoardPage({
                 </div>
                 <div className="grid grid-cols-2 gap-2">
                   <div>
-                    <label className="mono block text-[10px] uppercase text-[var(--color-ink-soft)]">Date *</label>
+                    <label htmlFor="tb-meeting-date" className="mono block text-[10px] uppercase text-[var(--color-ink-soft)]">Date *</label>
                     <input
+                      id="tb-meeting-date"
                       name="meetingDate"
                       type="date"
                       required
@@ -103,8 +107,9 @@ export default async function TumorBoardPage({
                     />
                   </div>
                   <div>
-                    <label className="mono block text-[10px] uppercase text-[var(--color-ink-soft)]">Location *</label>
+                    <label htmlFor="tb-location" className="mono block text-[10px] uppercase text-[var(--color-ink-soft)]">Location *</label>
                     <input
+                      id="tb-location"
                       name="location"
                       required
                       defaultValue="Boardroom 2 / Telehealth"
@@ -114,8 +119,9 @@ export default async function TumorBoardPage({
                 </div>
                 <div className="grid grid-cols-2 gap-2">
                   <div>
-                    <label className="mono block text-[10px] uppercase text-[var(--color-ink-soft)]">Start *</label>
+                    <label htmlFor="tb-start-time" className="mono block text-[10px] uppercase text-[var(--color-ink-soft)]">Start *</label>
                     <input
+                      id="tb-start-time"
                       name="startTime"
                       type="time"
                       required
@@ -124,8 +130,9 @@ export default async function TumorBoardPage({
                     />
                   </div>
                   <div>
-                    <label className="mono block text-[10px] uppercase text-[var(--color-ink-soft)]">End *</label>
+                    <label htmlFor="tb-end-time" className="mono block text-[10px] uppercase text-[var(--color-ink-soft)]">End *</label>
                     <input
+                      id="tb-end-time"
                       name="endTime"
                       type="time"
                       required
@@ -135,8 +142,9 @@ export default async function TumorBoardPage({
                   </div>
                 </div>
                 <div>
-                  <label className="mono block text-[10px] uppercase text-[var(--color-ink-soft)]">Moderator</label>
+                  <label htmlFor="tb-moderator" className="mono block text-[10px] uppercase text-[var(--color-ink-soft)]">Moderator</label>
                   <select
+                    id="tb-moderator"
                     name="moderatorUserId"
                     className="mt-1 block w-full border border-[var(--color-rule-strong)] px-2 py-1 text-xs"
                   >
@@ -232,8 +240,9 @@ export default async function TumorBoardPage({
                         <form action={registerTumorBoardCaseAction} className="space-y-3">
                           <input type="hidden" name="meetingId" value={activeMeeting.id} />
                           <div>
-                            <label className="mono block text-[10px] uppercase text-[var(--color-ink-soft)]">Patient *</label>
+                            <label htmlFor="tb-patient" className="mono block text-[10px] uppercase text-[var(--color-ink-soft)]">Patient *</label>
                             <select
+                              id="tb-patient"
                               name="patientId"
                               required
                               className="mt-1 block w-full border border-[var(--color-rule-strong)] px-2 py-1 text-xs"
@@ -247,8 +256,9 @@ export default async function TumorBoardPage({
                             </select>
                           </div>
                           <div>
-                            <label className="mono block text-[10px] uppercase text-[var(--color-ink-soft)]">Presenter</label>
+                            <label htmlFor="tb-presenter" className="mono block text-[10px] uppercase text-[var(--color-ink-soft)]">Presenter</label>
                             <select
+                              id="tb-presenter"
                               name="presenterUserId"
                               className="mt-1 block w-full border border-[var(--color-rule-strong)] px-2 py-1 text-xs"
                             >
@@ -261,10 +271,30 @@ export default async function TumorBoardPage({
                             </select>
                           </div>
                           <div>
-                            <label className="mono block text-[10px] uppercase text-[var(--color-ink-soft)]">Clinical Staging (Human Authored)</label>
+                            <label htmlFor="tb-staging-fact" className="mono block text-[10px] uppercase text-[var(--color-ink-soft)]">
+                              Documented Staging Fact (Verified Evidence Ledger)
+                            </label>
+                            <select
+                              id="tb-staging-fact"
+                              name="stagingFactId"
+                              className="mt-1 block w-full border border-[var(--color-rule-strong)] px-2 py-1 text-xs"
+                            >
+                              <option value="">Select verified staging evidence (optional)...</option>
+                              {stagingFacts.map((sf) => (
+                                <option key={sf.id} value={sf.id}>
+                                  {sf.patient_name ? `${sf.patient_name}: ` : ''}{sf.value_normalized || sf.verbatim_quote} ({sf.document_name})
+                                </option>
+                              ))}
+                            </select>
+                          </div>
+                          <div>
+                            <label htmlFor="tb-clinical-staging" className="mono block text-[10px] uppercase text-[var(--color-ink-soft)]">
+                              Clinical Staging Notes (Clinician Authored / Fallback)
+                            </label>
                             <input
+                              id="tb-clinical-staging"
                               name="clinicalStaging"
-                              placeholder="e.g. cT2aN1M0 Stage IIB"
+                              placeholder="e.g. cT2aN1M0 Stage IIB (used if not anchored to ledger)"
                               className="mt-1 block w-full border border-[var(--color-rule-strong)] px-2 py-1 text-xs"
                             />
                           </div>
@@ -325,10 +355,15 @@ export default async function TumorBoardPage({
                         <div className="mt-3 grid gap-3 sm:grid-cols-2 bg-[var(--color-paper)] p-3 border border-[var(--color-rule)]">
                           <div>
                             <span className="mono block text-[10px] uppercase text-[var(--color-ink-soft)] font-semibold">
-                              Clinician-Authored Staging
+                              Documented Staging (As Written / Clinician Reviewed)
                             </span>
                             <span className="font-semibold text-sm block mt-0.5">
                               {c.clinical_staging || 'Pending verification'}
+                            </span>
+                            <span className="mono block text-[10px] text-[var(--color-ink-soft)] mt-1">
+                              {c.staging_fact_id
+                                ? `Anchored to verified staging fact (${c.cited_fact_ids?.length ?? 1} ledger citation(s))`
+                                : `Administrative case entry (${c.cited_fact_ids?.length ?? 0} ledger citation(s))`}
                             </span>
                           </div>
 
@@ -416,7 +451,7 @@ export default async function TumorBoardPage({
                                   name="recommendationNotes"
                                   rows={2}
                                   defaultValue={c.recommendation_notes || ''}
-                                  placeholder="Board treatment recommendations, trial eligibility..."
+                                  placeholder="Multidisciplinary clinician consensus, discussion notes, trial considerations..."
                                   className="mt-0.5 block w-full border border-[var(--color-rule-strong)] p-1.5 text-xs font-medium"
                                 />
                               </div>
@@ -424,8 +459,9 @@ export default async function TumorBoardPage({
 
                             <div className="flex items-center justify-between pt-1">
                               <div className="flex items-center gap-2">
-                                <label className="mono text-[10px] uppercase text-[var(--color-ink-soft)]">Status:</label>
+                                <label htmlFor={`tb-case-status-${c.id}`} className="mono text-[10px] uppercase text-[var(--color-ink-soft)]">Status:</label>
                                 <select
+                                  id={`tb-case-status-${c.id}`}
                                   name="status"
                                   defaultValue={c.status}
                                   className="mono border border-[var(--color-rule-strong)] px-2 py-0.5 text-xs"

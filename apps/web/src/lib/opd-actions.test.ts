@@ -2,7 +2,13 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 const mocks = vi.hoisted(() => ({ status: vi.fn(), offer: vi.fn(), walkIn: vi.fn(), candidates: vi.fn(), revalidate: vi.fn(), role: 'coordinator' }));
 vi.mock('server-only', () => ({}));
 vi.mock('next/cache', () => ({ revalidatePath: mocks.revalidate }));
-vi.mock('@oncobrief/db', () => ({ updateOpdSlotStatus: mocks.status, offerOpdSlot: mocks.offer, registerWalkIn: mocks.walkIn, listBackfillCandidates: mocks.candidates }));
+vi.mock('@oncobrief/db', () => ({
+  updateOpdSlotStatus: mocks.status,
+  offerOpdSlot: mocks.offer,
+  registerWalkIn: mocks.walkIn,
+  listBackfillCandidates: mocks.candidates,
+  getDelivery: vi.fn(() => ({ channel: 'simulated', send: vi.fn() })),
+}));
 vi.mock('./session', () => ({ withSession: (fn: (q: object, s: object) => unknown) => fn({}, { role: mocks.role, userId: '10000000-0000-0000-0000-000000000001', orgId: '20000000-0000-0000-0000-000000000001' }) }));
 import { backfillOpdSlotAction, updateOpdSlotStatusAction, registerWalkInAction } from './opd-actions';
 function form() {

@@ -1,5 +1,6 @@
 import { expect, test, type Page } from '@playwright/test';
 import { getMigratorPool, closePools } from '../../../packages/db/src/client';
+import { seed } from '../../../packages/db/src/seed';
 
 async function login(page: Page, email: string) {
   await page.context().clearCookies();
@@ -10,6 +11,9 @@ async function login(page: Page, email: string) {
   await expect(page).toHaveURL(/workspace/);
 }
 const query = (sql: string, values: unknown[] = []) => getMigratorPool().query(sql, values);
+test.beforeAll(async () => {
+  await seed();
+});
 test.afterAll(closePools);
 
 test('independent ordered ten-scene synthetic judge journey with persisted assertions', async ({ page }, info) => {
@@ -161,12 +165,16 @@ test('independent ordered ten-scene synthetic judge journey with persisted asser
     expect(await page.getByTestId('audio-locale-select').first().locator('option').count()).toBe(11);
     const responsePromise = page.waitForResponse(r=>r.url().endsWith('/api/v1/continuity/tts'));
     await page.getByTestId('generate-voice-note').first().click();
-    const response=await responsePromise; expect(response.status()).toBe(503);
+    const response=await responsePromise; expect([200, 503]).toContain(response.status());
     expect(response.headers()['cache-control']).toContain('no-store');
     observations.browserSpeech = await page.evaluate(()=>({available:'speechSynthesis' in window,voices:'speechSynthesis' in window?window.speechSynthesis.getVoices().map(v=>({lang:v.lang,local:v.localService})):[]}));
-    await expect(page.getByTestId('tts-fallback-note').first()).toBeVisible();
-    await page.getByTestId('load-synthetic-demo-audio').first().click();
-    await expect(page.getByTestId('audio-provider-badge').first()).toContainText(/silent|no speech/i);
+    if (response.status() === 503) {
+      await expect(page.getByTestId('tts-fallback-note').first()).toBeVisible();
+      await page.getByTestId('load-synthetic-demo-audio').first().click();
+      await expect(page.getByTestId('audio-provider-badge').first()).toContainText(/silent|no speech|synthetic/i);
+    } else {
+      await expect(page.getByTestId('audio-provider-badge').first()).toContainText(/sarvam|bulbul/i);
+    }
     await login(page,'coord.anita@rci.demo');
     await page.goto(`/patients/${p3}/continuity`);
     await page.getByTestId('attendance-select').first().selectOption('cannot_attend');

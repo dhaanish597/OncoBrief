@@ -16,7 +16,11 @@ import {
 } from '@oncobrief/db';
 import { withSession } from '@/lib/session';
 import { EmptyFinding, SectionHeading } from '@/components/evidence';
-import { taskStatusAction, commentTaskAction } from '@/lib/actions';
+import {
+  taskStatusAction,
+  commentTaskAction,
+  updateTaskPriorityAndDeadlineAction,
+} from '@/lib/actions';
 
 /**
  * Administrative tasks. There is deliberately no "add task" affordance: every
@@ -176,6 +180,47 @@ export default async function TasksPage({ params }: { params: Promise<{ id: stri
                     className="mono border border-[var(--color-rule-strong)] px-3 py-1.5 text-[11px] uppercase"
                   >
                     comment
+                  </button>
+                </form>
+
+                {/* TASK-022: Operational Priority & Deadline Escalation Control */}
+                <form
+                  action={updateTaskPriorityAndDeadlineAction}
+                  data-testid={`task-priority-form-${t.id}`}
+                  className="flex flex-wrap items-end gap-2"
+                >
+                  <input type="hidden" name="patientId" value={id} />
+                  <input type="hidden" name="taskId" value={t.id} />
+                  <label className="mono block text-[11px] uppercase tracking-wider text-[var(--color-ink-soft)]">
+                    priority
+                    <select
+                      name="priority"
+                      defaultValue="normal"
+                      aria-label="Task priority"
+                      className="mono mt-1 block border border-[var(--color-rule-strong)] bg-white px-2 py-1 text-xs"
+                    >
+                      <option value="urgent">urgent</option>
+                      <option value="high">high</option>
+                      <option value="normal">normal</option>
+                      <option value="low">low</option>
+                    </select>
+                  </label>
+                  <label className="mono block text-[11px] uppercase tracking-wider text-[var(--color-ink-soft)]">
+                    due date
+                    <input
+                      type="date"
+                      name="dueOn"
+                      defaultValue={t.dueOn ?? ''}
+                      aria-label="Task due date"
+                      className="mono mt-1 block border border-[var(--color-rule-strong)] bg-white px-2 py-1 text-xs"
+                    />
+                  </label>
+                  <button
+                    type="submit"
+                    data-testid={`task-escalate-btn-${t.id}`}
+                    className="mono border border-[var(--color-rule-strong)] bg-white px-2.5 py-1.5 text-[11px] uppercase hover:bg-[var(--color-accent-soft)]"
+                  >
+                    set priority / due
                   </button>
                 </form>
               </div>
