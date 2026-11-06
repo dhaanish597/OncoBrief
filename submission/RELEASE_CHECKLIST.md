@@ -20,7 +20,7 @@ Scope: organize and preserve the repository, integrate outstanding patient-mobil
 - Snapshot/mobile views preserve real ledger review state and actual source quote, page/span, document version and extraction/reviewer metadata. Unavailable metadata remains unknown; the app no longer invents PDF type, file size, token, clinician, upload date or confirmed evidence status.
 - Independent review found an appointments-only caregiver could receive timeline/provenance. The regression first failed, then the service was gated by document scope and all 20 portal negative-security tests passed.
 - Preparation saves now persist with patient/caregiver audit metadata, fail atomically on audit failure, and retain approved offline changes until retry succeeds; queue identity guards prevent replay into another patient.
-- Chatbot model retirement was reproduced: NVIDIA returned HTTP 410 for the old default. Replacement `nvidia/nemotron-3.5-bolt-e4b` returned HTTP 200 on a synthetic probe; source defaults/runtime configuration and cited deterministic failure recovery are updated. Running AWS configuration still requires authenticated verification.
+- Chatbot model retirement was reproduced: NVIDIA returned HTTP 410 for the old default. Replacement `nvidia/nemotron-3.5-bolt-e4b` returned HTTP 200 on a synthetic probe; source defaults/runtime configuration and cited deterministic failure recovery are updated. AWS web task revision 4 now explicitly selects the replacement; live missing-document/source answers and clinical refusal passed through the gated UI.
 - Android network policy is generated from a checked-in Expo plugin; no broad cleartext traffic is allowed. Native build checks, browser previews and device verification remain distinct.
 
 ## Verification environment
@@ -46,13 +46,13 @@ Verification logs are local under `/tmp/oncobrief-release-20261106/`; they are n
 | Terraform format + dev/hackathon validation | Passed; hackathon validation retains a provider deprecation warning |
 | Candidate credential patterns / oversized Git objects | No findings; no candidate file above 50 MiB |
 | Branch ancestry / asset move checksums | Passed |
-| GitHub main / workflow results | Publish target is main; [latest checks](https://github.com/dhaanish597/OncoBrief/actions) record remote verification independently of these local results |
+| GitHub main / workflow results | Published to main; [latest checks](https://github.com/dhaanish597/OncoBrief/actions) record remote verification independently of these local results |
 
 ## Artifact and submission boundaries
 
 - [Submission links](LINKS.md) accompany the existing presentation and PDF. Existing decks are preserved as supplied, with dated validation figures and blank MVP/video fields; do not upload them as a newly reviewed next-round presentation without checking the portal's requirements and inserting the supplied links.
 - The 30-minute tutorial is 107,146,343 bytes, too large for a normal GitHub Git blob. It is distributed as a release asset with checksums in `RELEASE_ASSETS.json`; transcript, chapters and subtitles are included under `submission/tutorial`. Historical short walkthroughs are versioned in `reports/visual-proof`.
 - No secrets, `.env`, evaluator credentials, live database data, Terraform state, signing keys, APK/build caches or raw recordings are included in Git. Debug APKs belong in workflow/release assets. This release's debug APK requires Metro for JavaScript; it is not a standalone production app.
-- The November 5 restricted deployment has a separate source manifest and may predate this source release. No AWS apply, database reset, infrastructure shutdown or application redeployment was performed for this repository task.
+- The November 5 restricted deployment has a separate source manifest and may predate this source release. The user subsequently requested a deployed-chatbot fix: a reviewed ECS model-setting update was applied and verified. No database reset, infrastructure shutdown or application-image redeployment occurred.
 - Four external-provider contract tests are opt-in. A local deterministic pass is not live Sarvam/NVIDIA, ABDM, EHR integration or actual patient-message verification.
 - No real-patient pilot, independent clinical efficacy evaluation, compliance certification or full new-device accessibility review is established here.

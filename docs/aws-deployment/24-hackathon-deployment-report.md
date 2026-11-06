@@ -1,5 +1,7 @@
 # Restricted hackathon deployment — November 5, 2026
 
+> November 6 update: [the chatbot model correction](25-chatbot-model-retirement-2026-11-06.md) rolled the web task to revision 4 with a supported model. The image and earlier deployment evidence below remain the November 5 record.
+
 ## Deployment
 
 OncoBrief is deployed at https://d1idx0s43enxlm.cloudfront.net for synthetic evaluator use. This is an internet-addressable endpoint protected by a CloudFront credential gate on every request, followed by application login and role checks. It is not a public clinical service. The user authorized using the current short-lived root session for this deployment after root role assumption failed. No long-lived root credentials were placed in the application. The newly created deployment role remains unused.

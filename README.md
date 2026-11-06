@@ -98,7 +98,7 @@ The suites mutate synthetic data. Use the [current release checklist](submission
 
 ## Evaluator deployment and limits
 
-The [November 5 deployment report](docs/aws-deployment/24-hackathon-deployment-report.md) records the restricted synthetic site at [d1idx0s43enxlm.cloudfront.net](https://d1idx0s43enxlm.cloudfront.net). Evaluators need privately shared edge credentials plus application sign-in. The older September CloudFront URL is historical. This repository release does not redeploy AWS; the live image has a separate [source manifest](docs/aws-deployment/hackathon-release-manifest.json).
+The [November 5 deployment report](docs/aws-deployment/24-hackathon-deployment-report.md) records the restricted synthetic site at [d1idx0s43enxlm.cloudfront.net](https://d1idx0s43enxlm.cloudfront.net). Evaluators need privately shared edge credentials plus application sign-in. The older September CloudFront URL is historical. The [November 6 chatbot correction](docs/aws-deployment/25-chatbot-model-retirement-2026-11-06.md) updates the running model configuration. Source integration does not replace the live application image, which has a separate [source manifest](docs/aws-deployment/hackathon-release-manifest.json).
 
 The documented hackathon profile uses synchronous web ingestion, deterministic extraction, private PostgreSQL and S3, and optional configured provider adapters. The worker/cloud ingestion source is included but is not deployed in that profile. ABDM and outbound continuity delivery remain simulated there. Implemented FHIR adapters and the extension are not evidence of real hospital integration. Clinical efficacy, pilot outcomes, production SLA and regulatory certification are not established.
 

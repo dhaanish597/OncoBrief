@@ -9,7 +9,7 @@ Source repository: [dhaanish597/OncoBrief](https://github.com/dhaanish597/OncoBr
 3. Inspect the [web app](../apps/web/), [patient mobile app](../apps/mobile/README.md), [extension](../apps/extension/) and [worker](../apps/worker/).
 4. Read [architecture and product rules](../docs/README.md), [provider/deployment disclosures](../docs/aws-deployment/24-hackathon-deployment-report.md), and [research evidence](../docs/research/README.md).
 
-The November 5 deployment report records an access-restricted synthetic evaluator site at https://d1idx0s43enxlm.cloudfront.net. Access credentials must be shared privately. Repository integration is not a redeployment; the deployed image may predate this source release.
+The November 5 deployment report records an access-restricted synthetic evaluator site at https://d1idx0s43enxlm.cloudfront.net. Access credentials must be shared privately. [The November 6 chatbot fix](../docs/aws-deployment/25-chatbot-model-retirement-2026-11-06.md) updates the running model configuration; the application image still predates this source release.
 
 Current URLs are collected in [submission links](LINKS.md).
 

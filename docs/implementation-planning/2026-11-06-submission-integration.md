@@ -15,7 +15,8 @@ Preserve all application work and branch history, make main contain web, worker,
 - [x] Correct README deployment/runtime/mobile guidance and CI/runtime mismatches. Run frozen installation, typecheck, lint, tests, worker/web builds, mobile exports and relevant browser flows with an isolated disposable PostgreSQL cluster.
 - [x] Record exact results and remaining limits in submission/RELEASE_CHECKLIST.md; scan staged files and verify links/diff.
 - [x] Fast-forward local main and push without force; remote main matched 06bd405 after initial publication.
-- [ ] Finish remote CI follow-up and AWS chatbot model correction requested during release.
+- [x] Complete the [AWS chatbot model correction](../aws-deployment/25-chatbot-model-retirement-2026-11-06.md) requested during release.
+- Remote verification evidence is maintained in [GitHub Actions](https://github.com/dhaanish597/OncoBrief/actions), independently of this dated plan.
 
 ## Review focus
 

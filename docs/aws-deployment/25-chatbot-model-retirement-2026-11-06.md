@@ -27,16 +27,24 @@ The deterministic state-graph trace is operational execution metadata; it is not
 
 A further local end-to-end synthetic assistant request with the replacement model returned `grounded=true`, `providerMode=nvidia-llm`, two source citations and no availability error in 956 ms. This proves the source fix against the real provider, not the still-unverified AWS task.
 
-## Live remediation status
+## Live remediation completed
 
-AWS CLI 2.38.2 reports that its short-lived login session has expired. The owner was asked to authorize `aws login` as explicitly required by the signing-in-to-aws skill. No live configuration change is claimed until authentication, plan review, rollout and actual evaluator-URL verification succeed.
+The owner authorized AWS login and reauthenticated the existing default profile. Read-only ECS inspection confirmed the live task was revision 3, used the recorded November 5 image, and had no NVIDIA model override.
 
-After authentication:
+The reviewed Terraform plan changed only the hackathon ECS task definitions and web service. It was applied successfully. ECS now has one running task on `oncobrief-hackathon-web:4`, rollout **COMPLETED**, with `NVIDIA_MODEL=nvidia/nemotron-3.5-bolt-e4b`. The bootstrap task definition advanced to revision 4 but no bootstrap job was run. The image remains `release-36cf2ba08912`; this is a model-configuration correction, not deployment of the newly integrated application source.
 
-1. Inspect the running hackathon ECS task definition's image/model setting and safe assistant error logs.
-2. Use the dedicated hackathon Terraform environment and owner's private variable file; never apply stale dev state or reset the evaluator database.
-3. Review the plan. A model-only environment update should replace the task definition/service deployment without touching unrelated infrastructure. Source recovery behavior additionally requires a new verified immutable image.
-4. Wait for ECS stability and health. Verify source-grounded missing-document and record questions, a clinical-boundary refusal, and provider failure recovery through the gated evaluator URL.
-5. Record the resulting image/task revision, actual model, test results and rollback identity. Keep the previous image/task definition for rollback.
+Live Chromium verification through the actual gated evaluator site and assistant UI passed:
+
+| Question/check | HTTP | Result |
+|---|---|---|
+| What documents are missing? | 200 | `missing_documents_question`, grounded, `nvidia-llm`, two source citations, no availability error |
+| Latest pathology report | 200 | `evidence_question`, grounded, `nvidia-llm`, four source citations, no availability error |
+| Treatment-change advice | 200 | `unsupported_medical_question`, deterministic refusal, zero source disclosures |
+
+These checks appended synthetic assistant conversations only. No patient message was sent. The evaluator gate and existing application authentication remained enabled. No database reset, migration, restore, or unrelated AWS resource change occurred.
+
+A refreshed Terraform plan after rollout exited 0 with no changes.
+
+The prior task/image identity is recorded in the November 5 report. Any future model change should be probed first and applied through the same isolated Terraform environment; reverting to the retired model would restore the failure. Source fallback/telemetry improvements are published on main and require a later application-image rollout to become active in AWS.
 
 No API key, evaluator password or AWS credential is stored in this report.
