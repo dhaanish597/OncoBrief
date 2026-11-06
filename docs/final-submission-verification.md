@@ -1,4 +1,6 @@
-# OncoBrief — Final Submission Verification
+# OncoBrief — Historical Submission Verification
+
+> Historical September 25 record. Deployment and test claims below apply to that run only. For the November submission, use [the current checklist](../submission/RELEASE_CHECKLIST.md) and [November restricted deployment report](aws-deployment/24-hackathon-deployment-report.md).
 
 **Date:** 2026-09-25
 **Environment:** `oncobrief-dev` (Terraform, `infra/environments/dev`)

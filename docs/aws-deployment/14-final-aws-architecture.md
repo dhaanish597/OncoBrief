@@ -2,11 +2,11 @@
 
 > **Deployment correction:** this is a target design, not implemented/live infrastructure. Private Lambda egress, origin certificate prerequisites and queue visibility require the corrections in [the live redeployment plan](21-redeployment-audit-and-plan-2026-11-05.md). No NAT-free apply is approved.
 
-**Document ID:** `14-final-aws-architecture.md`  
-**Repository Root:** `/Users/dhaanish/Documents/OncoBrief`  
-**Audit Date:** November 5, 2026  
-**Selected Architecture:** **Architecture B — Cost-Optimized Single-Hospital Production Pilot (with Seamless Promotion to Architecture C)**  
-**Selected AWS Region:** **`ap-south-1` (Asia Pacific — Mumbai)**  
+**Document ID:** `14-final-aws-architecture.md`
+**Repository Root:** `/Users/dhaanish/Documents/OncoBrief`
+**Audit Date:** November 5, 2026
+**Selected Architecture:** **Architecture B — Cost-Optimized Single-Hospital Production Pilot (with Seamless Promotion to Architecture C)**
+**Selected AWS Region:** **`ap-south-1` (Asia Pacific — Mumbai)**
 
 ---
 
@@ -83,9 +83,9 @@
 ## 3. Architectural Diagrams (`docs/aws-deployment/diagrams/`)
 
 All standalone Mermaid diagrams are saved under `docs/aws-deployment/diagrams/`:
-- [`diagrams/architecture.mmd`](file:///Users/dhaanish/Documents/OncoBrief/docs/aws-deployment/diagrams/architecture.mmd) — High-level AWS deployment architecture
-- [`diagrams/network.mmd`](file:///Users/dhaanish/Documents/OncoBrief/docs/aws-deployment/diagrams/network.mmd) — Detailed network and trust-boundary architecture
-- [`diagrams/document-processing.mmd`](file:///Users/dhaanish/Documents/OncoBrief/docs/aws-deployment/diagrams/document-processing.mmd) — Document-upload and AI/OCR processing sequence
-- [`diagrams/security-boundaries.mmd`](file:///Users/dhaanish/Documents/OncoBrief/docs/aws-deployment/diagrams/security-boundaries.mmd) — Authentication, RLS, and patient-data security boundaries
-- [`diagrams/cicd.mmd`](file:///Users/dhaanish/Documents/OncoBrief/docs/aws-deployment/diagrams/cicd.mmd) — Zero-downtime GitHub Actions OIDC CI/CD and rollback pipeline
-- [`diagrams/scaling.mmd`](file:///Users/dhaanish/Documents/OncoBrief/docs/aws-deployment/diagrams/scaling.mmd) — Database backup/restoration and scaling evolution (1 to 20 hospitals)
+- [`diagrams/architecture.mmd`](diagrams/architecture.mmd) — High-level AWS deployment architecture
+- [`diagrams/network.mmd`](diagrams/network.mmd) — Detailed network and trust-boundary architecture
+- [`diagrams/document-processing.mmd`](diagrams/document-processing.mmd) — Document-upload and AI/OCR processing sequence
+- [`diagrams/security-boundaries.mmd`](diagrams/security-boundaries.mmd) — Authentication, RLS, and patient-data security boundaries
+- [`diagrams/cicd.mmd`](diagrams/cicd.mmd) — Zero-downtime GitHub Actions OIDC CI/CD and rollback pipeline
+- [`diagrams/scaling.mmd`](diagrams/scaling.mmd) — Database backup/restoration and scaling evolution (1 to 20 hospitals)

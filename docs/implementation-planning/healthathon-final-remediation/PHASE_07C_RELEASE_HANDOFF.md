@@ -1,10 +1,10 @@
 # Phase 07C Release Staging, Deployment Gates, & Final Sign-Off Handoff
 
-**Date:** 2026-11-03  
-**Target Phase:** 07C — Release Staging, Cloud Deployment, and Final Operational Sign-Off  
-**Source Phase:** 07B — Completed Interoperability & Security Verification  
-**Branch:** `feat/v4-assessment-remediation` (HEAD `7b2edec`)  
-**Audience:** Release Engineering Lead, Site Reliability Engineer, Judging Panel  
+**Date:** 2026-11-03
+**Target Phase:** 07C — Release Staging, Cloud Deployment, and Final Operational Sign-Off
+**Source Phase:** 07B — Completed Interoperability & Security Verification
+**Branch:** `feat/v4-assessment-remediation` (HEAD `7b2edec`)
+**Audience:** Release Engineering Lead, Site Reliability Engineer, Judging Panel
 
 ---
 
@@ -104,5 +104,5 @@ pnpm demo:reset
 ## 5. Contact & Architectural Authority
 
 For questions regarding clinical boundary invariants, closed vocabulary rules, or cryptographic protocols:
-- **Architectural Rules:** See [`CLAUDE.md`](file:///Users/dhaanish/Documents/OncoBrief/CLAUDE.md) and [`AGENTS.md`](file:///Users/dhaanish/Documents/OncoBrief/AGENTS.md).
-- **Standards Baseline:** See [`docs/implementation-planning/healthathon-final-remediation/FHIR_ABDM_CONTRACT_BASELINE.md`](file:///Users/dhaanish/Documents/OncoBrief/docs/implementation-planning/healthathon-final-remediation/FHIR_ABDM_CONTRACT_BASELINE.md).
+- **Architectural Rules:** See [`CLAUDE.md`](../../../CLAUDE.md) and [`AGENTS.md`](../../../AGENTS.md).
+- **Standards Baseline:** See [`docs/implementation-planning/healthathon-final-remediation/FHIR_ABDM_CONTRACT_BASELINE.md`](FHIR_ABDM_CONTRACT_BASELINE.md).

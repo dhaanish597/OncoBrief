@@ -11,3 +11,5 @@ The November 5 architecture studies (`00`–`20`) describe recommendations and i
 Document 21 records a read-only initial audit. Subsequent authorized provisioning, migration and evaluator release are recorded in document 24.
 
 - [24 — Restricted hackathon deployment report](24-hackathon-deployment-report.md): live release, verification, preserved resources, operational limits and rollback.
+
+- [25 — Chatbot model retirement and remediation](25-chatbot-model-retirement-2026-11-06.md): confirmed NVIDIA HTTP 410, supported replacement probe, source recovery behavior and live rollout status.

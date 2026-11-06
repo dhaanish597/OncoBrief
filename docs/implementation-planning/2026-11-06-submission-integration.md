@@ -8,12 +8,12 @@ Preserve all application work and branch history, make main contain web, worker,
 
 ## Execution
 
-- [ ] Preserve current eligible files and all Git refs outside the repository; fetch remote refs and inventory branches/worktrees.
-- [ ] Review eligible files for credentials/build output; commit existing application and supporting work in focused groups before merging.
-- [ ] Merge oncobrief-patient-app, retaining its API security fixes and CI gate alongside newer local upload/readiness/FHIR work; confirm every other branch is an ancestor.
-- [ ] Organize research, historical plans and presentation assets; add docs/README.md and submission/README.md. Keep existing cross-document entry paths as forwarding notes when moved.
-- [ ] Correct README deployment/runtime/mobile guidance and CI/runtime mismatches. Run frozen installation, typecheck, lint, tests, worker/web builds, mobile exports and relevant browser flows with an isolated disposable PostgreSQL cluster.
-- [ ] Record exact results and remaining limits in submission/RELEASE_CHECKLIST.md; scan staged files and verify links/diff.
+- [x] Preserve current eligible files and all Git refs outside the repository; fetch remote refs and inventory branches/worktrees.
+- [x] Review eligible files for credentials/build output; commit existing application and supporting work in focused groups before merging.
+- [x] Merge oncobrief-patient-app, retaining its API security fixes and CI gate alongside newer local upload/readiness/FHIR work; confirm every other branch is an ancestor.
+- [x] Organize research, historical plans and presentation assets; add docs/README.md and submission/README.md. Keep existing cross-document entry paths as forwarding notes when moved.
+- [x] Correct README deployment/runtime/mobile guidance and CI/runtime mismatches. Run frozen installation, typecheck, lint, tests, worker/web builds, mobile exports and relevant browser flows with an isolated disposable PostgreSQL cluster.
+- [x] Record exact results and remaining limits in submission/RELEASE_CHECKLIST.md; scan staged files and verify links/diff.
 - [ ] Fast-forward local main to verified integration, push main without force and confirm remote SHA and workflow results.
 
 ## Review focus

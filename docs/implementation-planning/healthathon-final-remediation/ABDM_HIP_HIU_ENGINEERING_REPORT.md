@@ -1,9 +1,9 @@
 # ABDM HIP & HIU Production Engineering & Governance Report
 
-**Date:** 2026-11-03  
-**Phase:** 07B — National Health Stack Interoperability  
-**Standard:** Ayushman Bharat Digital Mission (ABDM) HIE-CM V3 Gateway / NRCeS v6.5.0  
-**Author:** ABDM Integration Engineer & Healthcare Security Lead  
+**Date:** 2026-11-03
+**Phase:** 07B — National Health Stack Interoperability
+**Standard:** Ayushman Bharat Digital Mission (ABDM) HIE-CM V3 Gateway / NRCeS v6.5.0
+**Author:** ABDM Integration Engineer & Healthcare Security Lead
 
 ---
 
@@ -39,8 +39,8 @@ To maintain absolute compliance with healthcare compliance standards and prevent
 ## 2. ABDM HIP (Health Information Provider - M2) Architecture
 
 Located at:
-- Web Routes: [`apps/web/src/app/api/v3/[...abdmPath]/route.ts`](file:///Users/dhaanish/Documents/OncoBrief/apps/web/src/app/api/v3/[...abdmPath]/route.ts)
-- Database Services: [`packages/db/src/services/abdm-hip.ts`](file:///Users/dhaanish/Documents/OncoBrief/packages/db/src/services/abdm-hip.ts)
+- Web Routes: [`apps/web/src/app/api/v3/[...abdmPath]/route.ts`](../../../apps/web/src/app/api/v3/[...abdmPath]/route.ts)
+- Database Services: [`packages/db/src/services/abdm-hip.ts`](../../../packages/db/src/services/abdm-hip.ts)
 
 ### 2.1 Care-Context Discovery (`/v0.5/care-contexts/discover`)
 1. **Asynchronous Handshake:** ABDM sends a discovery request containing patient identifiers (ABHA Address, mobile number, or demographic tokens).
@@ -62,8 +62,8 @@ Located at:
 ## 3. ABDM HIU (Health Information User - M3) Architecture
 
 Located at:
-- Web Routes: [`apps/web/src/app/api/v3/[...abdmPath]/route.ts`](file:///Users/dhaanish/Documents/OncoBrief/apps/web/src/app/api/v3/[...abdmPath]/route.ts)
-- Database Services: [`packages/db/src/services/abdm-hiu.ts`](file:///Users/dhaanish/Documents/OncoBrief/packages/db/src/services/abdm-hiu.ts)
+- Web Routes: [`apps/web/src/app/api/v3/[...abdmPath]/route.ts`](../../../apps/web/src/app/api/v3/[...abdmPath]/route.ts)
+- Database Services: [`packages/db/src/services/abdm-hiu.ts`](../../../packages/db/src/services/abdm-hiu.ts)
 
 ### 3.1 Consent Request Lifecycle (`POST /v0.5/consent-requests/init`)
 1. An attending oncologist requests outside medical records from the Sources hub.

@@ -1,9 +1,9 @@
 # FHIR R4 Interoperability Architecture & Technical Verification Report
 
-**Date:** 2026-11-03  
-**Phase:** 07B — Healthcare Interoperability Engineering  
-**Standard:** HL7 FHIR Release 4 (v4.0.1) / NRCeS ABDM v6.5.0 / HL7 mCODE STU4  
-**Author:** Principal Healthcare Interoperability Architect & FHIR R4 Lead Engineer  
+**Date:** 2026-11-03
+**Phase:** 07B — Healthcare Interoperability Engineering
+**Standard:** HL7 FHIR Release 4 (v4.0.1) / NRCeS ABDM v6.5.0 / HL7 mCODE STU4
+**Author:** Principal Healthcare Interoperability Architect & FHIR R4 Lead Engineer
 
 ---
 
@@ -59,7 +59,7 @@ OncoBrief implements an **evidence-first, provenance-tracked, bidirectional FHIR
 
 ## 2. Inbound Pipeline: `FhirImporter` Architecture
 
-Located at [`packages/domain/src/fhir/fhir-importer.ts`](file:///Users/dhaanish/Documents/OncoBrief/packages/domain/src/fhir/fhir-importer.ts).
+Located at [`packages/domain/src/fhir/fhir-importer.ts`](../../../packages/domain/src/fhir/fhir-importer.ts).
 
 ### 2.1 Ingestion Semantics
 The inbound engine accepts either a full FHIR `Bundle` (`document`, `collection`, `transaction`, `searchset`) or single isolated resources (`Observation`, `DiagnosticReport`, `Condition`, `Procedure`, `MedicationStatement`, `Encounter`).
@@ -106,7 +106,7 @@ To prevent cross-patient data pollution, `FhirImporter` validates the `subject.r
 
 ## 3. Outbound Pipeline: `FhirExporter` Architecture
 
-Located at [`packages/domain/src/fhir/fhir-exporter.ts`](file:///Users/dhaanish/Documents/OncoBrief/packages/domain/src/fhir/fhir-exporter.ts).
+Located at [`packages/domain/src/fhir/fhir-exporter.ts`](../../../packages/domain/src/fhir/fhir-exporter.ts).
 
 ### 3.1 Standards Conformance
 Produces NRCeS ABDM v6.5.0 DocumentBundles with the canonical profile declaration:
@@ -129,7 +129,7 @@ Unverified facts (`state: 'extracted'`) and rejected facts are excluded from ext
 
 ## 4. Network Security & SSRF Protection: `HttpFhirClientAdapter`
 
-Located at [`packages/adapters/src/fhir-client.ts`](file:///Users/dhaanish/Documents/OncoBrief/packages/adapters/src/fhir-client.ts).
+Located at [`packages/adapters/src/fhir-client.ts`](../../../packages/adapters/src/fhir-client.ts).
 
 ### 4.1 Strict Destination Validation
 Before dispatching any HTTP request to an external FHIR endpoint, the client executes pre-flight host validation:
@@ -152,7 +152,7 @@ Before dispatching any HTTP request to an external FHIR endpoint, the client exe
 
 ## 5. Synthetic FHIR R4 Server Harness
 
-Located at [`packages/adapters/src/synthetic-fhir-server.ts`](file:///Users/dhaanish/Documents/OncoBrief/packages/adapters/src/synthetic-fhir-server.ts).
+Located at [`packages/adapters/src/synthetic-fhir-server.ts`](../../../packages/adapters/src/synthetic-fhir-server.ts).
 
 For automated testing and disconnected CI environments, OncoBrief includes a fully conformant, in-memory synthetic FHIR R4 server:
 - Supports `/metadata` returning a standard `CapabilityStatement` declaring R4 (4.0.1) conformance.

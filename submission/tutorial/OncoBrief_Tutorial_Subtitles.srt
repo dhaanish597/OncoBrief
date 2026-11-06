@@ -1,0 +1,1416 @@
+1
+00:00:00,250 --> 00:00:06,782
+Welcome to OncoBrief. This tutorial uses the real application with a separate synthetic training database.
+
+2
+00:00:06,782 --> 00:00:12,879
+OncoBrief helps hospital teams reconstruct fragmented oncology records, check their sources, and prepare consultations.
+
+3
+00:00:12,879 --> 00:00:17,670
+The Evidence Ledger stores source-linked facts. The timeline displays that ledger.
+
+4
+00:00:17,670 --> 00:00:22,025
+People remain responsible for verification, approvals, and every clinical decision.
+
+5
+00:00:23,117 --> 00:00:26,943
+A referral can arrive as several reports from different facilities.
+
+6
+00:00:26,943 --> 00:00:31,534
+OncoBrief keeps those documents connected to extracted candidates and human review decisions.
+
+7
+00:00:31,534 --> 00:00:36,125
+Extraction does not establish medical truth. Missing records and disagreements remain visible.
+
+8
+00:00:36,125 --> 00:00:41,863
+This is an operational training environment, and simulated integrations will be identified when we reach
+
+9
+00:00:41,863 --> 00:00:42,246
+them.
+
+10
+00:00:45,983 --> 00:00:49,000
+The public overview leads to the sign-in page.
+
+11
+00:00:49,000 --> 00:00:52,770
+Staff use an authorized hospital account to open their workspace.
+
+12
+00:00:52,770 --> 00:00:57,672
+The password field stays masked. Here we use the supplied synthetic clinician account.
+
+13
+00:00:57,672 --> 00:01:02,197
+A successful sign-in creates a server-managed session and opens the organization workspace.
+
+14
+00:01:05,917 --> 00:01:12,089
+The top navigation contains hospital-wide modules: Workspace, Patients, Appointments, My Tasks, Tumor Board, Analytics, and
+
+15
+00:01:12,089 --> 00:01:16,204
+What This Is. Use these to manage work across patients.
+
+16
+00:01:16,204 --> 00:01:22,376
+The role label identifies the current account, but visible navigation alone does not prove permission
+
+17
+00:01:22,376 --> 00:01:24,022
+to perform an action.
+
+18
+00:01:26,283 --> 00:01:29,906
+Opening a patient introduces a second navigation level.
+
+19
+00:01:29,906 --> 00:01:36,698
+Overview, Encounters, Evidence Journey, Clinical Context, Sources, Reconciliation, Record Map, Care Team, Tasks, Packet, Continuity,
+
+20
+00:01:36,698 --> 00:01:39,868
+and Audit all belong to this patient.
+
+21
+00:01:39,868 --> 00:01:45,754
+Always check the patient identifier before uploading a document or changing a record.
+
+22
+00:01:46,583 --> 00:01:51,662
+Patient tabs preserve chart context, while the top navigation returns to hospital-wide work.
+
+23
+00:01:51,662 --> 00:01:55,959
+Here we return to the workspace, then open the patient directory.
+
+24
+00:01:55,959 --> 00:02:00,257
+Clinicians review source evidence; coordinators and records staff prepare the record.
+
+25
+00:02:00,257 --> 00:02:04,945
+Later we will sign in as other roles to verify the differences.
+
+26
+00:02:08,183 --> 00:02:14,705
+The readiness worklist combines registered patients, available documents, missing required records, unresolved conflicts, unverified evidence,
+
+27
+00:02:14,705 --> 00:02:17,748
+and tasks. Record readiness is administrative completeness.
+
+28
+00:02:17,748 --> 00:02:22,530
+It is not a clinical risk score or permission to treat.
+
+29
+00:02:22,530 --> 00:02:27,313
+A blocked row tells staff which record problems still need attention.
+
+30
+00:02:28,550 --> 00:02:33,819
+Use the patient or MRN search and the readiness, clinician, and department filters to focus
+
+31
+00:02:33,819 --> 00:02:38,034
+the worklist. We search for the fragmented referral and submit the filter.
+
+32
+00:02:38,034 --> 00:02:43,303
+The resulting row retains direct links to its chart, conflicts, unverified evidence, and assigned administrative
+
+33
+00:02:43,303 --> 00:02:43,654
+work.
+
+34
+00:02:48,483 --> 00:02:53,032
+The longitudinal timeline is a different view over a selected patient’s ledger.
+
+35
+00:02:53,032 --> 00:02:56,822
+The OPD view shows persisted clinic slots and queue states.
+
+36
+00:02:56,822 --> 00:03:00,234
+Switching between them changes the content in this build.
+
+37
+00:03:00,234 --> 00:03:04,782
+Readiness describes the record; OPD flow describes the visit and clinic capacity.
+
+38
+00:03:08,417 --> 00:03:11,575
+Start in Patients and choose Register New Patient.
+
+39
+00:03:11,575 --> 00:03:17,101
+Registration creates the hospital identity to which documents, evidence, appointments, and encounters will attach.
+
+40
+00:03:17,101 --> 00:03:21,444
+We enter a clearly synthetic name and a unique training MRN.
+
+41
+00:03:21,444 --> 00:03:26,181
+Demographic entry does not establish a diagnosis or generate a treatment plan.
+
+42
+00:03:29,183 --> 00:03:32,351
+Contact details and language preferences support administrative communication.
+
+43
+00:03:32,351 --> 00:03:38,291
+We use an example-dot-invalid address and leave the phone empty so no real destination is
+
+44
+00:03:38,291 --> 00:03:42,646
+introduced. Care-team and department assignments can be made now or later.
+
+45
+00:03:42,646 --> 00:03:46,606
+The notes explicitly identify this as a synthetic training record.
+
+46
+00:03:49,550 --> 00:03:53,308
+After saving, the patient overview is the home for this chart.
+
+47
+00:03:53,308 --> 00:03:57,749
+We reopen the permitted edit page, update the administrative address, save, and refresh.
+
+48
+00:03:57,749 --> 00:04:02,874
+The saved value confirms that this is a database-backed record, not a temporary form preview.
+
+49
+00:04:02,874 --> 00:04:05,949
+The MRN links future documents to the correct identity.
+
+50
+00:04:11,583 --> 00:04:15,379
+We now open DEMO-001, the seeded fragmented referral.
+
+51
+00:04:15,379 --> 00:04:22,495
+The overview collects demographics, record status, care-team information, scheduled appointments, encounters, documents, and recent evidence.
+
+52
+00:04:22,495 --> 00:04:29,611
+The fixture badge identifies synthetic data. Counts describe stored records and help staff choose which
+
+53
+00:04:29,611 --> 00:04:32,931
+part of the chart to inspect next.
+
+54
+00:04:33,750 --> 00:04:39,941
+The blocked banner explains the current administrative obstacles: a missing required record and unresolved source
+
+55
+00:04:39,941 --> 00:04:42,830
+conflicts. Overdue tasks describe unfinished operational work.
+
+56
+00:04:42,830 --> 00:04:47,371
+Compare this with DEMO-003, whose required documents and verification are complete.
+
+57
+00:04:47,371 --> 00:04:50,260
+Record Ready means the preparation checks passed;
+
+58
+00:04:50,260 --> 00:04:53,562
+a clinician still decides what happens during care.
+
+59
+00:04:55,783 --> 00:04:59,568
+Sources is the patient’s document inventory and upload entry point.
+
+60
+00:04:59,568 --> 00:05:05,246
+We return to our newly registered training patient and select an original synthetic referral PDF
+
+61
+00:05:05,246 --> 00:05:08,653
+from disk. The file itself is labelled Synthetic Demo.
+
+62
+00:05:08,653 --> 00:05:12,438
+Confirm the patient, selected filename, and document language before submitting.
+
+63
+00:05:16,150 --> 00:05:19,835
+Upload and ingest sends the actual file through the application.
+
+64
+00:05:19,835 --> 00:05:23,888
+This recording uses local PDF text extraction and deterministic candidate extraction.
+
+65
+00:05:23,888 --> 00:05:28,678
+A PDF text layer is different from optical recognition of a scanned image.
+
+66
+00:05:28,678 --> 00:05:34,205
+The processing display is useful feedback, but the stored source and evidence are the checks
+
+67
+00:05:34,205 --> 00:05:36,047
+that establish what actually completed.
+
+68
+00:05:40,683 --> 00:05:45,034
+Open the uploaded document to inspect the source viewer and its extracted evidence.
+
+69
+00:05:45,034 --> 00:05:48,381
+Each candidate should retain the supporting page and text span.
+
+70
+00:05:48,381 --> 00:05:51,727
+We refresh the source page to confirm the document persists.
+
+71
+00:05:51,727 --> 00:05:54,405
+Ingestion success and human verification are separate states;
+
+72
+00:05:54,405 --> 00:05:57,082
+no fact is silently confirmed by this upload.
+
+73
+00:06:03,117 --> 00:06:06,207
+Both original PDFs persisted, but this ledger remains empty.
+
+74
+00:06:06,207 --> 00:06:11,013
+In this local path, stored OCR text is incomplete and no candidates were promoted.
+
+75
+00:06:11,013 --> 00:06:14,790
+An upload-complete banner therefore cannot be read as successful fact extraction.
+
+76
+00:06:14,790 --> 00:06:19,940
+We will test a second standard PDF encoding next and retain this failure in the
+
+77
+00:06:19,940 --> 00:06:20,283
+report.
+
+78
+00:06:24,717 --> 00:06:28,599
+Here we upload a standard PDF with a different text encoding.
+
+79
+00:06:28,599 --> 00:06:32,129
+It contains the same synthetic identity and explicit administrative instructions.
+
+80
+00:06:32,129 --> 00:06:36,365
+This is a real second processing attempt, not a replacement success screen.
+
+81
+00:06:36,365 --> 00:06:40,247
+The earlier parsing failure remains a limitation of this local implementation.
+
+82
+00:06:45,083 --> 00:06:48,840
+This encoding produces source-linked candidates in the Evidence Ledger.
+
+83
+00:06:48,840 --> 00:06:55,102
+We open one candidate’s supporting passage, inspect it, and verify a matching transcription in this
+
+84
+00:06:55,102 --> 00:06:59,277
+synthetic record. The source and review state remain after refresh.
+
+85
+00:06:59,277 --> 00:07:05,539
+The result demonstrates this tested PDF path, while the earlier encoding failure prevents any claim
+
+86
+00:07:05,539 --> 00:07:07,626
+that all PDFs work reliably.
+
+87
+00:07:09,583 --> 00:07:13,361
+We also upload a raster image of the synthetic referral.
+
+88
+00:07:13,361 --> 00:07:17,515
+Image OCR must read pixels rather than a PDF text layer.
+
+89
+00:07:17,515 --> 00:07:20,915
+This local image recognizer produced poor text in rehearsal.
+
+90
+00:07:20,915 --> 00:07:26,581
+We show its real stored result so staff can see why upload status, OCR quality,
+
+91
+00:07:26,581 --> 00:07:29,225
+extracted candidates, and verification need separate checks.
+
+92
+00:07:33,283 --> 00:07:36,459
+The stored OCR text for this scan is garbled.
+
+93
+00:07:36,459 --> 00:07:41,047
+Do not verify a candidate that cannot be supported by the original passage;
+
+94
+00:07:41,047 --> 00:07:43,870
+request a clearer source or a governed transcription.
+
+95
+00:07:43,870 --> 00:07:47,751
+Back in Sources, the document-type confirmation is a separate metadata action.
+
+96
+00:07:47,751 --> 00:07:51,986
+We confirm the standard referral’s category without treating that as evidence verification.
+
+97
+00:07:57,383 --> 00:08:02,602
+Import from EHR and ABDM offers standard bundle examples and a consent workflow.
+
+98
+00:08:02,602 --> 00:08:08,625
+This environment uses the simulated gateway; those controls are not proof of a live hospital
+
+99
+00:08:08,625 --> 00:08:13,844
+connection. Link to Existing searches the stored document set to support duplicate review.
+
+100
+00:08:13,844 --> 00:08:19,866
+Browser-extension grants are deliberately not minted on camera because they would expose a temporary access
+
+101
+00:08:19,866 --> 00:08:20,267
+token.
+
+102
+00:08:23,150 --> 00:08:26,646
+Evidence Journey orders documented events along a patient timeline.
+
+103
+00:08:26,646 --> 00:08:31,696
+Each row retains a source, date where documented, confidence indication, and reviewer state.
+
+104
+00:08:31,696 --> 00:08:35,970
+An extracted row is awaiting review. A conflicting row signals disagreement.
+
+105
+00:08:35,970 --> 00:08:41,797
+Historical procedures and medications are shown as written in the documents, without inferring a diagnosis
+
+106
+00:08:41,797 --> 00:08:42,962
+or future treatment.
+
+107
+00:08:46,417 --> 00:08:51,650
+The source link takes us from a candidate fact to the document and page that
+
+108
+00:08:51,650 --> 00:08:55,139
+support it. The highlighted passage comes from stored source spans.
+
+109
+00:08:55,139 --> 00:08:58,280
+Review the value, wording, date, and document identity together.
+
+110
+00:08:58,280 --> 00:09:02,815
+Confidence describes extraction quality; it does not replace this comparison with the original.
+
+111
+00:09:08,017 --> 00:09:12,480
+For this synthetic example, we confirm that the displayed transcription matches its source.
+
+112
+00:09:12,480 --> 00:09:15,227
+The Verify action records a human review decision.
+
+113
+00:09:15,227 --> 00:09:18,660
+We reload the page and check that Verified remains visible.
+
+114
+00:09:18,660 --> 00:09:23,810
+Corrections and rejections are separate decisions, and their history should preserve the original extraction rather
+
+115
+00:09:23,810 --> 00:09:25,183
+than silently replacing it.
+
+116
+00:09:30,850 --> 00:09:35,136
+Clinical Context organizes recorded historical information and laboratory observations for review.
+
+117
+00:09:35,136 --> 00:09:38,643
+Charts provide dates, units, and source-specific ranges where available.
+
+118
+00:09:38,643 --> 00:09:43,708
+A trend is a view of documented values, not a new medical conclusion.
+
+119
+00:09:43,708 --> 00:09:49,553
+Use the source links to inspect unexpected values and leave interpretation to the responsible clinician.
+
+120
+00:09:52,883 --> 00:09:58,328
+Encounters group work around a consultation. A visit can link to an appointment or start
+
+121
+00:09:58,328 --> 00:10:03,773
+as an ad hoc outpatient encounter. We create a synthetic training encounter, then inspect the
+
+122
+00:10:03,773 --> 00:10:08,855
+workspace. Historical ledger information and clinician-authored notes have different purposes and should remain distinguishable.
+
+123
+00:10:13,250 --> 00:10:16,848
+The note form includes clinical fields for a qualified clinician.
+
+124
+00:10:16,848 --> 00:10:19,726
+We do not invent an assessment or plan.
+
+125
+00:10:19,726 --> 00:10:25,123
+We save only a labelled administrative training draft, explaining that no clinical assessment was entered.
+
+126
+00:10:25,123 --> 00:10:30,161
+Reloading the encounter verifies persistence. Final signing would be a separate accountable clinician action.
+
+127
+00:10:34,850 --> 00:10:37,566
+Reconciliation lists disagreements detected between source-backed facts.
+
+128
+00:10:37,566 --> 00:10:42,223
+Open a reconciliation room to compare both values and their original passages.
+
+129
+00:10:42,223 --> 00:10:47,655
+A date mismatch does not authorize the software to select the clinically correct document.
+
+130
+00:10:47,655 --> 00:10:52,699
+Both sources remain available, and the responsible reviewer must choose an explicit outcome.
+
+131
+00:10:56,050 --> 00:11:00,877
+Available outcomes include retaining both conflicting values, superseding one, or correcting with a reason.
+
+132
+00:11:00,877 --> 00:11:05,703
+For this training case we retain both and request confirmation from the issuing facility.
+
+133
+00:11:05,703 --> 00:11:09,841
+This records a review disposition without asserting which date is medically correct.
+
+134
+00:11:09,841 --> 00:11:12,254
+The application returns to the conflict list;
+
+135
+00:11:12,254 --> 00:11:14,667
+we refresh to verify the saved state.
+
+136
+00:11:20,583 --> 00:11:25,026
+Record Map compares available document categories with the selected institutional checklist.
+
+137
+00:11:25,026 --> 00:11:30,276
+Required, optional, present, and missing are administrative statuses derived from the configured template.
+
+138
+00:11:30,276 --> 00:11:35,122
+A missing marker means a source is absent from this record set.
+
+139
+00:11:35,122 --> 00:11:39,969
+It does not establish that a test or procedure is medically required.
+
+140
+00:11:42,617 --> 00:11:47,715
+A missing document can become a retrieval task while retaining its gap as the origin.
+
+141
+00:11:47,715 --> 00:11:52,473
+We enter a specific training task and deadline, then submit it and open Tasks.
+
+142
+00:11:52,473 --> 00:11:57,571
+This creates traceable administrative work. Staff should not invent additional medical requirements simply to make
+
+143
+00:11:57,571 --> 00:11:58,930
+the checklist appear complete.
+
+144
+00:12:04,650 --> 00:12:07,168
+We now sign in as the synthetic coordinator.
+
+145
+00:12:07,168 --> 00:12:10,001
+Care Team records the people responsible for this chart.
+
+146
+00:12:10,001 --> 00:12:13,463
+The coordinator can assign hospital staff and their operational team role.
+
+147
+00:12:13,463 --> 00:12:17,554
+We add Anita as the care coordinator for the training patient and save.
+
+148
+00:12:17,554 --> 00:12:21,646
+This roster records ownership; it does not infer clinical responsibilities from document text.
+
+149
+00:12:29,183 --> 00:12:32,728
+Tasks display their source origin, status, deadline, and creator.
+
+150
+00:12:32,728 --> 00:12:38,636
+The coordinator assigns the new retrieval task to herself, checks the explicit confirmation box, and
+
+151
+00:12:38,636 --> 00:12:44,545
+saves. We then open My Tasks to verify that the cross-patient worklist reflects the assignment.
+
+152
+00:12:44,545 --> 00:12:48,483
+A handoff should always retain its source and accountable owner.
+
+153
+00:12:51,617 --> 00:12:56,433
+We return to the patient task, move it to in progress, and add an operational
+
+154
+00:12:56,433 --> 00:13:01,249
+note. Refreshing confirms the stored state. Completion would require the underlying work to be done;
+
+155
+00:13:01,249 --> 00:13:06,064
+we leave this retrieval task in progress because no authorization document has actually been obtained.
+
+156
+00:13:06,064 --> 00:13:08,954
+Overdue labels compare the deadline with the current date.
+
+157
+00:13:16,150 --> 00:13:22,606
+A consultation packet assembles the patient identity, document inventory, transcribed history, verified dates, open conflicts,
+
+158
+00:13:22,606 --> 00:13:29,061
+missing records, and confirmed tasks. We use the ready fixture to create a new draft.
+
+159
+00:13:29,061 --> 00:13:35,086
+Empty sections remain visible so the reviewer can distinguish absence from an omitted section.
+
+160
+00:13:35,086 --> 00:13:37,669
+Every evidence line keeps its source.
+
+161
+00:13:39,017 --> 00:13:44,215
+After reviewing the complete synthetic packet, the clinician records an approval note and approves it.
+
+162
+00:13:44,215 --> 00:13:46,987
+Approval freezes the packet at a ledger sequence.
+
+163
+00:13:46,987 --> 00:13:50,799
+We download the implemented JSON export and inspect its stored structure.
+
+164
+00:13:50,799 --> 00:13:53,918
+The page also offers print-to-PDF and structured interchange links;
+
+165
+00:13:53,918 --> 00:13:57,037
+these are distinct from the JSON file demonstrated here.
+
+166
+00:14:02,717 --> 00:14:08,041
+The document studio generates editable artifacts from ledger facts and selected institutional references.
+
+167
+00:14:08,041 --> 00:14:11,317
+Here its badge identifies the deterministic fallback engine.
+
+168
+00:14:11,317 --> 00:14:15,413
+We create a source-cited referral draft and inspect the result.
+
+169
+00:14:15,413 --> 00:14:19,918
+The synthetic SOP is a training reference with no institutional affiliation.
+
+170
+00:14:19,918 --> 00:14:24,833
+Draft text requires review, and no generated document is a treatment recommendation.
+
+171
+00:14:27,250 --> 00:14:32,961
+Appointments is the persistent scheduling directory. Choose a patient, clinician, room, date, time, and visit
+
+172
+00:14:32,961 --> 00:14:37,150
+type. We book an administrative training consultation for Asha Demo Tutorial.
+
+173
+00:14:37,150 --> 00:14:42,480
+The booking form accepts a time interval rather than displaying a live slot marketplace;
+
+174
+00:14:42,480 --> 00:14:45,526
+the service checks scheduling conflicts when it saves.
+
+175
+00:14:49,283 --> 00:14:53,907
+We refresh the directory, find the training patient, and confirm the booking.
+
+176
+00:14:53,907 --> 00:14:56,990
+The patient overview also shows the scheduled consultation.
+
+177
+00:14:56,990 --> 00:15:00,073
+This cross-check connects hospital-wide scheduling to the chart.
+
+178
+00:15:00,073 --> 00:15:02,770
+An appointment confirmation records a scheduling state;
+
+179
+00:15:02,770 --> 00:15:05,853
+it does not record attendance or clinical clearance.
+
+180
+00:15:09,217 --> 00:15:12,240
+The calendar offers another view of scheduled consultations.
+
+181
+00:15:12,240 --> 00:15:17,532
+The directory provides confirmation, check-in, start-consult, and cancellation controls according to state and permission.
+
+182
+00:15:17,532 --> 00:15:23,201
+Rescheduling exists in the server actions, but this directory does not expose a reschedule form.
+
+183
+00:15:23,201 --> 00:15:26,981
+We do not imply that an unseen control was demonstrated.
+
+184
+00:15:30,817 --> 00:15:37,478
+OPD Flow tracks clinic capacity and visits: scheduled patients, tokens, check-in, consultation, staff-confirmed delays, cancellations,
+
+185
+00:15:37,478 --> 00:15:40,586
+and vacant slots. Record-readiness badges remain separate.
+
+186
+00:15:40,586 --> 00:15:47,247
+A prepared record can still be waiting, and a checked-in patient can still have missing
+
+187
+00:15:47,247 --> 00:15:50,799
+records. These are operational states with different meanings.
+
+188
+00:15:51,617 --> 00:15:55,076
+We record a synthetic check-in for the ready fixture.
+
+189
+00:15:55,076 --> 00:15:59,687
+The action drawer requires an operational reason and an explicit confirmation checkbox.
+
+190
+00:15:59,687 --> 00:16:05,452
+Saving changes the stored queue state. This staff-entered demonstration records the simulated arrival of a
+
+191
+00:16:05,452 --> 00:16:09,295
+fixture, not evidence that a real patient attended the hospital.
+
+192
+00:16:12,817 --> 00:16:16,115
+For a vacant slot, staff can review waitlisted candidates.
+
+193
+00:16:16,115 --> 00:16:19,414
+Eligibility uses the configured scheduling rules and administrative readiness.
+
+194
+00:16:19,414 --> 00:16:23,446
+Reviewing candidates is not an offer, and offering is not acceptance.
+
+195
+00:16:23,446 --> 00:16:27,478
+We inspect the drawer before deciding what can be demonstrated safely.
+
+196
+00:16:27,478 --> 00:16:30,410
+No patient message is sent by this review.
+
+197
+00:16:34,850 --> 00:16:37,640
+The drawer contains an eligible synthetic waitlist entry.
+
+198
+00:16:37,640 --> 00:16:40,779
+We select it and explicitly confirm a slot offer.
+
+199
+00:16:40,779 --> 00:16:46,010
+The reservation is separate from acceptance. For this controlled training record we then record synthetic
+
+200
+00:16:46,010 --> 00:16:51,241
+acceptance with an operational note. The refreshed slot shows the assigned patient and the stored
+
+201
+00:16:51,241 --> 00:16:51,590
+result.
+
+202
+00:16:56,883 --> 00:17:04,078
+Tumor Board coordinates a multidisciplinary meeting: schedule, location, presenters, patient cases, packets, and document checklists.
+
+203
+00:17:04,078 --> 00:17:10,313
+This seeded meeting has a thoracic title while some fixtures contain breast-record text.
+
+204
+00:17:10,313 --> 00:17:15,109
+That is demo configuration, not a claim of clinical appropriateness.
+
+205
+00:17:15,109 --> 00:17:19,426
+Any staging or consensus must remain clinician-authored or source-linked.
+
+206
+00:17:20,250 --> 00:17:25,787
+We schedule a clearly labelled synthetic training meeting, enter its date and location, and save.
+
+207
+00:17:25,787 --> 00:17:28,740
+The new meeting appears in the meeting list.
+
+208
+00:17:28,740 --> 00:17:34,276
+This is administrative coordination. Creating a meeting does not determine who needs multidisciplinary review or
+
+209
+00:17:34,276 --> 00:17:36,122
+what treatment should be discussed.
+
+210
+00:17:40,183 --> 00:17:44,298
+We register our synthetic patient to the training meeting and assign a presenter.
+
+211
+00:17:44,298 --> 00:17:48,729
+Staging remains blank because no verified staging evidence has been established for this chart.
+
+212
+00:17:48,729 --> 00:17:51,578
+The new case appears with its preparation checklists unconfirmed.
+
+213
+00:17:51,578 --> 00:17:56,326
+The registration menu remains open, so we must close it before saving the administrative note.
+
+214
+00:17:57,150 --> 00:18:02,488
+With the registration menu closed, we save a labelled administrative preparation note and refresh to
+
+215
+00:18:02,488 --> 00:18:06,758
+check it. The note states that clinical review and consensus are pending.
+
+216
+00:18:06,758 --> 00:18:09,961
+The title Save Consensus Record also saves administrative fields;
+
+217
+00:18:09,961 --> 00:18:14,231
+using that button here does not establish that a clinical consensus occurred.
+
+218
+00:18:19,183 --> 00:18:25,613
+Continuity relays verified administrative information after a visit: appointment dates, documents to bring, and coordination
+
+219
+00:18:25,613 --> 00:18:31,186
+contacts. Caregiver registration captures a relationship, language, voice preference, and a consent record.
+
+220
+00:18:31,186 --> 00:18:36,759
+This is a synthetic training consent entry, not consent from a real person.
+
+221
+00:18:36,759 --> 00:18:40,617
+External delivery is configured as a simulated local outbox.
+
+222
+00:18:42,050 --> 00:18:46,937
+We register a fictional caregiver with a reserved example phone number and Tamil preference.
+
+223
+00:18:46,937 --> 00:18:51,824
+Saving creates the local caregiver record. Consent revocation and preference controls are separate actions.
+
+224
+00:18:51,824 --> 00:18:57,060
+A real hospital must obtain valid patient consent through its own process before recording or
+
+225
+00:18:57,060 --> 00:18:58,107
+using these details.
+
+226
+00:19:03,250 --> 00:19:08,274
+The coordinator can compose a draft from an approved template and a verified appointment fact.
+
+227
+00:19:08,274 --> 00:19:10,953
+We use the documented date exactly as stored.
+
+228
+00:19:10,953 --> 00:19:15,977
+In this ready fixture that date is historical, so this is a template demonstration rather
+
+229
+00:19:15,977 --> 00:19:20,331
+than a current appointment instruction. Composition is separate from clinician approval and delivery.
+
+230
+00:19:26,517 --> 00:19:30,817
+We switch to the clinician account to review and approve the synthetic administrative message.
+
+231
+00:19:30,817 --> 00:19:34,503
+The approved draft can be previewed in supported languages and voice modes.
+
+232
+00:19:34,503 --> 00:19:37,881
+A provider badge alone is not proof that audio generation succeeded.
+
+233
+00:19:37,881 --> 00:19:42,489
+We keep outbound delivery local and do not claim that any patient received a message.
+
+234
+00:19:50,217 --> 00:19:53,919
+We request a Tamil voice preview of the approved administrative reminder.
+
+235
+00:19:53,919 --> 00:19:58,968
+The application contacts its configured speech service and displays either an audio player or an
+
+236
+00:19:58,968 --> 00:20:01,998
+explicit fallback. A preview does not send a message.
+
+237
+00:20:01,998 --> 00:20:07,047
+The saved provider response in the report distinguishes generated audio from simulated or unavailable voice
+
+238
+00:20:07,047 --> 00:20:07,383
+output.
+
+239
+00:20:13,483 --> 00:20:18,095
+The coordinator records an administrative attendance response against a simulated local-outbox message.
+
+240
+00:20:18,095 --> 00:20:23,859
+We choose Confirmed Attendance, identify the responder category, and add a note that this is
+
+241
+00:20:23,859 --> 00:20:27,317
+a synthetic training response. Refreshing confirms the saved status.
+
+242
+00:20:27,317 --> 00:20:33,081
+This does not establish real attendance and does not automatically change a clinical decision or
+
+243
+00:20:33,081 --> 00:20:34,234
+cancel an appointment.
+
+244
+00:20:38,017 --> 00:20:41,804
+Ask OncoBrief supports constrained questions about the selected record set.
+
+245
+00:20:41,804 --> 00:20:45,213
+We ask which documents are available for this patient.
+
+246
+00:20:45,213 --> 00:20:48,243
+Read the actual response and any cited sources.
+
+247
+00:20:48,243 --> 00:20:53,924
+A provider may be unavailable, and the assistant should then disclose its limits rather than
+
+248
+00:20:53,924 --> 00:20:55,439
+manufacture a record answer.
+
+249
+00:20:59,217 --> 00:21:01,751
+An institutional checklist query is reference retrieval.
+
+250
+00:21:01,751 --> 00:21:05,372
+Here the indexed reference is explicitly a synthetic hospital SOP.
+
+251
+00:21:05,372 --> 00:21:10,804
+It can help staff find document-preparation rules, but it is not a patient-specific prescription and
+
+252
+00:21:10,804 --> 00:21:14,063
+is not evidence of affiliation with a national institution.
+
+253
+00:21:14,063 --> 00:21:17,322
+Inspect the returned citations before relying on the answer.
+
+254
+00:21:22,083 --> 00:21:25,975
+We deliberately ask for chemotherapy advice to test the boundary.
+
+255
+00:21:25,975 --> 00:21:29,089
+The assistant must not prescribe or choose treatment.
+
+256
+00:21:29,089 --> 00:21:34,927
+Its actual response is shown here. Clinical assessment and decisions belong to the treating professionals;
+
+257
+00:21:34,927 --> 00:21:38,041
+this system supports source inspection and operational preparation.
+
+258
+00:21:41,183 --> 00:21:46,148
+Analytics reports stored operational measurements. Registered patients and consultation-ready rate describe the current tenant.
+
+259
+00:21:46,148 --> 00:21:49,694
+The pilot target is a goal, not a measured outcome.
+
+260
+00:21:49,694 --> 00:21:55,013
+Every patient in this recording is synthetic, including the newly registered training patient: the interface
+
+261
+00:21:55,013 --> 00:21:58,913
+may call that row live because its fixture flag is false.
+
+262
+00:21:58,913 --> 00:22:02,105
+That label does not make it real hospital data.
+
+263
+00:22:07,783 --> 00:22:14,644
+Document counts measure stored sources. The promotion-gate rate compares promoted candidates with completed promoted or
+
+264
+00:22:14,644 --> 00:22:18,304
+rejected candidates; it does not prove medical correctness.
+
+265
+00:22:18,304 --> 00:22:23,793
+Verified and unverified facts describe review state, while quarantined records need attention.
+
+266
+00:22:23,793 --> 00:22:28,824
+Conflicts, missing records, and open or overdue tasks identify record-preparation work.
+
+267
+00:22:28,824 --> 00:22:33,398
+These counts are sensitive to the configured data and filters.
+
+268
+00:22:34,217 --> 00:22:41,000
+OPD utilization compares active or completed appointments with stored slots for the selected clinic date.
+
+269
+00:22:41,000 --> 00:22:45,070
+Backfill counts confirmed walk-ins and accepted offers, not suggestions.
+
+270
+00:22:45,070 --> 00:22:49,140
+Continuity metrics describe stored caregivers, messages, and attendance responses.
+
+271
+00:22:49,140 --> 00:22:52,758
+Empty denominators should not be read as success.
+
+272
+00:22:52,758 --> 00:22:58,637
+This synthetic exercise establishes application behavior, not improved hospital capacity or patient outcomes.
+
+273
+00:22:59,450 --> 00:23:03,802
+The CSV export downloads the current tenant’s telemetry as a real file.
+
+274
+00:23:03,802 --> 00:23:08,517
+We inspect its header and rows in the browser from the downloaded content.
+
+275
+00:23:08,517 --> 00:23:13,957
+The file can support an operational review, but its labels, population, and synthetic origin must
+
+276
+00:23:13,957 --> 00:23:16,858
+accompany any chart or presentation made from it.
+
+277
+00:23:21,483 --> 00:23:26,013
+We sign in as the synthetic auditor and open the patient audit.
+
+278
+00:23:26,013 --> 00:23:29,410
+Events record actors, timestamps, actions, and reasons where required.
+
+279
+00:23:29,410 --> 00:23:32,052
+The ledger hash-chain indicator checks internal integrity.
+
+280
+00:23:32,052 --> 00:23:35,072
+A successful chain check is useful tamper evidence;
+
+281
+00:23:35,072 --> 00:23:40,357
+it is not proof against every administrator compromise or a certification of medical accuracy.
+
+282
+00:23:44,350 --> 00:23:48,756
+The auditor has no evidence-verification permission in the shared role policy.
+
+283
+00:23:48,756 --> 00:23:54,764
+However, this timeline still displays Verify buttons to the auditor: a visible permission-related interface issue.
+
+284
+00:23:54,764 --> 00:23:58,370
+The verification server action contains its own permission check.
+
+285
+00:23:58,370 --> 00:24:02,776
+We separately test direct patient-registration access and receive a forbidden response.
+
+286
+00:24:02,776 --> 00:24:06,381
+Visible buttons and actual authority must be assessed separately.
+
+287
+00:24:09,283 --> 00:24:14,991
+The records officer can inspect and review source evidence, upload documents, and resolve conflicts under
+
+288
+00:24:14,991 --> 00:24:17,655
+the role policy. Packet approval remains clinician-only.
+
+289
+00:24:17,655 --> 00:24:22,601
+We open the ready patient’s packet to see the available controls, then Continuity.
+
+290
+00:24:22,601 --> 00:24:27,168
+The permissions report distinguishes declared policy, page checks, and observed browser behavior;
+
+291
+00:24:27,168 --> 00:24:30,973
+it does not treat a hidden button as sufficient security.
+
+292
+00:24:35,050 --> 00:24:38,685
+The organization administrator has a separate administration area.
+
+293
+00:24:38,685 --> 00:24:43,682
+Its overview summarizes active staff, clinician profiles, departments, facilities, and invitations.
+
+294
+00:24:43,682 --> 00:24:46,862
+Staff and Roles supports authorized membership management.
+
+295
+00:24:46,862 --> 00:24:52,768
+We inspect these pages without creating credentials, sending invitations, or changing anyone’s role.
+
+296
+00:24:52,768 --> 00:24:59,129
+Administrative authority does not grant evidence attestation or clinician approval in the role matrix.
+
+297
+00:24:59,950 --> 00:25:04,095
+The clinician directory stores specialty, professional profile, and operational details.
+
+298
+00:25:04,095 --> 00:25:07,826
+Departments and facilities configure service lines and hospital sites.
+
+299
+00:25:07,826 --> 00:25:13,215
+These settings shape assignment and scheduling. They must be maintained by authorized administrators;
+
+300
+00:25:13,215 --> 00:25:19,433
+the software does not infer clinical credentials or decide which specialty is appropriate for a
+
+301
+00:25:19,433 --> 00:25:19,847
+patient.
+
+302
+00:25:21,983 --> 00:25:26,946
+Hospital Settings and Audit provides governance information and system activity.
+
+303
+00:25:26,946 --> 00:25:33,895
+The implementation uses hashed server-side sessions, role checks, tenant-scoped transactions, and PostgreSQL row-level security.
+
+304
+00:25:33,895 --> 00:25:38,361
+These are implemented mechanisms, not a production compliance certification.
+
+305
+00:25:38,361 --> 00:25:45,806
+This local tutorial does not validate deployment encryption, backups, penetration testing, or live hospital integration.
+
+306
+00:25:46,617 --> 00:25:51,319
+Staff activation is a separate public page reached through an authorized invitation link.
+
+307
+00:25:51,319 --> 00:25:55,297
+Without a valid invitation token, the page cannot activate an account.
+
+308
+00:25:55,297 --> 00:26:00,723
+We show that boundary without exposing a token, creating a password, or sending an external
+
+309
+00:26:00,723 --> 00:26:05,063
+invitation. Administrators should follow the hospital’s controlled onboarding process for real staff.
+
+310
+00:26:09,883 --> 00:26:15,227
+We finish with one connected workflow for a new synthetic patient, Leela Demo Training.
+
+311
+00:26:15,227 --> 00:26:20,952
+Starting from registration keeps identity, documents, evidence, scheduling, and audit attached to the same chart.
+
+312
+00:26:20,952 --> 00:26:24,769
+We enter only administrative details and an explicit training label.
+
+313
+00:26:24,769 --> 00:26:28,586
+There is no diagnosis or treatment decision in this registration.
+
+314
+00:26:32,317 --> 00:26:38,773
+In this patient’s Sources tab we upload an original synthetic referral PDF using the tested
+
+315
+00:26:38,773 --> 00:26:43,078
+standard text encoding. We wait, refresh, and open Evidence Journey.
+
+316
+00:26:43,078 --> 00:26:47,813
+The referral contains an explicit appointment date and a document-to-bring instruction.
+
+317
+00:26:47,813 --> 00:26:53,409
+OncoBrief must preserve those statements as source-linked candidates rather than inventing new instructions.
+
+318
+00:26:54,750 --> 00:27:00,174
+We select the recorded appointment, open its supporting passage, and compare the extracted date with
+
+319
+00:27:00,174 --> 00:27:04,875
+the referral. The Verify action records that the transcription matches this synthetic source.
+
+320
+00:27:04,875 --> 00:27:10,300
+After refresh the verified state remains. This confirms a documented administrative statement, not the clinical
+
+321
+00:27:10,300 --> 00:27:11,746
+appropriateness of the appointment.
+
+322
+00:27:16,350 --> 00:27:18,660
+Record Map still shows missing required categories.
+
+323
+00:27:18,660 --> 00:27:23,610
+We create a retrieval task from an actual gap and give it a clear training
+
+324
+00:27:23,610 --> 00:27:28,560
+title. No source conflict was detected for this new referral, so there is no contradiction
+
+325
+00:27:28,560 --> 00:27:32,191
+to resolve here; the earlier reconciliation chapter demonstrated that separate workflow.
+
+326
+00:27:32,191 --> 00:27:35,821
+We do not manufacture a conflict or waive a medical requirement.
+
+327
+00:27:42,950 --> 00:27:48,027
+We switch to the coordinator account, assign this task with an explicit ownership confirmation, and
+
+328
+00:27:48,027 --> 00:27:50,735
+create a packet draft for the same patient.
+
+329
+00:27:50,735 --> 00:27:55,813
+The draft includes unresolved preparation work. We leave it for clinician review because missing documents
+
+330
+00:27:55,813 --> 00:27:59,536
+remain. Packet approval was demonstrated separately on the complete ready fixture;
+
+331
+00:27:59,536 --> 00:28:01,567
+readiness and approval are different decisions.
+
+332
+00:28:07,883 --> 00:28:10,822
+We book a synthetic appointment for this patient with Dr.
+
+333
+00:28:10,822 --> 00:28:14,348
+Rao and a training room, then confirm its presence in the directory.
+
+334
+00:28:14,348 --> 00:28:18,168
+We open OPD Flow for the same date to inspect the operational queue.
+
+335
+00:28:18,168 --> 00:28:20,813
+The booking does not make a blocked record ready.
+
+336
+00:28:20,813 --> 00:28:25,221
+Staff still need to retrieve and verify the missing documents before relying on preparation completeness.
+
+337
+00:28:34,483 --> 00:28:38,880
+The training meeting can include the same patient as an administrative preparation case.
+
+338
+00:28:38,880 --> 00:28:42,600
+We assign a presenter and leave staging and clinical consensus pending.
+
+339
+00:28:42,600 --> 00:28:47,674
+This connects the chart to the meeting agenda without deciding that a tumor board is
+
+340
+00:28:47,674 --> 00:28:51,394
+medically indicated. Required clinical review remains a handoff to qualified professionals.
+
+341
+00:28:57,350 --> 00:29:01,167
+The coordinator composes a reminder from this patient’s verified appointment fact.
+
+342
+00:29:01,167 --> 00:29:05,677
+We then switch to the clinician to review and approve the synthetic draft.
+
+343
+00:29:05,677 --> 00:29:08,800
+The visible delivery mode is a simulated local outbox.
+
+344
+00:29:08,800 --> 00:29:14,005
+We do not send external communications or claim that a real patient received this reminder.
+
+345
+00:29:19,383 --> 00:29:25,662
+Finally, analytics reflects stored operational changes, and the auditor can inspect this patient’s event history.
+
+346
+00:29:25,662 --> 00:29:31,941
+We verify the ledger chain and view the registration, document, review, task, packet, appointment, and
+
+347
+00:29:31,941 --> 00:29:36,964
+communication activity that this workflow produced. Auditability explains who acted and when;
+
+348
+00:29:36,964 --> 00:29:40,731
+it does not turn incomplete records into clinical truth.
+
+349
+00:29:42,650 --> 00:29:45,659
+What This Is explains the governing boundary.
+
+350
+00:29:45,659 --> 00:29:52,107
+Start with the correct patient, inspect the original sources, verify transcriptions, keep contradictions visible, and
+
+351
+00:29:52,107 --> 00:29:56,406
+assign grounded administrative work. Review packets and communications before approval.
+
+352
+00:29:56,406 --> 00:29:59,415
+OncoBrief organizes source-verified information and care-team operations;
+
+353
+00:29:59,415 --> 00:30:02,424
+qualified people retain clinical judgment and responsibility.
+
+354
+00:30:02,424 --> 00:30:07,582
+All records and outcomes shown in this tutorial are synthetic training examples.
+

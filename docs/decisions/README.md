@@ -31,6 +31,12 @@ Full detail for every decision below lives in
 | [0024](0024-source-grounded-guidelines-and-clinician-studio.md) | Source-grounded oncology guideline co-pilot and clinician productivity studio | Accepted |
 | [0025](0025-caregiver-voice-continuity-and-accessibility.md) | Caregiver voice continuity, attendance confirmation, and WCAG accessibility | Accepted |
 
+| [0017](0017-abdm-m2-m3-integration.md) | 0017 — ABDM V3 Integration (M2 HIP + M3 HIU) | Accepted |
+| [0018](0018-consent-revocation-preserves-ledger.md) | 0018 — Consent revocation preserves immutable ledger history | Accepted |
+| [0019](0019-longitudinal-source-observations.md) | 0019 — Source-dated longitudinal observations and read-only interval review | Accepted |
+| [0026](0026-patient-mobile-architecture.md) | 0026 — Patient Mobile Architecture (Dual-Mode Connected & Offline Synthetic Companion) | Accepted |
+| [0027](0027-hackathon-deployment-profile.md) | ADR 0027: Restricted synthetic hackathon deployment | Accepted |
+
 ## Conventions
 
 - One decision per file, numbered sequentially, never renumbered.

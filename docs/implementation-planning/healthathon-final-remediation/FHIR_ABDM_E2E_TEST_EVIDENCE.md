@@ -1,11 +1,11 @@
 # Connected Interoperability & Security Suite (Scenarios A through J) Execution Evidence
 
-**Date:** 2026-11-03  
-**Phase:** 07B — End-to-End Interoperability Verification  
-**Test Harness:** Playwright 1.49.1 (Desktop Chromium)  
-**Execution File:** [`apps/web/e2e/fhir-abdm-interop.spec.ts`](file:///Users/dhaanish/Documents/OncoBrief/apps/web/e2e/fhir-abdm-interop.spec.ts)  
-**Result:** 10 / 10 Tests Passed (100% Green)  
-**Duration:** 5.1s  
+**Date:** 2026-11-03
+**Phase:** 07B — End-to-End Interoperability Verification
+**Test Harness:** Playwright 1.49.1 (Desktop Chromium)
+**Execution File:** [`apps/web/e2e/fhir-abdm-interop.spec.ts`](../../../apps/web/e2e/fhir-abdm-interop.spec.ts)
+**Result:** 10 / 10 Tests Passed (100% Green)
+**Duration:** 5.1s
 
 ---
 

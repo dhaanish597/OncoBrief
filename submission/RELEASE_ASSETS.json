@@ -1,0 +1,16 @@
+[
+  {
+    "filename": "OncoBrief_Complete_User_Tutorial.mp4",
+    "bytes": 107146343,
+    "sha256": "6732673d9dbabe30d773639a66a2e2e2750f687d49850b708833eae64de73b9c",
+    "description": "Historical 30-minute synthetic tutorial; full decode verified, no new human playback review",
+    "distribution": "https://github.com/dhaanish597/OncoBrief/releases/tag/healthathon-2026-11-06"
+  },
+  {
+    "filename": "app-debug.apk",
+    "bytes": 262461845,
+    "sha256": "727157f5048f057d03a277d3031a159b84fd777e62032afec0cc6f1c51d00ece",
+    "description": "Debug APK, requires Metro for JavaScript; no new device runtime validation",
+    "distribution": "https://github.com/dhaanish597/OncoBrief/releases/tag/healthathon-2026-11-06"
+  }
+]

@@ -56,7 +56,6 @@ video-output/
 # root-level presentation templates and scratch files
 /*.pptx
 /*.pdf
-!/ONCOBRIEF_ENHANCEMENT_PLAN (old).pdf
 
 
 # generated mobile/platform and local authoring output
