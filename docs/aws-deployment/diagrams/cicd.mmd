@@ -1,0 +1,12 @@
+flowchart LR
+    PUSH["Git Push to main / Release Tag"] --> OIDC["Gate 1: GitHub OIDC<br/>Assume Role in ap-south-1"]
+    OIDC --> VERIFY["Gate 2: pnpm verify<br/>Typecheck + ESLint + Clinical Boundary<br/>+ 886 Unit/DB Tests"]
+    VERIFY --> WORKER["Gate 3: pnpm worker:build<br/>Auto-Sync All 23 SQL Migrations<br/>(0001..0023) into admin.js"]
+    WORKER --> DOCKER["Gate 4: Docker Buildx (linux/arm64)<br/>Push sha-GIT_SHA to ECR"]
+    DOCKER --> TF_PLAN["Gate 5: Terraform 1.10.5 Plan<br/>+ Environment Approval Gate"]
+    TF_PLAN --> SNAP["Gate 6: Pre-Migration RDS Snapshot<br/>aws rds wait db-snapshot-available"]
+    SNAP --> APPLY["Gate 7: Terraform Apply +<br/>Invoke Admin Lambda {'action':'migrate'}"]
+    APPLY --> ECS_DEPLOY["Gate 8: ECS Rolling Deploy<br/>Circuit Breaker Enabled"]
+    ECS_DEPLOY --> SMOKE{"Gate 9: /api/v1/health?deep=1<br/>& pnpm smoke:api Pass?"}
+    SMOKE -->|Yes| DONE["Deployment Complete"]
+    SMOKE -->|No| ROLLBACK["Automated Rollback to Previous Task Def<br/>+ Alert SNS Ops Topic"]

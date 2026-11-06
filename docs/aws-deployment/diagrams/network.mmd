@@ -1,0 +1,35 @@
+graph TB
+    subgraph Internet["Untrusted Public Internet"]
+        CLIENT["Browser / Mobile Client"]
+        EXT_API["External HTTPS Endpoints<br/>api.sarvam.ai · abdm.gov.in"]
+    end
+
+    subgraph Edge_Boundary["Trust Boundary 1: AWS Edge"]
+        CF["CloudFront Distribution<br/>Enforces HTTPS & Security Headers"]
+    end
+
+    subgraph VPC["Trust Boundary 2: VPC 10.60.0.0/16 (ap-south-1a & ap-south-1b)"]
+        IGW["Internet Gateway (Outbound Egress Only)"]
+        S3_EP["VPC S3 Gateway Endpoint ($0.00/mo)"]
+
+        subgraph Egress_Subnets["Public-Egress Subnets (10.60.0.0/20, 10.60.16.0/20) — Zero Inbound Internet Rules"]
+            SG_ECS["ECS Fargate Tasks (ARM64)<br/>SG Ingress: ONLY Internal ALB :3000<br/>SG Egress: :443 to IGW/S3_EP, :5432 to RDS"]
+            NAT_NANO["Optional t4g.nano NAT ($2.04/mo)<br/>For Private Subnet Lambda Egress"]
+        end
+
+        subgraph Private_App_Subnets["Private Application Subnets (10.60.32.0/20, 10.60.48.0/20)"]
+            SG_ALB["Internal ALB (internal = true)<br/>SG Ingress: ONLY CloudFront VPC Origin :443"]
+            SG_LAMBDA["Worker & Admin Lambdas (ARM64)<br/>SG Ingress: NONE (0 rules)<br/>SG Egress: :5432 to RDS, :443 via S3_EP/NAT"]
+        end
+
+        subgraph Isolated_DB_Subnets["Trust Boundary 3: Isolated Database Subnets (No Route to IGW/NAT)"]
+            SG_RDS[("RDS PostgreSQL 16<br/>PubliclyAccessible = false<br/>SG Ingress: ONLY SG_ECS & SG_LAMBDA on :5432")]
+        end
+    end
+
+    CLIENT -->|TLS 1.3| CF -->|CloudFront VPC Origin| SG_ALB -->|:3000| SG_ECS
+    SG_ECS -->|Outbound :443| IGW --> EXT_API
+    SG_ECS -->|Private Route| S3_EP
+    SG_LAMBDA -->|Private Route| S3_EP
+    SG_LAMBDA -->|Outbound :443| NAT_NANO --> IGW
+    SG_ECS & SG_LAMBDA -->|TLS verify-full :5432| SG_RDS

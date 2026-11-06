@@ -1,0 +1,23 @@
+sequenceDiagram
+    autonumber
+    actor Actor as Clinician / Patient
+    participant MW as Next.js Middleware & Route
+    participant Pool as pg.Pool (oncobrief_app, NOBYPASSRLS)
+    participant SecDef as SECURITY DEFINER Bootstrap Fn
+    participant RLS as PostgreSQL 16 (63 FORCE RLS Tables)
+
+    Actor->>MW: HTTPS Request + HttpOnly Cookie (ob_session) or Portal Token
+    MW->>Pool: Compute SHA-256(token) & call auth_lookup_session(token_hash)
+    Pool->>SecDef: Execute auth_lookup_session (owned by oncobrief_migrator)
+    SecDef-->>MW: Return verified (user_id, org_id, role)
+    MW->>MW: Verify RBAC permission (packages/domain/src/policy/rbac.ts)
+    MW->>Pool: Call withTenant({ orgId, userId, role }, callback)
+    Pool->>RLS: BEGIN
+    Pool->>RLS: SELECT set_config('app.org_id', orgId, true) [Transaction-Local]
+    Pool->>RLS: SELECT set_config('app.user_id', userId, true)
+    Pool->>RLS: SELECT set_config('app.role', role, true)
+    Pool->>RLS: Execute SELECT/INSERT on patient / evidence_fact / ledger_entry
+    Note over RLS: Policy 1 (Permissive): org_id = app_current_org_id()<br/>Policy 2 (Restrictive 0010): d.ingest_error != 'consent_revoked_or_expired'
+    RLS-->>Pool: Return strictly tenant-scoped & consented rows
+    Pool->>RLS: COMMIT (PostgreSQL automatically resets app.org_id to NULL)
+    Pool-->>MW: Release clean connection back to Pool

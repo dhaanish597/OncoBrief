@@ -1,0 +1,32 @@
+sequenceDiagram
+    autonumber
+    actor User as Clinician / Records Officer
+    participant Web as Next.js 15 (ECS Fargate)
+    participant DB as RDS PostgreSQL 16 (RLS)
+    participant S3 as Amazon S3 (SSE-KMS)
+    participant SQS1 as SQS: document-ingest
+    participant L1 as Lambda: document-ingest
+    participant OCR as LocalPDF / Textract / Sarvam Vision
+    participant SQS2 as SQS: ocr-result
+    participant L2 as Lambda: ocr-result
+    participant LLM as RuleExtractor + Bedrock Nova
+
+    User->>Web: POST /api/v1/patients/[id]/documents/upload-url
+    Web->>DB: withTenant(orgId): reserveDocumentForUpload (status='pending_upload')
+    Web-->>User: Return 900s Presigned S3 PUT URL (max 25 MB)
+    User->>S3: Direct PUT PDF bytes (SSE-KMS encrypted)
+    S3->>SQS1: s3:ObjectCreated:* event (org/ prefix)
+    SQS1->>L1: Trigger documentIngestHandler (batch_size=1)
+    L1->>S3: Stream object & compute content_sha256
+    L1->>DB: Check SHA-256 duplicate within (org_id, patient_id)
+    alt Byte-Identical Duplicate Found
+        L1->>DB: Mark duplicate_status='duplicate_candidate' & skip OCR
+    else Unique Document
+        L1->>OCR: Try LocalMultimodalOcrAdapter (born-digital PDF) or start Textract/Sarvam
+        OCR->>SQS2: Completion notification / normalized pages
+        SQS2->>L2: Trigger ocrResultHandler (batch_size=2)
+        L2->>DB: Insert immutable document_page & locked text_span rows
+        L2->>LLM: Extract structured facts (RuleBasedExtractor + Bedrock Converse tool)
+        L2->>L2: Enforce Stage A (validateSpans) & Stage B (validateCandidateProvenance)
+        L2->>DB: Insert evidence_fact ('extracted'), ledger_entry (SHA-256), detectConflicts(), computeReadiness()
+    end

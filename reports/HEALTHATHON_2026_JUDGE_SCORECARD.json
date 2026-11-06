@@ -1,0 +1,214 @@
+{
+  "metadata": {
+    "project": "OncoBrief — Clinical-Grade Oncology Consultation Readiness, Smart OPD Flow & Care Continuity Platform",
+    "hackathon": "Health-a-thon 2026 (Koita Foundation, NCG, ABDM, Reskilll)",
+    "track": "Cancer Care Track Only (Use Cases 02, 04, 05 + Patient/Caregiver Continuity)",
+    "repositoryPath": "/Users/dhaanish/Documents/OncoBrief",
+    "gitBranch": "main",
+    "headCommit": "7b2edec",
+    "commitSummary": "feat(operations): implement Milestone A and B oncology operations and management",
+    "workingTreeStatus": "clean",
+    "evaluationDate": "2026-10-29",
+    "scoringMethodology": "INDEPENDENT JUDGING SIMULATION — Official Health-a-thon 2026 public guides publish qualitative evaluation pillars and prototype expectations but do not publish numeric point weights. This 100-point rubric is an independent evaluation simulation grounded in official Health-a-thon 2026 criteria.",
+    "overallScore": 77.0,
+    "maxScore": 100.0,
+    "overallConfidence": "High (90%) — Static forensic audit of 100% of source files, 19 SQL migrations, domain logic, adapters, UI routes, and committed test artifacts completed; live CLI test re-execution inside the macOS evaluation sandbox was restricted by seatbelt socket/PATH permissions.",
+    "safetyGateVerdict": "CONDITIONAL PASS (V4 Core PASSES; Milestone B Free-Text Clinical Staging/Notes Require Immediate Remediation)",
+    "juryVerdict": "STRONG CONTENDER WITH FIXES"
+  },
+  "planCompletionMetrics": {
+    "totalAtomicRequirements": 50,
+    "statusBreakdown": {
+      "FULLY_IMPLEMENTED_AND_VERIFIED": 30,
+      "IMPLEMENTED_BUT_UNVERIFIED": 0,
+      "PARTIALLY_IMPLEMENTED": 11,
+      "STUB_OR_SIMULATED": 4,
+      "BROKEN": 3,
+      "MISSING": 2,
+      "UNDETERMINED": 0
+    },
+    "unweightedFullVerificationPct": 60.0,
+    "unweightedPartialCreditCompletionPct": 74.5,
+    "priorityWeightedFullVerificationPct": 65.5,
+    "priorityWeightedPartialCreditCompletionPct": 78.9
+  },
+  "aiArchitectureClassification": {
+    "claimedArchitecture": "Bounded State-Graph Multi-Agent System (Document Ingestion Agent, Ask OncoBrief Co-Pilot Agent, OPD Flow Coordination Agent, Continuity Agent)",
+    "actualArchitecture": "Deterministic Workflow with Bounded Single-Turn LLM Inference and Rule-Based Fallbacks",
+    "isAutonomousMultiStepAgent": false,
+    "hasDynamicToolSelectionByLlm": false,
+    "hasStateGraphImplementation": false,
+    "summary": "packages/domain/src/orchestration/workflow-graph.ts is completely absent. Ask OncoBrief (apps/web/src/lib/assistant/orchestrator.ts) uses regex pattern arrays first (classify.ts) with a 1-token LLM fallback to pick one of 7 closed intents, then executes hardcoded TypeScript if/else branches to query PostgreSQL and formats the response via a single LLM call (or deterministic string template when NVIDIA_API_KEY is unset). In-process web document uploads hardcode RuleBasedExtractor() (apps/web/src/lib/actions.ts:472) and run a hardcoded 4.0-second setTimeout progress animation (DocumentUploadForm.tsx:166-197)."
+  },
+  "criteria": [
+    {
+      "id": "CRIT-01",
+      "name": "Problem Fit & Healthcare Operations Relevance (Indian Oncology OPD Context)",
+      "maxPoints": 15.0,
+      "awardedPoints": 13.5,
+      "confidence": "High",
+      "explanation": "Targets the real operational bottleneck in high-volume National Cancer Grid (NCG) oncology OPDs: patients arriving with fragmented, multi-centre paper/PDF folders (histopathology, IHC, PET-CT, prior chemo summaries) where clinicians lose 10–15 minutes per consult reconstructing timelines and hunting for missing prerequisites.",
+      "supportingEvidence": [
+        "packages/domain/src/vocab/fact-types.ts (14 oncology-specific administrative/factual schemas including ER/PR/HER2 biomarkers, TNM string recording, systemic therapy, radiation summary, and ECOG)",
+        "packages/db/src/seed.ts (3 NCG-aligned readiness templates: ncg_oncology_intake, ncg_tumor_board_review, ncg_chemo_followup)",
+        "packages/domain/src/journey/longitudinal-review.ts (serial lab flowsheet with >10% delta arrows and interval summary since last consultation)"
+      ],
+      "deductions": [
+        "-1.5: Milestone B added generic EHR encounter notes and manual tumor board staging forms that dilute OncoBrief's sharp positioning as a pre-consultation administrative readiness layer."
+      ]
+    },
+    {
+      "id": "CRIT-02",
+      "name": "Cancer Care Use Case Coverage (UC02, UC04, UC05 & Caregiver Continuity)",
+      "maxPoints": 15.0,
+      "awardedPoints": 11.5,
+      "confidence": "High",
+      "explanation": "Covers all three selected Cancer Care use cases plus caregiver continuity in one unified PostgreSQL schema and Next.js workspace, with standout depth in UC02 (Consultation Readiness) and solid foundations in UC04, UC05, and Continuity.",
+      "supportingEvidence": [
+        "UC02: apps/web/src/app/(app)/patients/[id]/evidence/page.tsx, BatchVerificationModal.tsx, conflicts/[conflictId]/page.tsx, packet/page.tsx",
+        "UC04: packages/domain/src/flow/slot-optimizer.ts, packages/db/src/services/opd-flow.ts, apps/web/src/components/OpdWorkspace.tsx",
+        "UC05: apps/web/src/lib/assistant/orchestrator.ts, packages/domain/src/studio/draft-generator.ts, apps/web/src/components/ProductivityStudio.tsx",
+        "Continuity: packages/db/src/services/caregivers.ts, packages/db/src/services/messages.ts, apps/web/src/components/ContinuityAudioPlayer.tsx"
+      ],
+      "deductions": [
+        "-1.5: UC04 is split between two unlinked data models (opd_appointment_slot on /workspace?view=opd vs appointment on /appointments), and offerOpdSlot() lacks a patient acceptance step or notification trigger.",
+        "-1.0: UC05 guideline RAG is seeded with only 1 synthetic SOP (2 spans), has no UI/API to upload new guideline PDFs, and [G#] citation links to /sources?guideline=... are ignored by sources/page.tsx.",
+        "-1.0: Continuity templates are only seeded in English and Hindi (not 11 Indic languages), and changing the audio player locale does not translate the message body before TTS."
+      ]
+    },
+    {
+      "id": "CRIT-03",
+      "name": "AI Agent Architecture, Orchestration & Technical Authenticity",
+      "maxPoints": 15.0,
+      "awardedPoints": 8.5,
+      "confidence": "High",
+      "explanation": "While the LLM/OCR adapter boundaries (NVIDIA NIM, AWS Bedrock Converse tool-use, Sarvam Saaras/Bulbul/Vision) and citation validation gates are well-engineered, the project does not implement genuine autonomous or multi-step tool-using AI agents. It is a deterministic workflow with single-turn LLM classification/synthesis and rule-based fallbacks.",
+      "supportingEvidence": [
+        "apps/web/src/lib/assistant/classify.ts (regex-first classifier with 1-token LLM fallback)",
+        "apps/web/src/lib/assistant/orchestrator.ts (hardcoded if/else retrieval branches; validateCitationIntegrity post-filter; deterministic string template fallback)",
+        "packages/adapters/src/bedrock-llm.ts (single-call Converse API with forced toolChoice emit_operational_facts)",
+        "packages/adapters/src/sarvam-voice.ts and sarvam-vision-ocr.ts (clean REST adapters with retry and timeout handling)"
+      ],
+      "deductions": [
+        "-3.0: Planned WorkflowStateGraph<TState> (packages/domain/src/orchestration/workflow-graph.ts) is completely missing; zero multi-step planning, dynamic tool selection, or state checkpointing exists.",
+        "-2.0: Synchronous web uploads (apps/web/src/lib/actions.ts:472) hardcode new RuleBasedExtractor(), bypassing BedrockLlmProvider even when EXTRACTION_DRIVER=llm.",
+        "-1.5: DocumentUploadForm.tsx (lines 166-197) runs 4.0 seconds of hardcoded setTimeout delays claiming 'Extracting tabular text spans with Sarvam Vision...' even during local PDF parsing."
+      ]
+    },
+    {
+      "id": "CRIT-04",
+      "name": "Human Oversight, Provenance, Auditability & Clinical Safety",
+      "maxPoints": 15.0,
+      "awardedPoints": 12.5,
+      "confidence": "High",
+      "explanation": "The V3/V4 core architecture has exceptional provenance and safety engineering: append-only PostgreSQL triggers, SHA-256 hash-chained ledger and audit events, bounding-box span validation, mandatory human verification before packet/message approval, and deterministic refusal of clinical advice. However, Milestone B introduced unanchored free-text clinical notes and staging fields that conflict with this boundary.",
+      "supportingEvidence": [
+        "packages/db/migrations/0003_policies_grants.sql (REVOKE UPDATE/DELETE + oncobrief_block_mutation trigger + FORCE RLS on 37 tables)",
+        "packages/domain/src/policy/clinical-boundary.ts (runtime and CI clinical boundary enforcement)",
+        "packages/db/src/services/ledger.ts and audit.ts (cryptographic hash chaining with verifyChain)",
+        "packages/db/src/services/messages.ts (checkMessageGate prevents sending any message if an underlying fact is unverified or document consent is revoked)"
+      ],
+      "deductions": [
+        "-1.5: Milestone B (/patients/[id]/encounters/[encounterId] and /tumor-board) allows manual free-text entry of clinicalStaging ('cT2aN1M0 Stage IIB'), clinicalAssessment, and treatment recommendationNotes outside the span-anchored Evidence Ledger.",
+        "-0.5: Stage B provenance validation (validateCandidateProvenance in span-validation.ts) is exported in domain but not called inside ledger.ts insertFact().",
+        "-0.5: Milestone A/B migrations (0016, 0019) omit FORCE ROW LEVEL SECURITY on 13 new tables."
+      ]
+    },
+    {
+      "id": "CRIT-05",
+      "name": "Clinician, Coordinator & Caregiver UX / Low-Friction Adoption",
+      "maxPoints": 10.0,
+      "awardedPoints": 7.5,
+      "confidence": "High",
+      "explanation": "The 'Quiet Ledger' editorial aesthetic, 1-page Consultation Readiness Brief, 2-click Batch Verification modal, visual bounding-box PDF/page highlighter, and 1-click role switcher are well-crafted for busy oncology staff. However, the Milestone A/B merge created navigation duplication and a broken Studio prose-editing gate.",
+      "supportingEvidence": [
+        "apps/web/src/components/EvidenceViewContainer.tsx and BatchVerificationModal.tsx (reduces verification of 8+ facts to 2 clicks)",
+        "apps/web/src/components/GuidedReadinessBanner.tsx (clear step-by-step progress indicator)",
+        "apps/web/src/components/SourcePaneView.tsx (clear visual span highlighting on source pages)"
+      ],
+      "deductions": [
+        "-1.0: workspace/page.tsx readiness filter bug ('complete' vs 'ready') breaks the primary worklist counter and dropdown filter on the default landing screen.",
+        "-1.0: revalidateStudioMarkdownCitations() rejects any free-form clinician prose edit in Productivity Studio unless the edited line exactly matches an auto-generated template clause.",
+        "-0.5: Redundant view toggles on /workspace?view=opd and split navigation between /workspace?view=opd and /appointments."
+      ]
+    },
+    {
+      "id": "CRIT-06",
+      "name": "Working Prototype Completeness, Reliability & Test Verification",
+      "maxPoints": 15.0,
+      "awardedPoints": 11.5,
+      "confidence": "High",
+      "explanation": "The core V4 prototype is backed by a real PostgreSQL relational schema (19 migrations), deterministic synthetic oncology fixtures (DEMO-001 conflict, DEMO-002 reopened fact, DEMO-003 ready), and 199 unit/integration tests + 10 Playwright E2E specs. However, late Milestone A/B commits introduced two unseeded/broken regressions due to missing test coverage on the new routes.",
+      "supportingEvidence": [
+        "packages/db/src/__tests__/integration.test.ts (real Postgres tests covering RLS, ledger hash chain, batch verification, OPD slot concurrency, studio gates, and caregiver revocation)",
+        "apps/web/e2e/v4-workflows.spec.ts (Playwright E2E tests verifying the full readiness, OPD, studio, assistant, and continuity workflows)",
+        "packages/db/src/fixtures.ts (realistic multi-document oncology fixtures with deliberate cross-hospital surgery-date conflicts)"
+      ],
+      "deductions": [
+        "-2.0: bootstrapDemo() in packages/db/src/seed.ts:1244 queries non-existent email 'ananya.mukhopadhyay@rci.invalid' (instead of 'dr.ananya@rci.demo') and returns early on first seed, leaving Milestone B tables (appointment, encounter, tumor_board_meeting) completely empty on a freshly seeded demo database.",
+        "-1.5: Readiness band mismatch in workspace/page.tsx:107 ('complete' vs 'ready') causes '0 ready for consult' on the main dashboard."
+      ]
+    },
+    {
+      "id": "CRIT-07",
+      "name": "Measurable 60–90 Day Hospital Impact & Operational Feasibility",
+      "maxPoints": 10.0,
+      "awardedPoints": 8.0,
+      "confidence": "High",
+      "explanation": "Because OncoBrief operates as an administrative overlay ingesting PDFs/scans and FHIR bundles without requiring deep bidirectional legacy HIS integration on Day 1, a 60–90 day pilot in an NCG cancer centre is highly feasible and directly measurable via chart-prep time, conflict-catch rate, and slot utilization.",
+      "supportingEvidence": [
+        "packages/domain/src/fhir/abdm-bundle-mapper.ts and standard-bundles.ts (standards-aligned ingestion path)",
+        "packages/db/src/services/opd-flow.ts (tracks checked_in_at, consultation_started_at, consultation_completed_at timestamps for turnaround time measurement)",
+        "packages/db/src/services/twin.ts (tracks record_readiness_snapshot metrics over time)"
+      ],
+      "deductions": [
+        "-1.0: Local image OCR (scanned photos/JPGs) is a stub unless external cloud API keys (Sarvam Vision / AWS Textract) are provisioned and funded.",
+        "-1.0: Lack of automated WhatsApp/SMS webhook loop for waitlist offers and attendance confirmation still requires manual coordinator phone calls."
+      ]
+    },
+    {
+      "id": "CRIT-08",
+      "name": "Innovation, Differentiation & Scalability in Indian Healthcare",
+      "maxPoints": 5.0,
+      "awardedPoints": 4.0,
+      "confidence": "High",
+      "explanation": "OncoBrief's 'evidence-first, non-diagnostic administrative digital twin' is a genuinely differentiated architectural stance compared to generic LLM medical chatbots that hallucinate summaries and violate clinical safety rules.",
+      "supportingEvidence": [
+        "packages/db/src/services/messages.ts (evidence-linked template variable provenance blocking unverified or revoked facts from ever reaching a patient)",
+        "packages/domain/src/conflict/comparators.ts (automated detection of ER/PR/HER2 and staging discrepancies across external diagnostic centres)"
+      ],
+      "deductions": [
+        "-1.0: Over-claiming autonomous state-graph AI agents in documentation when the actual implementation is deterministic routing with single-turn LLM calls."
+      ]
+    }
+  ],
+  "blockers": [
+    {
+      "id": "BLK-01",
+      "severity": "P0 — Demo & Evaluation Blocker",
+      "title": "Workspace Readiness Band Filter & Counter Regression ('complete' vs 'ready')",
+      "file": "apps/web/src/app/(app)/workspace/page.tsx:107, 189-196",
+      "impact": "The main /workspace dashboard always displays '0 ready for consult' even though DEMO-003 is 'ready', and selecting any readiness filter dropdown option returns zero patients."
+    },
+    {
+      "id": "BLK-02",
+      "severity": "P0 — Demo & Evaluation Blocker",
+      "title": "Broken Milestone B Demo Fixture Seeding ('ananya.mukhopadhyay@rci.invalid' Email Mismatch & Early Return)",
+      "file": "packages/db/src/seed.ts:1148-1150, 1242-1350",
+      "impact": "Freshly seeded databases contain zero rows in clinic_session, appointment, encounter, and tumor_board_meeting because bootstrapDemo() returns early on initial seed() and queries a non-existent clinician email on subsequent runs."
+    },
+    {
+      "id": "BLK-03",
+      "severity": "P0 — Clinical Boundary & Governance Contradiction",
+      "title": "Unanchored Free-Text Clinical Staging & Treatment Recommendations in Milestone B Forms",
+      "file": "apps/web/src/app/(app)/tumor-board/page.tsx:246, 354; apps/web/src/app/(app)/patients/[id]/encounters/[encounterId]/page.tsx",
+      "impact": "Allows manual free-text entry of working TNM staging and treatment recommendations outside the span-anchored Evidence Ledger, directly contradicting CLAUDE.md and docs/milestone-a.md."
+    },
+    {
+      "id": "BLK-04",
+      "severity": "P0 — Operational Split-Brain Between V4 OPD Board and Milestone B Appointments",
+      "file": "packages/db/src/services/opd-flow.ts; packages/db/src/services/appointments.ts",
+      "impact": "Checking in or updating a patient on /appointments (appointment table) does not update /workspace?view=opd (opd_appointment_slot table), and vice versa."
+    }
+  ]
+}

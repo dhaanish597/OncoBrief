@@ -50,3 +50,4 @@ Full detail for every decision below lives in
 - [0023 — Human-controlled oncology OPD offers and ownership](0023-opd-human-offers-and-ownership.md)
 - [0024 — Source-grounded oncology guideline co-pilot and clinician productivity studio](0024-source-grounded-guidelines-and-clinician-studio.md)
 - [0025 — Caregiver voice continuity, attendance confirmation, and WCAG accessibility](0025-caregiver-voice-continuity-and-accessibility.md)
+- [0027 — Restricted synthetic hackathon deployment](0027-hackathon-deployment-profile.md)

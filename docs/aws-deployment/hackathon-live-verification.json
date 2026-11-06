@@ -1,0 +1,66 @@
+{
+  "verifiedAtUtc": "2026-11-05T18:21:36.941344+00:00",
+  "url": "https://d1idx0s43enxlm.cloudfront.net",
+  "scope": "restricted synthetic hackathon prototype",
+  "imageDigest": "sha256:36cf2ba089123a3da0c1e83ae61d835284e68646eda71f1183152c6468c88868",
+  "cloudFrontStatus": "Deployed",
+  "ecs": {
+    "desired": 1,
+    "running": 1,
+    "rollout": "COMPLETED",
+    "webTaskRevision": 3
+  },
+  "readiness": {
+    "unauthenticated": 401,
+    "authenticated": 200
+  },
+  "browser": {
+    "completeRun": {
+      "passed": 9,
+      "failed": 0,
+      "seconds": 41.0
+    },
+    "subsequentStrengthenedContinuityTest": {
+      "passed": 1,
+      "failed": 0,
+      "seconds": 53.1
+    }
+  },
+  "unitAndIntegrationSuiteRuns": {
+    "domain": 593,
+    "adaptersPassed": 135,
+    "adaptersOptInSkipped": 4,
+    "db": 277,
+    "worker": 29,
+    "web": 321
+  },
+  "typecheck": "passed",
+  "boundary": "passed",
+  "branding": "passed",
+  "targetedDeployedSpecLint": "passed",
+  "fullRepositoryLint": {
+    "errors": 398,
+    "warnings": 1
+  },
+  "terraformFinalPlan": "no changes",
+  "runtimeDatabaseProbe": {
+    "migrations": 24,
+    "rlsTables": 75,
+    "forceRlsTables": 64,
+    "unscopedVisiblePatients": 0,
+    "superuser": false,
+    "bypassRls": false
+  },
+  "preservation": {
+    "originalOrgObjectVersions": 22,
+    "originalDeleteMarkers": 0,
+    "encryptedSnapshotsAvailable": 2,
+    "documentKey": "Enabled",
+    "stewardWeb": "RUNNING"
+  },
+  "simulated": [
+    "ABDM",
+    "outbound continuity delivery"
+  ],
+  "extraction": "deterministic rule baseline"
+}

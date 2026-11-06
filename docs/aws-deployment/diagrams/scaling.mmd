@@ -1,0 +1,15 @@
+flowchart LR
+    subgraph Stage_A["Stage 1: Demo / Hackathon (~$32/mo)"]
+        A1["1 × Fargate ARM64 (0.25 vCPU / 0.5 GB)<br/>Single-AZ db.t4g.micro (20 GB gp3)<br/>CloudFront Direct -> Task (No ALB, No NAT)"]
+    end
+
+    subgraph Stage_B["Stage 2: 100-User Hospital Pilot (~$149/mo)"]
+        B1["1–3 × Fargate ARM64 (0.5 vCPU / 1 GB)<br/>Single-AZ db.t4g.small (30 GB gp3, 14d PITR)<br/>CloudFront VPC Origin -> Internal ALB<br/>SQS + Lambda ARM64 (max_concurrency=5)"]
+    end
+
+    subgraph Stage_C["Stage 3: 5–20 Hospitals (~$619–$2,151/mo)"]
+        C1["2–8 × Fargate ARM64 (1 vCPU / 2 GB, 2 AZs)<br/>Multi-AZ db.t4g.medium / m7g.large (100 GB gp3)<br/>PgBouncer (transaction mode) + AWS WAFv2<br/>Cross-Region DR Snapshots to ap-south-2"]
+    end
+
+    Stage_A -->|"Set db_instance_class='db.t4g.small'<br/>& enable Internal ALB"| Stage_B
+    Stage_B -->|"Set multi_az=true, desired_count>=2,<br/>add PgBouncer & WAFv2"| Stage_C

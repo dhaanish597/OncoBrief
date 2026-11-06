@@ -59,3 +59,12 @@ video-output/
 !/ONCOBRIEF_ENHANCEMENT_PLAN (old).pdf
 
 
+# generated mobile/platform and local authoring output
+apps/mobile/dist-ios/
+.playwright-cli/
+slide-output/.build/
+reports/visual-proof/raw/
+artifacts/oncobrief-video-tutorial/
+
+# generated design assets are explicitly curated under submission/
+!submission/**/*.png

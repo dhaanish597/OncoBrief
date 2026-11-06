@@ -2,6 +2,8 @@
 
 Source-Verified Oncology Consultation Preparation Platform.
 
+**Hackathon evaluation:** see the [deployed release report](docs/aws-deployment/24-hackathon-deployment-report.md), [evaluator guide](docs/aws-deployment/23-hackathon-evaluator-guide.md) and [deployment profile](docs/aws-deployment/22-hackathon-deployment-plan.md) for the restricted synthetic prototype, code/architecture map, provider disclosures, and verification evidence. This is not a public clinical service.
+
 A source-verified oncology **record-readiness** platform that organizes
 fragmented records into a human-reviewed consultation preparation workflow.
 

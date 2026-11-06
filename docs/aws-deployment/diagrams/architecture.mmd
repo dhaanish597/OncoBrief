@@ -1,0 +1,48 @@
+graph TB
+    subgraph Users["Hospital Staff, Patients & External Gateways"]
+        BROWSER["Clinician / Coordinator / Records Browser"]
+        EXT["Chrome MV3 EHR Extension"]
+        MOBILE["Patient Companion Mobile App"]
+    end
+
+    subgraph Edge["AWS Global Edge (India POPs)"]
+        CF["Amazon CloudFront CDN<br/>TLS 1.3 · Static Cache (/_next/static/*)<br/>PHI Cache-Control: private, no-store"]
+        VPC_ORIGIN["CloudFront VPC Origin ($0.00/mo)"]
+    end
+
+    subgraph AWS_Mumbai["AWS Region: ap-south-1 (Mumbai) — VPC 10.60.0.0/16"]
+        ALB["Internal Application Load Balancer<br/>HTTPS :443 · Health Check: /api/v1/health"]
+        ECS["ECS Fargate Graviton2 (ARM64)<br/>0.5 vCPU / 1 GB RAM · Next.js 15 (apps/web)"]
+        SQS_IN["SQS: document-ingest (+ DLQ)"]
+        SQS_OCR["SQS: ocr-result (+ DLQ)"]
+        LAMBDA["AWS Lambda Workers (ARM64, nodejs22.x)<br/>document-ingest · ocr-result · admin"]
+        RDS[("RDS PostgreSQL 16 (db.t4g.small)<br/>Private Subnet · 63 FORCE RLS Tables<br/>Append-Only Ledger & SHA-256 Chains")]
+        S3[("Amazon S3 (SSE-KMS + Bucket Keys)<br/>Patient PDFs · TTS Cache · WORM Hash Anchors")]
+        KMS["AWS KMS CMK + SSM Parameter Store"]
+        CW["CloudWatch Logs, 10 Alarms & SNS Alerts"]
+    end
+
+    subgraph AI_Services["Managed AI & External Healthcare APIs"]
+        TEXTRACT["Amazon Textract (ap-south-1)<br/>StartDocumentTextDetection ($0.0015/p)"]
+        BEDROCK["Amazon Bedrock Converse API<br/>Nova Pro / Nova Lite (Forced Tool Use)"]
+        SARVAM["Sarvam AI (India Sovereign API)<br/>Sarvam Vision OCR · Bulbul v3 TTS · Saaras v3 STT"]
+        ABDM["NHA ABDM HIE-CM v3 Gateway<br/>Fidelius X25519 + AES-256-GCM"]
+    end
+
+    BROWSER -->|HTTPS| CF
+    EXT -->|HTTPS /api/v1/extension/capture| CF
+    MOBILE -->|HTTPS /api/v1/patient-portal/*| CF
+    BROWSER -->|Presigned PUT/GET (TLS)| S3
+    CF --> VPC_ORIGIN --> ALB --> ECS
+    ECS -->|sslmode=verify-full (Port 5432)| RDS
+    ECS -->|S3 Gateway Endpoint ($0)| S3
+    S3 -->|s3:ObjectCreated:*| SQS_IN --> LAMBDA
+    LAMBDA -->|Start Job| TEXTRACT -->|SNS Completion| SQS_OCR --> LAMBDA
+    LAMBDA -->|Converse Tool Use| BEDROCK
+    LAMBDA -->|Indic OCR| SARVAM
+    ECS -->|TTS / STT / Ask OncoBrief| SARVAM
+    ECS -->|Converse Tool Use| BEDROCK
+    ECS -->|M2 HIP / M3 HIU| ABDM
+    LAMBDA -->|sslmode=verify-full (Port 5432)| RDS
+    ECS & LAMBDA --> CW
+    ECS & LAMBDA & RDS & S3 -.-> KMS

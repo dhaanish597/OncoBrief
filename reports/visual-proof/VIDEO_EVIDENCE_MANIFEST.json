@@ -1,0 +1,397 @@
+{
+  "generatedAt": "2026-11-04T18:19:03.638Z",
+  "totalVideosExpected": 11,
+  "totalVideosRecorded": 11,
+  "totalVideosVerified": 11,
+  "totalSizeBytes": 14354309,
+  "videos": [
+    {
+      "filename": "01_phase_01a_sarvam_voice.mp4",
+      "absolutePath": "/Users/dhaanish/Documents/OncoBrief/reports/visual-proof/01_phase_01a_sarvam_voice.mp4",
+      "relativePath": "reports/visual-proof/01_phase_01a_sarvam_voice.mp4",
+      "sizeBytes": 787222,
+      "durationSeconds": 14,
+      "width": 1440,
+      "height": 900,
+      "codec": "h264",
+      "hasAudio": true,
+      "sha256": "56fedc97dd4d1dee82bf3ee19ceda93af2444bd11085f3b147aa1cc40522e8fa",
+      "representativeFrames": [
+        "frames/01_phase_01a_sarvam_voice_frame_1.png",
+        "frames/01_phase_01a_sarvam_voice_frame_2.png",
+        "frames/01_phase_01a_sarvam_voice_frame_3.png"
+      ],
+      "playbackVerified": true,
+      "notes": "Recorded and verified on OncoBrief release candidate baseline.",
+      "phaseId": "Phase 01A",
+      "phaseName": "Sarvam Voice and Language Correctness",
+      "originalProblem": "normalizeLanguageCode() coerced all locales to en-IN due to case-sensitivity bug; Odia provider code was mismatched; multi-chunk WAV concatenations corrupted RIFF headers.",
+      "implementationChanges": "Canonicalized normalizeLanguageCode() with case/underscore tolerance; mapped Odia or-IN to Sarvam od-IN; built parseWavBuffer() & mergeWavBase64Chunks() with accurate 44-byte RIFF headers.",
+      "sourceFiles": [
+        "packages/adapters/src/sarvam-voice.ts",
+        "packages/adapters/src/sarvam-translation.ts"
+      ],
+      "regressionTests": [
+        "packages/adapters/test/sarvam-voice-contracts.test.ts (15/15 passing)"
+      ],
+      "demonstratedBehavior": "11-locale language selector active; Hindi (hi-IN) and Tamil (ta-IN) selection; assistant launcher voice panel; automated contract test execution with 15/15 pass.",
+      "historicalComparisonAvailable": true,
+      "historicalComparisonNotes": "Preserved Phase 01A baseline and contract tests accurately document the corrupted WAV header vs reconstructed 44-byte RIFF header."
+    },
+    {
+      "filename": "02_phase_01b_multilingual_continuity.mp4",
+      "absolutePath": "/Users/dhaanish/Documents/OncoBrief/reports/visual-proof/02_phase_01b_multilingual_continuity.mp4",
+      "relativePath": "reports/visual-proof/02_phase_01b_multilingual_continuity.mp4",
+      "sizeBytes": 737472,
+      "durationSeconds": 16,
+      "width": 1440,
+      "height": 900,
+      "codec": "h264",
+      "hasAudio": true,
+      "sha256": "6ae9dbe849de516fe24625b70607388ab0442656d75aa85c57d7562aed4e85cb",
+      "representativeFrames": [
+        "frames/02_phase_01b_multilingual_continuity_frame_1.png",
+        "frames/02_phase_01b_multilingual_continuity_frame_2.png",
+        "frames/02_phase_01b_multilingual_continuity_frame_3.png"
+      ],
+      "playbackVerified": true,
+      "notes": "Recorded and verified on OncoBrief release candidate baseline.",
+      "phaseId": "Phase 01B",
+      "phaseName": "Multilingual Caregiver Continuity",
+      "originalProblem": "Continuity messages lacked native-script rendering; allowed literal variables lacked appointment_date; ungrounded OPD slot offers failed checkMessageGate() with HTTP 409.",
+      "implementationChanges": "Added appointment_date to ALLOWED_LITERAL_VARIABLES; implemented resolveLocalizedMessageText() rendering verified variables into native Indic scripts; grounded OPD slot variables.",
+      "sourceFiles": [
+        "packages/domain/src/messages/render.ts",
+        "packages/db/src/services/messages.ts",
+        "packages/db/src/services/opd-flow.ts",
+        "apps/web/src/lib/scoped-tts.ts"
+      ],
+      "regressionTests": [
+        "packages/db/test/continuity-grounding.test.ts (7/7)",
+        "apps/web/src/lib/tts-scope.test.ts (17/17)"
+      ],
+      "demonstratedBehavior": "Consented caregiver network; draft vs approved message gating; Tamil-script preview resolution; ContinuityAudioPlayer playback; literal variable grounding.",
+      "historicalComparisonAvailable": true,
+      "historicalComparisonNotes": "Documented earlier HTTP 409 gate failure on ungrounded messages vs zero-blocker approval in Phase 01B."
+    },
+    {
+      "filename": "03_phase_02_document_intelligence.mp4",
+      "absolutePath": "/Users/dhaanish/Documents/OncoBrief/reports/visual-proof/03_phase_02_document_intelligence.mp4",
+      "relativePath": "reports/visual-proof/03_phase_02_document_intelligence.mp4",
+      "sizeBytes": 1369912,
+      "durationSeconds": 25,
+      "width": 1440,
+      "height": 900,
+      "codec": "h264",
+      "hasAudio": false,
+      "sha256": "71de0127552743f5142342002eee695096ee0616748099af27715ea3af6a75ff",
+      "representativeFrames": [
+        "frames/03_phase_02_document_intelligence_frame_1.png",
+        "frames/03_phase_02_document_intelligence_frame_2.png",
+        "frames/03_phase_02_document_intelligence_frame_3.png"
+      ],
+      "playbackVerified": true,
+      "notes": "Recorded and verified on OncoBrief release candidate baseline.",
+      "phaseId": "Phase 02",
+      "phaseName": "Document AI and Evidence Provenance",
+      "originalProblem": "Fabricated raw-byte ASCII scraping on corrupt buffers; fake 4-second setTimeout delays in UI; missing language selector in upload form; lack of two-stage clinical span validation.",
+      "implementationChanges": "Restored Sarvam Vision OCR adapter (10/10 tests); added language selector to DocumentUploadForm; eliminated fake delays; enforced two-stage span validation for all 9 FactValue variants.",
+      "sourceFiles": [
+        "packages/adapters/src/sarvam-vision-ocr.ts",
+        "packages/adapters/src/rule-based-extractor.ts",
+        "packages/domain/src/provenance/span-validation.ts",
+        "apps/web/src/components/DocumentUploadForm.tsx"
+      ],
+      "regressionTests": [
+        "packages/adapters/test/ocr-correctness.test.ts (10/10)",
+        "packages/domain/test/span-validation.test.ts (24/24)",
+        "packages/db/test/two-stage-span-gate.test.ts (4/4)"
+      ],
+      "demonstratedBehavior": "Synthetic report intake; language-aware OCR routing; honest telemetry without fake delays; Evidence Ledger extraction; mathematical [0, 1] bounding box highlight; human fact verification.",
+      "historicalComparisonAvailable": true,
+      "historicalComparisonNotes": "Preserved test suites demonstrate rejection of corrupt buffers without ASCII scraping, and rejection of candidate facts with unentailed values."
+    },
+    {
+      "filename": "04_phase_03_clinical_governance.mp4",
+      "absolutePath": "/Users/dhaanish/Documents/OncoBrief/reports/visual-proof/04_phase_03_clinical_governance.mp4",
+      "relativePath": "reports/visual-proof/04_phase_03_clinical_governance.mp4",
+      "sizeBytes": 1797694,
+      "durationSeconds": 80.96,
+      "width": 1440,
+      "height": 900,
+      "codec": "h264",
+      "hasAudio": false,
+      "sha256": "73c54458df0a11b8c199cb516e81527f2c0771a21de331dd13942e881ed08503",
+      "representativeFrames": [
+        "frames/04_phase_03_clinical_governance_frame_1.png",
+        "frames/04_phase_03_clinical_governance_frame_2.png",
+        "frames/04_phase_03_clinical_governance_frame_3.png"
+      ],
+      "playbackVerified": true,
+      "notes": "Recorded and verified on OncoBrief release candidate baseline.",
+      "phaseId": "Phase 03",
+      "phaseName": "Clinical Governance and Operations",
+      "originalProblem": "Unsynchronized clinician worklist, lack of multidisciplinary tumor board workflow, and absence of automated clinical boundary safety enforcement.",
+      "implementationChanges": "Built clinician consultation worklist with readiness bands, OPD appointment slot management, Tumor Board consensus workflow, and check-clinical-boundary scan.",
+      "sourceFiles": [
+        "packages/db/src/services/appointments.ts",
+        "packages/db/src/services/tumor-board.ts",
+        "packages/db/src/services/opd-flow.ts",
+        "tools/check-clinical-boundary.ts"
+      ],
+      "regressionTests": [
+        "tools/check-clinical-boundary.ts",
+        "packages/db/test/clinical-context.test.ts (8/8)"
+      ],
+      "demonstratedBehavior": "Worklist readiness bands, OPD slot booking, staging facts, Tumor Board surface, encounters timeline, and strict clinical boundary scan pass.",
+      "historicalComparisonAvailable": true,
+      "historicalComparisonNotes": "Historical reports confirm progression from unstructured notes to source-backed administrative Twin."
+    },
+    {
+      "filename": "05_phase_04_application_acceptance.mp4",
+      "absolutePath": "/Users/dhaanish/Documents/OncoBrief/reports/visual-proof/05_phase_04_application_acceptance.mp4",
+      "relativePath": "reports/visual-proof/05_phase_04_application_acceptance.mp4",
+      "sizeBytes": 2258592,
+      "durationSeconds": 40.84,
+      "width": 1440,
+      "height": 900,
+      "codec": "h264",
+      "hasAudio": false,
+      "sha256": "3b69c211146b4d2b85f4c1bdef094df864adf029bcd51712394ed55ae44f2913",
+      "representativeFrames": [
+        "frames/05_phase_04_application_acceptance_frame_1.png",
+        "frames/05_phase_04_application_acceptance_frame_2.png",
+        "frames/05_phase_04_application_acceptance_frame_3.png"
+      ],
+      "playbackVerified": true,
+      "notes": "Recorded and verified on OncoBrief release candidate baseline.",
+      "phaseId": "Phase 04",
+      "phaseName": "Full Application Acceptance",
+      "originalProblem": "Fragmented end-to-end integration across the 10 clinician scenes; unverified contradiction resolution; ungrounded consultation packets.",
+      "implementationChanges": "Implemented 10-scene clinician journey; honest reconciliation room retaining both conflicting sources; source-backed administrative task creation; packet assembly with SHA-256 digest.",
+      "sourceFiles": [
+        "apps/web/src/app/(app)/patients/[id]/conflicts/page.tsx",
+        "apps/web/src/app/(app)/patients/[id]/packet/page.tsx",
+        "packages/db/src/services/audit.ts"
+      ],
+      "regressionTests": [
+        "apps/web/e2e/demo-flow.spec.ts (10/10 passing)",
+        "apps/web/e2e/independent-judge-journey.spec.ts (10 scenes)"
+      ],
+      "demonstratedBehavior": "End-to-end walkthrough of evidence inspection, reconciliation room, task creation from gaps, packet approval, and auditor hash-chain integrity verification.",
+      "historicalComparisonAvailable": true,
+      "historicalComparisonNotes": "Verified against independent judge journey protocol established in CLAUDE.md."
+    },
+    {
+      "filename": "06_phase_05_connected_mobile.mp4",
+      "absolutePath": "/Users/dhaanish/Documents/OncoBrief/reports/visual-proof/06_phase_05_connected_mobile.mp4",
+      "relativePath": "reports/visual-proof/06_phase_05_connected_mobile.mp4",
+      "sizeBytes": 244628,
+      "durationSeconds": 12.56,
+      "width": 392,
+      "height": 852,
+      "codec": "h264",
+      "hasAudio": false,
+      "sha256": "e7ee5fcd97b54d2e92f850e63184bb3b1aa676dc09a5aa62e8ec580af940e3b9",
+      "representativeFrames": [
+        "frames/06_phase_05_connected_mobile_frame_1.png",
+        "frames/06_phase_05_connected_mobile_frame_2.png",
+        "frames/06_phase_05_connected_mobile_frame_3.png"
+      ],
+      "playbackVerified": true,
+      "notes": "Recorded and verified on OncoBrief release candidate baseline.",
+      "phaseId": "Phase 05",
+      "phaseName": "Unified Web and Patient Mobile",
+      "originalProblem": "Disconnected patient mobile experience; potential data leakage of clinician draft notes to patient portal; unverified caregiver sharing controls.",
+      "implementationChanges": "Built 11 patient portal REST routes; enforced PostgreSQL Row-Level Security on patient tables; excluded draft notes from mobile hydration; built caregiver consent revocation.",
+      "sourceFiles": [
+        "apps/web/src/app/api/v1/patient-portal/*",
+        "apps/mobile/app/*",
+        "packages/db/migrations/0022_patient_portal_foundation.sql"
+      ],
+      "regressionTests": [
+        "apps/mobile/e2e/clinician-patient-continuity.spec.ts (20-step loop)",
+        "packages/db/test/patient-portal-rls.test.ts (22/22)"
+      ],
+      "demonstratedBehavior": "Patient login via connected hospital mode (Apollo Chennai Demo), appointment receipt, attendance confirmation, approved message display vs draft note exclusion, caregiver revocation, logout.",
+      "historicalComparisonAvailable": true,
+      "historicalComparisonNotes": "Browser emulation verified against connected REST backend and RLS tenant boundaries."
+    },
+    {
+      "filename": "07_phase_06_live_provider_verification.mp4",
+      "absolutePath": "/Users/dhaanish/Documents/OncoBrief/reports/visual-proof/07_phase_06_live_provider_verification.mp4",
+      "relativePath": "reports/visual-proof/07_phase_06_live_provider_verification.mp4",
+      "sizeBytes": 716623,
+      "durationSeconds": 21.04,
+      "width": 1440,
+      "height": 900,
+      "codec": "h264",
+      "hasAudio": false,
+      "sha256": "61d99e202eb8f9bd8dbe6e11c7bfa5f402b2c574a14143799aecc0bfb2fa63a9",
+      "representativeFrames": [
+        "frames/07_phase_06_live_provider_verification_frame_1.png",
+        "frames/07_phase_06_live_provider_verification_frame_2.png",
+        "frames/07_phase_06_live_provider_verification_frame_3.png"
+      ],
+      "playbackVerified": true,
+      "notes": "Recorded and verified on OncoBrief release candidate baseline.",
+      "phaseId": "Phase 06",
+      "phaseName": "Live Sarvam and Release Validation",
+      "originalProblem": "Document AI Digitise (Sarvam Vision) had not been verified live end-to-end; unclear separation between live API calls and fallback fixtures.",
+      "implementationChanges": "Executed live Sarvam Vision Digitise job 01a1a120-57a5-789f-abf9-6dd7ff572a6c with genuine oncology entities and geometry; verified all 4 Sarvam services live; audited Android APK.",
+      "sourceFiles": [
+        "packages/adapters/src/sarvam-vision-ocr.ts",
+        "packages/adapters/test/live-sarvam-contract.test.ts",
+        "docs/implementation-planning/healthathon-final-remediation/LIVE_SARVAM_VISION_E2E_REPORT.md"
+      ],
+      "regressionTests": [
+        "packages/adapters/test/provider-contracts.test.ts (8/8)",
+        "packages/adapters/test/sarvam-translation-and-voice.test.ts (12/12)"
+      ],
+      "demonstratedBehavior": "Provider contract test execution, examination of retained historical live job execution evidence, runtime provider badges, and Android APK SHA-256 verification.",
+      "historicalComparisonAvailable": true,
+      "historicalComparisonNotes": "Live provider calls preserved in audit logs; clearly delineated historical live execution from local offline verification."
+    },
+    {
+      "filename": "08_phase_07a_native_mobile.mp4",
+      "absolutePath": "/Users/dhaanish/Documents/OncoBrief/reports/visual-proof/08_phase_07a_native_mobile.mp4",
+      "relativePath": "reports/visual-proof/08_phase_07a_native_mobile.mp4",
+      "sizeBytes": 634666,
+      "durationSeconds": 15.64,
+      "width": 1440,
+      "height": 900,
+      "codec": "h264",
+      "hasAudio": false,
+      "sha256": "eb4875b1bafe90e6cb547acc5a51cf67b1085da1110a5c9fa65eb60e508a9042",
+      "representativeFrames": [
+        "frames/08_phase_07a_native_mobile_frame_1.png",
+        "frames/08_phase_07a_native_mobile_frame_2.png",
+        "frames/08_phase_07a_native_mobile_frame_3.png"
+      ],
+      "playbackVerified": true,
+      "notes": "Demonstrates Expo React Native project, iOS Xcode project, Hermes bytecode compilation, mobile parity screens, 124 unit tests, and 6/6 release gate verification.",
+      "phaseId": "Phase 07A",
+      "phaseName": "Android and iOS Mobile Engineering",
+      "originalProblem": "Missing iOS native project configuration; unverified Hermes bytecode bundles; incomplete mobile unit test suite.",
+      "implementationChanges": "Generated iOS Xcode project (OncoBrief.xcodeproj) via Expo prebuild; compiled Hermes bytecode bundles for Android and iOS; implemented 124 mobile unit tests; built verify-patient-mobile.sh.",
+      "sourceFiles": [
+        "apps/mobile/ios/*",
+        "apps/mobile/android/*",
+        "apps/mobile/app.json",
+        "tools/verify-patient-mobile.sh"
+      ],
+      "regressionTests": [
+        "apps/mobile test (124/124 passing)",
+        "tools/verify-patient-mobile.sh (6/6 stages green)"
+      ],
+      "demonstratedBehavior": "Expo React Native project structure, iOS Xcode project, Hermes bytecode compilation, bilingual onboarding, parity screens, and 124 unit tests passing.",
+      "historicalComparisonAvailable": true,
+      "historicalComparisonNotes": "Build and configuration demonstrated; explicitly noted absence of physical USB device on test runner."
+    },
+    {
+      "filename": "09_phase_07b_fhir_abdm.mp4",
+      "absolutePath": "/Users/dhaanish/Documents/OncoBrief/reports/visual-proof/09_phase_07b_fhir_abdm.mp4",
+      "relativePath": "reports/visual-proof/09_phase_07b_fhir_abdm.mp4",
+      "sizeBytes": 897950,
+      "durationSeconds": 19.52,
+      "width": 1440,
+      "height": 900,
+      "codec": "h264",
+      "hasAudio": false,
+      "sha256": "9145fca7c8a5760b00cca94adccb16096b93388dcac9df447251a6bbf4a69e8a",
+      "representativeFrames": [
+        "frames/09_phase_07b_fhir_abdm_frame_1.png",
+        "frames/09_phase_07b_fhir_abdm_frame_2.png",
+        "frames/09_phase_07b_fhir_abdm_frame_3.png"
+      ],
+      "playbackVerified": true,
+      "notes": "Demonstrates synthetic FHIR R4 bundle import, JSONPath element pointers, authorized mCODE export, ABDM HIP/HIU workflows, and consent revocation.",
+      "phaseId": "Phase 07B",
+      "phaseName": "FHIR R4 and ABDM Interoperability",
+      "originalProblem": "Lack of bidirectional FHIR R4 interoperability; missing NRCeS and HL7 mCODE oncology mappings; unhardened FHIR HTTP client.",
+      "implementationChanges": "Built bidirectional FHIR importer/exporter; enforced JSONPath element pointers for FHIR provenance; implemented ABDM HIP M2 and HIU M3 flows; hardened SSRF defenses.",
+      "sourceFiles": [
+        "packages/domain/src/fhir/*",
+        "packages/adapters/src/fhir-client.ts",
+        "packages/db/migrations/0023_fhir_interoperability.sql",
+        "apps/web/e2e/fhir-abdm-interop.spec.ts"
+      ],
+      "regressionTests": [
+        "packages/domain/test/fhir-bidirectional.test.ts (10/10)",
+        "apps/web/e2e/fhir-abdm-interop.spec.ts (10 scenarios)"
+      ],
+      "demonstratedBehavior": "Synthetic FHIR R4 DiagnosticReport ingestion, JSONPath element pointers in Evidence Ledger, authorized mCODE export, ABDM consent gating, and interop test suite execution.",
+      "historicalComparisonAvailable": true,
+      "historicalComparisonNotes": "Carefully distinguishes simulated/synthetic sandbox testing from external live ABDM production gateway."
+    },
+    {
+      "filename": "10_phase_07c_release_security.mp4",
+      "absolutePath": "/Users/dhaanish/Documents/OncoBrief/reports/visual-proof/10_phase_07c_release_security.mp4",
+      "relativePath": "reports/visual-proof/10_phase_07c_release_security.mp4",
+      "sizeBytes": 1003672,
+      "durationSeconds": 27.96,
+      "width": 1440,
+      "height": 900,
+      "codec": "h264",
+      "hasAudio": false,
+      "sha256": "49d7056e182f560d59d34883a62fe62b4f290ba1e13ec2fb1701104e5b0464b3",
+      "representativeFrames": [
+        "frames/10_phase_07c_release_security_frame_1.png",
+        "frames/10_phase_07c_release_security_frame_2.png",
+        "frames/10_phase_07c_release_security_frame_3.png"
+      ],
+      "playbackVerified": true,
+      "notes": "Demonstrates production app launch, clinical boundary scans, PostgreSQL RLS non-superuser security, SSRF defenses, natural chart interactions, and release blockers.",
+      "phaseId": "Phase 07C",
+      "phaseName": "Release Candidate and Security",
+      "originalProblem": "Discrepancy in RLS tenant session variables (app.org_id vs app.current_tenant_id); advanced SSRF bypasses in FHIR client; { force: true } clicks in Playwright chart tests.",
+      "implementationChanges": "Set both app.org_id and app.current_tenant_id in client.ts; added 10 RLS tests under non-superuser oncobrief_app; blocked hex/octal/IPv6-mapped SSRF; eliminated all { force: true } overrides.",
+      "sourceFiles": [
+        "packages/db/src/client.ts",
+        "packages/adapters/src/fhir-client.ts",
+        "apps/web/e2e/clinical-context.spec.ts",
+        "packages/db/test/fhir-rls-security.test.ts"
+      ],
+      "regressionTests": [
+        "packages/db/test/fhir-rls-security.test.ts (10/10)",
+        "packages/adapters/test/fhir-client.test.ts (20/20)",
+        "apps/web/e2e/clinical-context.spec.ts (6/6)"
+      ],
+      "demonstratedBehavior": "Production app launch, natural pointer hover/click on SVG oncology chart, clinical boundary scan, PostgreSQL RLS security tests, SSRF mitigations, and release blocker accounting.",
+      "historicalComparisonAvailable": true,
+      "historicalComparisonNotes": "Independent audit confirmed local staging pass with zero regressions and transparent external prerequisite tracking."
+    },
+    {
+      "filename": "11_oncobrief_complete_walkthrough.mp4",
+      "absolutePath": "/Users/dhaanish/Documents/OncoBrief/reports/visual-proof/11_oncobrief_complete_walkthrough.mp4",
+      "relativePath": "reports/visual-proof/11_oncobrief_complete_walkthrough.mp4",
+      "sizeBytes": 3905878,
+      "durationSeconds": 52.96,
+      "width": 1440,
+      "height": 900,
+      "codec": "h264",
+      "hasAudio": true,
+      "sha256": "2c9f571f51b6dec13dcbf813b6838404402516553eb79d40fd02a63a8a26a75b",
+      "representativeFrames": [
+        "frames/11_oncobrief_complete_walkthrough_frame_1.png",
+        "frames/11_oncobrief_complete_walkthrough_frame_2.png",
+        "frames/11_oncobrief_complete_walkthrough_frame_3.png"
+      ],
+      "playbackVerified": true,
+      "notes": "Comprehensive 10-scene demonstration of OncoBrief: document intake, Evidence Ledger, oncology trends, reconciliation, OPD management, assistant, packet approval, mobile continuity, FHIR/ABDM, and audit integrity.",
+      "phaseId": "Complete Demo",
+      "phaseName": "Comprehensive OncoBrief Health-a-thon Walkthrough",
+      "originalProblem": "Fragmented record intake, manual error-prone reconciliation, ungrounded assistant hallucination, and lack of verified cross-platform patient continuity in cancer care.",
+      "implementationChanges": "Unified evidence-first oncology platform: OCR document ingestion, Evidence Ledger provenance, longitudinal context, contradiction reconciliation, OPD flow, studio packet export, mobile continuity, FHIR/ABDM interop, and immutable audit trail.",
+      "sourceFiles": [
+        "Entire monorepo across apps/web, apps/mobile, packages/domain, packages/db, packages/adapters, packages/ports"
+      ],
+      "regressionTests": [
+        "All 1,466 unit/integration tests + 102 web E2E + 9 mobile E2E specs passing"
+      ],
+      "demonstratedBehavior": "Full 10-scene cohesive Health-a-thon demonstration from initial clinician login through document intake, source inspection, reconciliation, OPD scheduling, assistant safety refusal, packet approval, mobile continuity, FHIR export, and auditor hash-chain integrity.",
+      "historicalComparisonAvailable": true,
+      "historicalComparisonNotes": "Comprehensive demonstration representing the complete, verified OncoBrief release candidate baseline."
+    }
+  ]
+}
